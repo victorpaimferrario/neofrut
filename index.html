@@ -1765,11 +1765,25 @@ async function salvarColheita() {
   if (total === 0) { alert('Informe ao menos Mesa ou Fábrica.'); return; }
 
   const reg = { data, total, mesa, fabrica };
+  const modalEl = document.getElementById('modal-colheita');
+  const editIdx = modalEl.dataset.editIdx !== undefined && modalEl.dataset.editIdx !== '' ? parseInt(modalEl.dataset.editIdx) : -1;
+  delete modalEl.dataset.editIdx;
 
   if (currentEitoId) {
     const eito = DB[currentArea].find(e=>e.id===currentEitoId);
     if (!eito.historico) eito.historico = [];
-    eito.historico.push(reg);
+    if(editIdx >= 0) {
+      // edição — remover antiga do Supabase e substituir
+      const antiga = eito.historico[editIdx];
+      try {
+        await _SB.from('colheitas').delete()
+          .eq('area', currentArea).eq('eito_id', currentEitoId)
+          .eq('data', antiga.data).eq('total', antiga.total);
+      } catch(err) { console.error(err); }
+      eito.historico[editIdx] = reg;
+    } else {
+      eito.historico.push(reg);
+    }
   }
 
   await saveData();
@@ -2957,14 +2971,44 @@ function openSidePanel(area, eitoId) {
   if (!hist.length) {
     histList.innerHTML='<div style="color:var(--muted);font-size:12px;padding:12px 0">Nenhuma colheita registrada.</div>';
   } else {
-    histList.innerHTML = [...hist].reverse().map((h,i)=>`
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:${i===0?'var(--verde-bg)':'var(--surface2)'};border:1px solid ${i===0?'var(--verde-border)':'var(--border)'};border-radius:8px;margin-bottom:6px">
-        <div>
-          <div style="font-family:var(--font-mono);font-size:12px;font-weight:500">${fmtData(h.data)}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">Mesa: ${fmtNum(h.mesa)} · Fáb: ${fmtNum(h.fabrica)} · ${h.total>0?Math.round(h.mesa/h.total*100)+'% mesa':''}</div>
-        </div>
-        <div style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:${i===0?'var(--verde)':'var(--text)'}">${fmtNum(h.total)}</div>
-      </div>`).join('');
+    histList.innerHTML = '';
+    [...hist].reverse().forEach((h, i) => {
+      const realIdx = hist.length - 1 - i;
+      const isFirst = i === 0;
+      const bg     = isFirst ? 'var(--verde-bg)' : 'var(--surface2)';
+      const border = isFirst ? 'var(--verde-border)' : 'var(--border)';
+      const cor    = isFirst ? 'var(--verde)' : 'var(--text)';
+      const pct    = h.total > 0 ? ' · ' + Math.round(h.mesa / h.total * 100) + '% mesa' : '';
+
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'flex:1;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:'+bg+';border:1px solid '+border+';border-radius:8px';
+      card.innerHTML =
+        '<div>'
+        + '<div style="font-family:var(--font-mono);font-size:12px;font-weight:500">' + fmtData(h.data) + '</div>'
+        + '<div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--font-mono)">Mesa: ' + fmtNum(h.mesa) + ' · Fáb: ' + fmtNum(h.fabrica) + pct + '</div>'
+        + '</div>'
+        + '<div style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:' + cor + '">' + fmtNum(h.total) + '</div>';
+
+      const btnEdit = document.createElement('button');
+      btnEdit.textContent = '✏️';
+      btnEdit.title = 'Editar';
+      btnEdit.style.cssText = 'background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;cursor:pointer;font-size:13px;flex-shrink:0';
+      btnEdit.onclick = () => editarColheitaSidePanel(area, eitoId, realIdx);
+
+      const btnDel = document.createElement('button');
+      btnDel.textContent = '✕';
+      btnDel.title = 'Excluir';
+      btnDel.style.cssText = 'background:none;border:1px solid var(--border);border-radius:5px;padding:4px 8px;cursor:pointer;font-size:13px;flex-shrink:0;color:var(--vermelho)';
+      btnDel.onclick = () => excluirColheitaSidePanel(area, eitoId, realIdx);
+
+      wrapper.appendChild(card);
+      wrapper.appendChild(btnEdit);
+      wrapper.appendChild(btnDel);
+      histList.appendChild(wrapper);
+    });
   }
 
   document.getElementById('side-panel').classList.add('open');
@@ -4056,6 +4100,47 @@ function renderTodosClientes(){
   }
 }
 
+
+async function excluirColheitaSidePanel(area, eitoId, idx){
+  const eito = DB[area]?.find(e=>e.id===eitoId);
+  if(!eito||!eito.historico) return;
+  const h = eito.historico[idx];
+  if(!confirm('Excluir colheita de '+fmtData(h.data)+' ('+fmtNum(h.total)+' cocos)?')) return;
+  // excluir do Supabase
+  try {
+    await _SB.from('colheitas')
+      .delete()
+      .eq('area', area)
+      .eq('eito_id', eitoId)
+      .eq('data', h.data)
+      .eq('total', h.total);
+  } catch(err) { console.error('Erro ao excluir colheita:', err); }
+  eito.historico.splice(idx, 1);
+  await saveData();
+  renderDashboard();
+  setTimeout(renderMapa, 60);
+  openSidePanel(area, eitoId);
+  showToast('✓ Colheita excluída');
+}
+
+function editarColheitaSidePanel(area, eitoId, idx){
+  const eito = DB[area]?.find(e=>e.id===eitoId);
+  if(!eito||!eito.historico) return;
+  const h = eito.historico[idx];
+  // abrir modal de colheita preenchido
+  currentArea = area;
+  currentEitoId = eitoId;
+  document.getElementById('modal-title').textContent = 'Editar Colheita — Eito '+eitoId;
+  document.getElementById('modal-sub').textContent = area+' · Eito '+eitoId+' · '+eito.plantas+' plantas';
+  document.getElementById('inp-data').value = h.data;
+  document.getElementById('inp-mesa').value = h.mesa;
+  document.getElementById('inp-fabrica').value = h.fabrica;
+  document.getElementById('total-preview').textContent = fmtNum(h.total);
+  // guardar índice para substituir ao salvar
+  document.getElementById('modal-colheita').dataset.editIdx = idx;
+  document.getElementById('modal-colheita').classList.add('open');
+}
+
 // ─────────── FILTRO MAPA ───────────
 let _mapaFiltro = 'todos';
 
@@ -4082,7 +4167,7 @@ async function checkAuth() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = session.user.email;
-    initApp();
+    await initApp();
   }
 }
 
@@ -4098,12 +4183,12 @@ async function logout() {
   location.reload();
 }
 
-_SB.auth.onAuthStateChange((event, session) => {
+_SB.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN') {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = session.user.email;
-    initApp();
+    await initApp();
   } else if (event === 'SIGNED_OUT') {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
