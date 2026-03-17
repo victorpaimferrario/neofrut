@@ -4,7 +4,534 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neofrut — Controle de Colheitas</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+
+// ── TELEFONES DE CLIENTES ──
+let _telefonesCache = {};
+
+async function carregarTelefones() {
+  try {
+    const { data, error } = await _SB.from('clientes_telefone').select('*');
+    if(error) throw error;
+    (data||[]).forEach(r => { _telefonesCache[r.nome] = r.telefone||''; });
+  } catch(e) { console.warn('Telefones:', e.message); }
+}
+
+async function salvarTelefone(nome, telefone) {
+  _telefonesCache[nome] = telefone;
+  try {
+    await _SB.from('clientes_telefone').upsert({ nome, telefone, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn('Salvar telefone:', e.message); }
+}
+
+function fmtTelefone(tel) {
+  if(!tel) return '';
+  return tel.replace(/\D/g,'');
+}
+
+function abrirWhatsApp(nome) {
+  const tel = fmtTelefone(_telefonesCache[nome]||'');
+  const msg = encodeURIComponent('Olá! Temos cocos verdes disponíveis. Posso te enviar nossa oferta da semana?');
+  if(tel) {
+    window.open('https://wa.me/55'+tel+'?text='+msg, '_blank');
+  } else {
+    window.open('https://wa.me/?text='+msg, '_blank');
+  }
+}
+
+// ── MÓDULO MERCADOS ──
+const MAPA_CLIENTES = {"LINCOLN - CAMPO GRANDE": {"uf": "MS", "cidade": "CAMPO GRANDE", "fabrica": false}, "DIEGO - LINHARES": {"uf": "ES", "cidade": "LINHARES", "fabrica": false}, "LEONARDO - CEAGESP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "MIGUEL - CUIABÁ": {"uf": "MT", "cidade": "CUIABÁ", "fabrica": false}, "JACIARA - FEIRA DE SANTANA": {"uf": "BA", "cidade": "FEIRA DE SANTANA", "fabrica": false}, "ASSIS - CAMPINAS": {"uf": "SP", "cidade": "CAMPINAS", "fabrica": false}, "CEARÁ - CAMPINAS": {"uf": "SP", "cidade": "CAMPINAS", "fabrica": false}, "GEORGE - VITTA FRUTAS": {"uf": "DF", "cidade": "BRASILIA", "fabrica": false}, "ARTHUR - PETROLINA": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "DONA FATIMA - THALYSON - MACEIÓ": {"uf": "AL", "cidade": "MACEIÓ", "fabrica": false}, "ALEXANDRE - MT": {"uf": "MT", "cidade": "RONDONOPOLIS", "fabrica": false}, "DAIANE - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "RAFAEL - MACEIÓ": {"uf": "AL", "cidade": "MACEIÓ", "fabrica": false}, "ALDO SERGIO - CURITIBA": {"uf": "PR", "cidade": "CURITIBA", "fabrica": false}, "ALEX - COCO BAMBU": {"uf": "GO", "cidade": "GOIANIA", "fabrica": false}, "MATEUS - BRASILIA": {"uf": "DF", "cidade": "BRASILIA", "fabrica": false}, "GLAUBER - BH": {"uf": "MG", "cidade": "BELO HORIZONTE", "fabrica": false}, "SR JOAO - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "BINHO DO COCO": {"uf": "AL", "cidade": "ARAPIRACA", "fabrica": false}, "MARCELLA - CEAGESP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "CARLÃO - SÃO JOSÉ DO RIO PRETO - SP": {"uf": "SP", "cidade": "SÃO JOSE DO RIO PRETO", "fabrica": false}, "EDGAR - SP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "JAMISSON": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "PRETO DO COCO - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "TITIL - INDAIATUBA": {"uf": "SP", "cidade": "CAMPINAS", "fabrica": false}, "CARLÃO FALECIDO": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "GILDO - CEASA": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "RAUL ALVES - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "NETO - PIRACICABA": {"uf": "SP", "cidade": "PIRACICABA", "fabrica": false}, "NOELTON - SP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "RENAN - RIO DE JANEIRO": {"uf": "RJ", "cidade": "RIO DE JANEIRO", "fabrica": false}, "JONATHAN - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "MM FRUTAS - SP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "WANDERLEY - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "BENASSI - SP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "CARLOS - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "WALTER - SP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "RICARDO - COCO DIAMANTE": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "PAULO - SINOP": {"uf": "MT", "cidade": "SINOP", "fabrica": false}, "DA HORTA PARA PORTA": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "MARLY - COCO VIDA": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "SEVERINO - CAMPINAS": {"uf": "SP", "cidade": "CAMPINAS", "fabrica": false}, "WELLINGTON - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "DANIEL - MACEIÓ": {"uf": "AL", "cidade": "MACEIÓ", "fabrica": false}, "MAIKE - COCO MACENA": {"uf": "ES", "cidade": "LINHARES", "fabrica": false}, "TOMOHIDE - BA": {"uf": "BA", "cidade": "COSTA DO SAUIPE", "fabrica": false}, "GENILSON - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "JAILSON - ARUANA": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "MARIA - CEAGESP": {"uf": "SP", "cidade": "SÃO PAULO", "fabrica": false}, "JONATHAN - MG": {"uf": "MG", "cidade": "UBERLANDIA", "fabrica": false}, "EDVANEIDE - HORTOLANDIA": {"uf": "SP", "cidade": "PIRACICABA", "fabrica": false}, "RAMON - ARACAJU": {"uf": "SE", "cidade": "ARACAJU", "fabrica": false}, "VALTENIO - NEOPOLIS": {"uf": "SE", "cidade": "NEOPOLIS", "fabrica": false}, "VAL DA BANANA": {"uf": "SE", "cidade": "PROPRIÁ", "fabrica": false}, "EVERLAN - AQUIDABÃ": {"uf": "SE", "cidade": "AQUIDABÃ", "fabrica": false}, "VAL - PENEDO": {"uf": "AL", "cidade": "PENEDO", "fabrica": false}, "CLEIDIANE": {"uf": "SE", "cidade": "PROPRIÁ", "fabrica": false}, "ANTONIO ALVES": {"uf": "SE", "cidade": "PROPRIÁ", "fabrica": false}, "DAVID - SANTANA": {"uf": "SE", "cidade": "SANTANA SÃO FRANCISCO", "fabrica": false}, "WEYSIANE - NEOLPOLIS": {"uf": "SE", "cidade": "NEOPOLIS", "fabrica": false}, "MARCOS FALCÃO": {"uf": "", "cidade": "", "fabrica": true}, "FRYSK": {"uf": "", "cidade": "", "fabrica": true}, "NECTTARE": {"uf": "", "cidade": "", "fabrica": true}, "QUALICOCO": {"uf": "", "cidade": "", "fabrica": true}};
+
+function initMercados(){
+  // Renderizar componentes do painel de mercados
+  initRanking();
+  initSazonalidade();
+  renderHeatmapDias();
+  carregarClima();
+}
+
+const DADOS_UF = {"SE": {"cocos": 934500, "receita": 1376090.0, "rpc": 1.47, "por_ano": {"2023": {"cocos": 246700, "receita": 302025.0}, "2024": {"cocos": 398500, "receita": 628440.0}, "2025": {"cocos": 198300, "receita": 281625.0}, "2026": {"cocos": 91000, "receita": 164000.0}}, "por_mes": {"1": 92000, "2": 115900, "3": 115100, "4": 114500, "7": 2500, "8": 39100, "11": 13050, "12": 201650, "5": 13000, "9": 114550, "10": 113150}, "clientes": {"GEORGE - VITTA FRUTAS": {"cocos": 250100, "receita": 386440.0, "ultima": "2026-03-10", "n_pedidos": 14}, "DAIANE - ARACAJU": {"cocos": 160000, "receita": 284700.0, "ultima": "2024-05-13", "n_pedidos": 50}, "ALEX - COCO BAMBU": {"cocos": 109000, "receita": 136350.0, "ultima": "2025-08-22", "n_pedidos": 9}, "JOÃO FRANCISCO - ARACAJU": {"cocos": 94000, "receita": 148600.0, "ultima": "2024-05-03", "n_pedidos": 13}, "PRETO DO COCO - ARACAJU": {"cocos": 66200, "receita": 75625.0, "ultima": "2025-12-24", "n_pedidos": 22}, "GILDO - CEASA": {"cocos": 48000, "receita": 43600.0, "ultima": "2025-12-09", "n_pedidos": 6}, "RAUL ALVES - ARACAJU": {"cocos": 42000, "receita": 55400.0, "ultima": "2025-12-29", "n_pedidos": 6}, "JONATHAN - ARACAJU": {"cocos": 37000, "receita": 59750.0, "ultima": "2026-01-09", "n_pedidos": 5}, "MM FRUTAS": {"cocos": 36000, "receita": 23400.0, "ultima": "2025-09-09", "n_pedidos": 4}, "WANDERLEY - ARACAJU": {"cocos": 32500, "receita": 43850.0, "ultima": "2026-01-06", "n_pedidos": 8}, "CARLOS - ARACAJU": {"cocos": 27500, "receita": 45275.0, "ultima": "2025-12-30", "n_pedidos": 3}, "COCO DIAMANTE": {"cocos": 13500, "receita": 35370.0, "ultima": "2025-05-07", "n_pedidos": 3}, "WELLINGTON - ARACAJU": {"cocos": 9000, "receita": 13000.0, "ultima": "2024-12-31", "n_pedidos": 3}, "DA HORTA PARA PORTA": {"cocos": 9000, "receita": 23580.0, "ultima": "2025-04-30", "n_pedidos": 2}, "DAVID - SANTANA": {"cocos": 700, "receita": 1150.0, "ultima": "2025-02-20", "n_pedidos": 10}}, "fabrica": false, "por_mes_ano": {"2023": {"1": 6800, "2": 56700, "3": 26100, "4": 40500, "7": 2500, "8": 12100, "11": 13000, "12": 89000}, "2024": {"1": 74100, "2": 43000, "3": 25000, "4": 27000, "5": 8500, "9": 96550, "10": 113150, "11": 50, "12": 11150}, "2025": {"1": 100, "2": 200, "4": 47000, "5": 4500, "8": 27000, "9": 18000, "12": 101500}, "2026": {"1": 11000, "2": 16000, "3": 64000}}}, "AL": {"cocos": 278600, "receita": 346285.234375, "rpc": 1.24, "por_ano": {"2023": {"cocos": 114900, "receita": 128850.0}, "2024": {"cocos": 73800, "receita": 121020.0}, "2025": {"cocos": 89900, "receita": 96415.234375}}, "por_mes": {"1": 55400, "2": 36500, "3": 23000, "4": 15000, "5": 4700, "7": 8200, "8": 40500, "9": 22000, "10": 7500, "11": 11000, "12": 47300, "6": 7500}, "clientes": {"RAFAEL - MACEIÓ": {"cocos": 151000, "receita": 195500.0, "ultima": "2025-08-15", "n_pedidos": 35}, "BINHO DO COCO": {"cocos": 86600, "receita": 106985.234375, "ultima": "2025-12-15", "n_pedidos": 33}, "DONA FATIMA - MACIEO": {"cocos": 41000, "receita": 43800.0, "ultima": "2025-08-12", "n_pedidos": 5}}, "fabrica": false, "por_mes_ano": {"2023": {"1": 26000, "2": 16000, "3": 13500, "4": 7000, "5": 2200, "7": 2200, "8": 13500, "9": 22000, "10": 1500, "11": 3000, "12": 8000}, "2024": {"2": 16500, "4": 8000, "10": 6000, "11": 8000, "12": 35300}, "2025": {"1": 29400, "2": 4000, "3": 9500, "5": 2500, "6": 7500, "7": 6000, "8": 27000, "12": 4000}}}, "MT": {"cocos": 714750, "receita": 634885.0, "rpc": 0.89, "por_ano": {"2023": {"cocos": 653750, "receita": 575685.0}, "2024": {"cocos": 55000, "receita": 55000.0}, "2025": {"cocos": 6000, "receita": 4200.0}}, "por_mes": {"1": 13400, "2": 24300, "3": 43500, "4": 30800, "5": 84000, "6": 37600, "7": 77750, "8": 46000, "9": 137900, "10": 146000, "11": 73500}, "clientes": {"MIGUEL - CUIABÁ": {"cocos": 520800, "receita": 434500.0, "ultima": "2024-09-11", "n_pedidos": 29}, "ALEXANDRE - MT": {"cocos": 172950, "receita": 181485.0, "ultima": "2025-08-15", "n_pedidos": 21}, "PAULO - SINOP": {"cocos": 21000, "receita": 18900.0, "ultima": "2023-06-21", "n_pedidos": 1}}, "fabrica": false, "por_mes_ano": {"2023": {"1": 13400, "2": 24300, "3": 43500, "4": 30800, "5": 84000, "6": 37600, "7": 40750, "8": 40000, "9": 119900, "10": 146000, "11": 73500}, "2024": {"7": 37000, "9": 18000}, "2025": {"8": 6000}}}, "SP": {"cocos": 2067300, "receita": 3792397.1520000002, "rpc": 1.83, "por_ano": {"2023": {"cocos": 388700, "receita": 534395.0}, "2024": {"cocos": 514500, "receita": 1349700.0}, "2025": {"cocos": 1066100, "receita": 1685202.1519999998}, "2026": {"cocos": 98000, "receita": 223100.0}}, "por_mes": {"1": 83500, "3": 287500, "4": 291700, "5": 261000, "6": 94500, "7": 122500, "8": 49500, "9": 266000, "11": 153000, "12": 48600, "2": 235500, "10": 174000}, "clientes": {"LEONARDO - CEAGESP": {"cocos": 1074000, "receita": 1981292.1519999998, "ultima": "2025-11-19", "n_pedidos": 114}, "ASSIS - CAMPINAS": {"cocos": 319000, "receita": 793775.0, "ultima": "2026-03-02", "n_pedidos": 37}, "CEARÁ - CAMPINAS": {"cocos": 303000, "receita": 459900.0, "ultima": "2026-01-09", "n_pedidos": 34}, "MARCELLA - CEAGESP": {"cocos": 74200, "receita": 75220.0, "ultima": "2023-09-29", "n_pedidos": 8}, "CARLÃO - SÃO JOSÉ DO RIO PRETO - SP": {"cocos": 72500, "receita": 126800.0, "ultima": "2026-03-11", "n_pedidos": 9}, "EDGAR - SP": {"cocos": 70500, "receita": 123800.0, "ultima": "2025-11-26", "n_pedidos": 8}, "TITIL - INDAIATUBA": {"cocos": 62600, "receita": 80760.0, "ultima": "2026-01-05", "n_pedidos": 8}, "CARLÃO FALECIDO": {"cocos": 54000, "receita": 69400.0, "ultima": "2024-01-04", "n_pedidos": 9}, "NOELTON - SP": {"cocos": 37500, "receita": 81450.0, "ultima": "2024-04-19", "n_pedidos": 4}}, "fabrica": false, "por_mes_ano": {"2023": {"1": 8500, "3": 54500, "4": 63700, "5": 33000, "6": 36000, "7": 16500, "8": 30500, "9": 96000, "11": 34000, "12": 16000}, "2024": {"1": 13000, "2": 89500, "3": 91000, "4": 125500, "5": 120000, "6": 51500, "7": 24000}, "2025": {"1": 27000, "2": 100000, "3": 125000, "4": 102500, "5": 108000, "6": 7000, "7": 82000, "8": 19000, "9": 170000, "10": 174000, "11": 119000, "12": 32600}, "2026": {"1": 35000, "2": 46000, "3": 17000}}}, "BA": {"cocos": 514000, "receita": 607200.0, "rpc": 1.18, "por_ano": {"2023": {"cocos": 158000, "receita": 168850.0}, "2024": {"cocos": 45000, "receita": 78750.0}, "2025": {"cocos": 279000, "receita": 296400.0}, "2026": {"cocos": 32000, "receita": 63200.0}}, "por_mes": {"2": 55000, "8": 49000, "9": 58000, "10": 65000, "11": 88000, "12": 72000, "1": 89000, "3": 19000, "4": 9000, "7": 10000}, "clientes": {"JACIARA - FEIRA DE SANTANA": {"cocos": 514000, "receita": 607200.0, "ultima": "2026-02-19", "n_pedidos": 55}}, "fabrica": false, "por_mes_ano": {"2023": {"2": 20000, "8": 10000, "9": 18000, "10": 36000, "11": 38000, "12": 36000}, "2024": {"1": 36000, "10": 9000}, "2025": {"1": 37000, "2": 19000, "3": 19000, "4": 9000, "7": 10000, "8": 39000, "9": 40000, "10": 20000, "11": 50000, "12": 36000}, "2026": {"1": 16000, "2": 16000}}}, "MS": {"cocos": 1933100, "receita": 3202550.0, "rpc": 1.66, "por_ano": {"2023": {"cocos": 669500, "receita": 725250.0}, "2024": {"cocos": 961600, "receita": 1882300.0}, "2025": {"cocos": 302000, "receita": 595000.0}}, "por_mes": {"4": 157000, "5": 80500, "6": 95100, "7": 145500, "8": 97000, "9": 203000, "10": 210000, "11": 186000, "12": 177000, "1": 226000, "2": 168000, "3": 188000}, "clientes": {"LINCOLN - CAMPO GRANDE": {"cocos": 1933100, "receita": 3202550.0, "ultima": "2025-04-28", "n_pedidos": 181}}, "fabrica": false, "por_mes_ano": {"2023": {"4": 31000, "5": 10000, "6": 32000, "7": 73500, "8": 97000, "9": 107000, "10": 126000, "11": 100000, "12": 93000}, "2024": {"1": 131000, "2": 86000, "3": 95000, "4": 94000, "5": 70500, "6": 63100, "7": 72000, "9": 96000, "10": 84000, "11": 86000, "12": 84000}, "2025": {"1": 95000, "2": 82000, "3": 93000, "4": 32000}}}, "MG": {"cocos": 104000, "receita": 114000.0, "rpc": 1.1, "por_ano": {"2023": {"cocos": 73000, "receita": 71200.0}, "2024": {"cocos": 12000, "receita": 26400.000000000004}, "2025": {"cocos": 19000, "receita": 16400.0}}, "por_mes": {"5": 34000, "6": 25000, "7": 16000, "10": 8000, "3": 12000, "8": 9000}, "clientes": {"GLAUBER - BH": {"cocos": 96000, "receita": 106800.0, "ultima": "2025-08-06", "n_pedidos": 8}, "JONATHAN - MG": {"cocos": 8000, "receita": 7200.0, "ultima": "2023-10-13", "n_pedidos": 1}}, "fabrica": false, "por_mes_ano": {"2023": {"5": 24000, "6": 25000, "7": 16000, "10": 8000}, "2024": {"3": 12000}, "2025": {"5": 10000, "8": 9000}}}, "ES": {"cocos": 1820640, "receita": 1789388.7724166673, "rpc": 0.98, "por_ano": {"2023": {"cocos": 53000, "receita": 42400.0}, "2024": {"cocos": 149350, "receita": 150208.497}, "2025": {"cocos": 1618290, "receita": 1596780.275416667}}, "por_mes": {"6": 227200, "5": 162300, "12": 130850, "1": 302200, "2": 212740, "3": 185000, "4": 216500, "7": 115300, "8": 96000, "9": 87800, "10": 84750}, "clientes": {"DIEGO - LINHARES": {"cocos": 1820640, "receita": 1789388.7724166673, "ultima": "2025-10-30", "n_pedidos": 110}}, "fabrica": false, "por_mes_ano": {"2023": {"6": 53000}, "2024": {"5": 18500, "12": 130850}, "2025": {"1": 302200, "2": 212740, "3": 185000, "4": 216500, "5": 143800, "6": 174200, "7": 115300, "8": 96000, "9": 87800, "10": 84750}}}, "PR": {"cocos": 134000, "receita": 339999.998, "rpc": 2.54, "por_ano": {"2024": {"cocos": 74000, "receita": 236849.998}, "2025": {"cocos": 20000, "receita": 20900.0}, "2026": {"cocos": 40000, "receita": 82250.0}}, "por_mes": {"2": 27500, "3": 21000, "4": 26000, "5": 17000, "9": 6000, "10": 5000, "12": 9000, "1": 22500}, "clientes": {"ALDO SERGIO - CURITIBA": {"cocos": 134000, "receita": 339999.998, "ultima": "2026-02-12", "n_pedidos": 17}}, "fabrica": false, "por_mes_ano": {"2024": {"2": 10000, "3": 21000, "4": 26000, "5": 17000}, "2025": {"9": 6000, "10": 5000, "12": 9000}, "2026": {"1": 22500, "2": 17500}}}, "RJ": {"cocos": 19000, "receita": 24700.0, "rpc": 1.3, "por_ano": {"2024": {"cocos": 19000, "receita": 24700.0}}, "por_mes": {"12": 19000}, "clientes": {"RENAN - RIO DE JANEIRO": {"cocos": 19000, "receita": 24700.0, "ultima": "2024-12-16", "n_pedidos": 2}}, "fabrica": false, "por_mes_ano": {"2024": {"12": 19000}}}, "PE": {"cocos": 166500, "receita": 171100.0, "rpc": 1.03, "por_ano": {"2025": {"cocos": 151000, "receita": 137000.0}, "2026": {"cocos": 15500, "receita": 34100.0}}, "por_mes": {"9": 75000, "11": 30000, "12": 46000, "1": 15500}, "clientes": {"ARTHUR - PETROLINA": {"cocos": 166500, "receita": 171100.0, "ultima": "2026-01-16", "n_pedidos": 12}}, "fabrica": false, "por_mes_ano": {"2025": {"9": 75000, "11": 30000, "12": 46000}, "2026": {"1": 15500}}}, "DF": {"cocos": 102000, "receita": 217300.0, "rpc": 2.13, "por_ano": {"2025": {"cocos": 76000, "receita": 143300.0}, "2026": {"cocos": 26000, "receita": 74000.0}}, "por_mes": {"11": 29000, "12": 47000, "1": 16000, "2": 10000}, "clientes": {"MATEUS - BRASILIA": {"cocos": 102000, "receita": 217300.0, "ultima": "2026-02-13", "n_pedidos": 10}}, "fabrica": false, "por_mes_ano": {"2025": {"11": 29000, "12": 47000}, "2026": {"1": 16000, "2": 10000}}}, "FAB_QUALICOCO": {"cocos": 286460, "receita": 336977.10000000003, "rpc": 1.18, "por_ano": {"2024": {"cocos": 286460, "receita": 336977.10000000003}}, "por_mes": {"9": 129900, "10": 92400, "11": 31160, "12": 33000}, "clientes": {"QUALICOCO": {"cocos": 286460, "receita": 336977.10000000003, "ultima": "", "n_pedidos": 0}}, "fabrica": true, "nome_fab": "QUALICOCO", "por_mes_ano": {"2024": {"9": 129900, "10": 92400, "11": 31160, "12": 33000}}}, "FAB_FRYSK": {"cocos": 1744870, "receita": 1241677.19, "rpc": 0.71, "por_ano": {"2023": {"cocos": 1125370, "receita": 879907.0699999998}, "2024": {"cocos": 26600, "receita": 39963.54}, "2025": {"cocos": 512500, "receita": 249154.98}, "2026": {"cocos": 80400, "receita": 72651.6}}, "por_mes": {"1": 28800, "2": 327550, "3": 187400, "4": 115760, "5": 209200, "6": 130460, "7": 137700, "8": 122400, "9": 162000, "10": 281400, "11": 30700, "12": 11500}, "clientes": {"FRYSK": {"cocos": 1744870, "receita": 1241677.19, "ultima": "", "n_pedidos": 0}}, "fabrica": true, "nome_fab": "FRYSK", "por_mes_ano": {"2023": {"1": 28800, "2": 256150, "3": 178400, "4": 115760, "5": 184200, "6": 92560, "7": 90500, "8": 89000, "9": 90000}, "2024": {"5": 15100, "10": 11500}, "2025": {"5": 9900, "6": 37900, "7": 47200, "8": 33400, "9": 72000, "10": 269900, "11": 30700, "12": 11500}, "2026": {"2": 71400, "3": 9000}}}, "FAB_NECTTARE": {"cocos": 1128450, "receita": 1017690.0, "rpc": 0.9, "por_ano": {"2023": {"cocos": 60000, "receita": 40730.0}, "2024": {"cocos": 875720, "receita": 874900.0}, "2025": {"cocos": 192730, "receita": 102060.0}}, "por_mes": {"6": 336150, "8": 40000, "4": 9000, "5": 59700, "7": 393900, "9": 44900, "11": 206700, "12": 38100}, "clientes": {"NECTTARE": {"cocos": 1128450, "receita": 1017690.0, "ultima": "", "n_pedidos": 0}}, "fabrica": true, "nome_fab": "NECTTARE", "por_mes_ano": {"2023": {"6": 20000, "8": 40000}, "2024": {"4": 9000, "5": 59700, "6": 280920, "7": 236400, "9": 44900, "11": 206700, "12": 38100}, "2025": {"6": 35230, "7": 157500}}}, "FAB_MARCOS FALCÃO": {"cocos": 600200, "receita": 361692.40000000014, "rpc": 0.6, "por_ano": {"2023": {"cocos": 274300, "receita": 126582.00000000001}, "2024": {"cocos": 140100, "receita": 167830.39999999997}, "2025": {"cocos": 185800, "receita": 67280.0}}, "por_mes": {"1": 25000, "2": 42000, "3": 16800, "4": 16000, "6": 27000, "7": 45000, "8": 64500, "9": 157200, "10": 143500, "11": 8000, "12": 45700, "5": 9500}, "clientes": {"MARCOS FALCÃO": {"cocos": 600200, "receita": 361692.40000000014, "ultima": "", "n_pedidos": 0}}, "fabrica": true, "nome_fab": "MARCOS FALCÃO", "por_mes_ano": {"2023": {"1": 16500, "2": 42000, "3": 16800, "4": 16000, "6": 27000, "7": 45000, "8": 36000, "9": 28000, "10": 30000, "11": 8000, "12": 9000}, "2024": {"1": 8500, "9": 19300, "10": 75600, "12": 36700}, "2025": {"5": 9500, "8": 28500, "9": 109900, "10": 37900}}}};
+
+const HEATMAP_DIAS = {"1": {"cocos": 2426210, "n": 287}, "2": {"cocos": 2823920, "n": 267}, "4": {"cocos": 2445430, "n": 245}, "5": {"cocos": 2606750, "n": 247}, "3": {"cocos": 2465910, "n": 233}, "6": {"cocos": 275000, "n": 24}, "0": {"cocos": 16500, "n": 1}};
+
+const CIDADES_CLIMA = [
+  {nome:'Campinas',        uf:'SP', lat:-22.9056, lon:-47.0608,  chegada:[2]},
+  {nome:'São Paulo',       uf:'SP', lat:-23.5505, lon:-46.6333,  chegada:[2]},
+  {nome:'Rio de Janeiro',  uf:'RJ', lat:-22.9068, lon:-43.1729,  chegada:[2]},
+  {nome:'Belo Horizonte',  uf:'MG', lat:-19.9167, lon:-43.9345,  chegada:[2]},
+  {nome:'Brasília',        uf:'DF', lat:-15.7942, lon:-47.8822,  chegada:[2]},
+  {nome:'Goiânia',         uf:'GO', lat:-16.6869, lon:-49.2648,  chegada:[2]},
+  {nome:'Campo Grande',    uf:'MS', lat:-20.4697, lon:-54.6201,  chegada:[3]},
+  {nome:'Cuiabá',          uf:'MT', lat:-15.5961, lon:-56.0963,  chegada:[3]},
+  {nome:'Curitiba',        uf:'PR', lat:-25.4284, lon:-49.2733,  chegada:[3]},
+  {nome:'Feira de Santana',uf:'BA', lat:-12.2664, lon:-38.9663,  chegada:[0]},
+  {nome:'Maceió',          uf:'AL', lat:-9.66583, lon:-35.73511, chegada:[0]},
+  {nome:'Aracaju',         uf:'SE', lat:-10.9472, lon:-37.0731,  chegada:[0]},
+];
+
+const MESES_NOME = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const DIAS_PT    = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MESES_PT   = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const NOMES_UF   = {
+  SP:'São Paulo',MS:'Mato Grosso do Sul',ES:'Espírito Santo',SE:'Sergipe',
+  MT:'Mato Grosso',BA:'Bahia',AL:'Alagoas',MG:'Minas Gerais',
+  PR:'Paraná',DF:'Distrito Federal',PE:'Pernambuco',RJ:'Rio de Janeiro',GO:'Goiás',
+};
+
+let _dadosClima = {};
+let _rankAno    = 'todos';
+let _sazAno     = 'todos';
+
+// ── UTILS ──
+function fmtN(n){return n>=1000000?(n/1000000).toFixed(1).replace('.',',')+' M':n.toLocaleString('pt-BR');}
+function fmtR(n){return 'R$'+(n>=1000?(n/1000).toFixed(0)+'k':n.toFixed(0));}
+function fmtData(s){if(!s)return'—';const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+
+// ── RANKING ──
+function getDadosRank() {
+  if(_rankAno==='todos') return DADOS_UF;
+  const r={};
+  Object.entries(DADOS_UF).forEach(([uf,d])=>{
+    const ano=d.por_ano[_rankAno];
+    if(ano&&ano.cocos>0) r[uf]={...d, cocos:ano.cocos, receita:ano.receita, rpc:ano.cocos?round(ano.receita/ano.cocos,2):0};
+  });
+  return r;
+}
+function round(n,d){return Math.round(n*Math.pow(10,d))/Math.pow(10,d);}
+
+function renderRanking(){
+  const dados = getDadosRank();
+  const lista = Object.entries(dados).sort((a,b)=>b[1].cocos-a[1].cocos);
+  const maxC = Math.max(...lista.map(([,v])=>v.cocos),1);
+  const maxR = Math.max(...lista.map(([,v])=>v.receita),1);
+  const tbody = document.getElementById('rank-tbody');
+  tbody.innerHTML='';
+  lista.forEach(([uf,v],i)=>{
+    const isFab = v.fabrica===true;
+    const rowBg = isFab ? '#fffbea' : '';
+    const nomeMostrar = isFab ? '🏭 '+(v.nome_fab||uf.replace('FAB_','')) : (NOMES_UF[uf]||uf);
+    const ufMostrar = isFab ? 'FÁBRICA' : uf;
+    const tr=document.createElement('tr');
+    tr.style.cssText='border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;'+(rowBg?'background:'+rowBg+';':'');
+    tr.addEventListener('mouseenter',()=>tr.style.background=isFab?'#fff8d6':'var(--surface2)');
+    tr.addEventListener('mouseleave',()=>tr.style.background=rowBg);
+    tr.addEventListener('click',()=>abrirModalEstado(uf));
+    const pC=Math.round(v.cocos/maxC*100);
+    const pR=Math.round(v.receita/maxR*100);
+    tr.innerHTML='<td style="padding:10px 8px;font-size:12px;font-weight:700;color:var(--muted);font-family:var(--font-mono)">'+(i+1)+'</td>'
+      +'<td style="padding:10px 8px"><span style="font-size:13px;font-weight:800;color:'+(isFab?'#856404':'var(--forest)')+'">'+nomeMostrar+'</span>'
+      +' <span style="font-size:10px;font-family:var(--font-mono);color:var(--muted)">'+ufMostrar+'</span></td>'
+      +'<td style="padding:10px 8px;min-width:150px"><div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="flex:1;height:6px;background:var(--surface2);border-radius:3px"><div style="width:'+pC+'%;height:100%;background:var(--forest);border-radius:3px"></div></div>'
+        +'<span style="font-size:12px;font-weight:700;font-family:var(--font-mono);min-width:55px">'+fmtN(v.cocos)+'</span></div></td>'
+      +'<td style="padding:10px 8px;min-width:150px"><div style="display:flex;align-items:center;gap:6px">'
+        +'<div style="flex:1;height:6px;background:var(--surface2);border-radius:3px"><div style="width:'+pR+'%;height:100%;background:var(--teal);border-radius:3px"></div></div>'
+        +'<span style="font-size:12px;font-weight:700;font-family:var(--font-mono);min-width:65px">'+fmtR(v.receita)+'</span></div></td>'
+      +'<td style="padding:10px 8px;font-size:11px;font-family:var(--font-mono);color:var(--muted)">'+v.rpc.toFixed(2)+'/coco</td>'
+      +(()=>{
+        const c24=v.por_ano?.['2024']?.cocos||0;
+        const c25=v.por_ano?.['2025']?.cocos||0;
+        if(!c24||!c25) return '<td style="padding:10px 8px;font-size:11px;color:var(--muted)">—</td>';
+        const pct=((c25-c24)/c24*100);
+        const cor=pct>0?'var(--verde)':'var(--vermelho)';
+        const seta=pct>0?'↑':'↓';
+        return '<td style="padding:10px 8px;font-size:12px;font-weight:800;color:'+cor+'">'+seta+Math.abs(pct).toFixed(0)+'%</td>';
+      })()
+      +'<td style="padding:10px 8px;font-size:11px;color:var(--muted)">→</td>';
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.btn-rank-ano').forEach(b=>b.classList.toggle('ativo',b.dataset.ano===_rankAno));
+}
+
+function initRanking(){
+  const anos=Object.keys(Object.values(DADOS_UF)[0].por_ano).sort().reverse();
+  const el=document.getElementById('rank-anos');
+  el.innerHTML='';
+  const btnT=document.createElement('button');
+  btnT.className='btn-filtro btn-rank-ano ativo';btnT.textContent='Todos';btnT.dataset.ano='todos';
+  btnT.addEventListener('click',()=>{_rankAno='todos';renderRanking();});
+  el.appendChild(btnT);
+  anos.forEach(a=>{
+    const btn=document.createElement('button');
+    btn.className='btn-filtro btn-rank-ano';btn.textContent=a;btn.dataset.ano=a;
+    btn.addEventListener('click',()=>{_rankAno=a;renderRanking();});
+    el.appendChild(btn);
+  });
+  renderRanking();
+}
+
+// ── MODAL ESTADO ──
+function abrirModalEstado(uf){
+  const d = DADOS_UF[uf];
+  if(!d) return;
+  const nome = NOMES_UF[uf]||uf;
+
+  // Título
+  document.getElementById('mest-titulo').textContent = nome+' ('+uf+')';
+
+  // KPIs
+  const melhorMes = Object.entries(d.por_mes).sort((a,b)=>b[1]-a[1])[0];
+  const melhorMesNome = melhorMes ? MESES_NOME[parseInt(melhorMes[0])-1] : '—';
+  document.getElementById('mest-kpis').innerHTML =
+    kpiCard('Total cocos',fmtN(d.cocos),'var(--forest)')
+   +kpiCard('Receita total',fmtR(d.receita),'var(--teal)')
+   +kpiCard('R$/coco médio','R$'+d.rpc.toFixed(2),'var(--muted)')
+   +kpiCard('Melhor mês',melhorMesNome,'var(--amarelo)');
+
+  // Evolução por ano
+  const anos = Object.entries(d.por_ano).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxAno = Math.max(...anos.map(([,v])=>v.cocos),1);
+  let evoHtml = '<div style="display:flex;align-items:flex-end;gap:8px;height:80px;padding:8px 0;justify-content:center">';
+  anos.forEach(([ano,v])=>{
+    const h = Math.round(v.cocos/maxAno*70);
+    evoHtml += '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">'
+      +'<span style="font-size:9px;font-family:var(--font-mono);font-weight:700;color:var(--forest)">'+fmtN(v.cocos)+'</span>'
+      +'<div style="width:100%;height:'+h+'px;background:var(--forest);border-radius:4px 4px 0 0;min-height:4px"></div>'
+      +'<span style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">'+ano+'</span>'
+      +'</div>';
+  });
+  evoHtml += '</div>';
+  document.getElementById('mest-evo').innerHTML = evoHtml;
+
+  // Comparação outros estados
+  const todos = Object.entries(DADOS_UF).sort((a,b)=>b[1].cocos-a[1].cocos);
+  const pos = todos.findIndex(([u])=>u===uf)+1;
+  const totalGeral = todos.reduce((s,[,v])=>s+v.cocos,0);
+  const pct = (d.cocos/totalGeral*100).toFixed(1);
+  document.getElementById('mest-comp').innerHTML =
+    '<span style="font-size:13px;font-weight:700;color:var(--forest)">'+pos+'º lugar</span>'
+    +' entre '+todos.length+' estados · '
+    +'<span style="font-weight:700">'+pct+'%</span> do total de cocos vendidos';
+
+  // Clientes
+  const clientes = Object.entries(d.clientes).sort((a,b)=>(b[1].ultima||'').localeCompare(a[1].ultima||''));
+  const tbodyEl = document.getElementById('mest-clientes');
+  tbodyEl.innerHTML='';
+  clientes.forEach(([cli,cv])=>{
+    const tr=document.createElement('tr');
+    tr.style.borderBottom='1px solid var(--border)';
+    const diasSemComprar = cv.ultima ? Math.floor((new Date()-new Date(cv.ultima+'T00:00:00'))/(1000*60*60*24)) : 999;
+    const inativo = diasSemComprar > 60;
+    const bgInativo = inativo ? 'background:#fff5f5;' : '';
+    tr.style.cssText = 'border-bottom:1px solid var(--border);'+bgInativo;
+    tr.innerHTML='<td style="padding:8px;font-size:12px;font-weight:700;color:var(--text)">'+cli
+      +(inativo?'<span style="margin-left:6px;font-size:9px;font-weight:700;background:#fde8ea;color:var(--vermelho);padding:2px 5px;border-radius:4px">⚠️ +'+diasSemComprar+'d</span>':'')
+      +'</td>'
+      +'<td style="padding:8px;font-size:12px;font-family:var(--font-mono)">'+fmtN(cv.cocos)+'</td>'
+      +'<td style="padding:8px;font-size:12px;font-family:var(--font-mono)">'+fmtR(cv.receita)+'</td>'
+      +'<td style="padding:8px;font-size:11px;font-family:var(--font-mono);color:'+(inativo?'var(--vermelho)':'var(--muted)')+'">'+fmtData(cv.ultima)+'</td>'
+      +'</td>';
+    // Célula WhatsApp com campo de telefone editável
+    const tdWpp = document.createElement('td');
+    tdWpp.style.padding = '6px 8px';
+    const tel = _telefonesCache[cli] || '';
+    const inputTel = document.createElement('input');
+    inputTel.type = 'tel';
+    inputTel.placeholder = '(00) 00000-0000';
+    inputTel.value = tel;
+    inputTel.style.cssText = 'width:130px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;font-family:var(--font-mono);margin-right:4px';
+    inputTel.addEventListener('blur', async () => {
+      await salvarTelefone(cli, inputTel.value);
+    });
+    const btnWpp = document.createElement('a');
+    btnWpp.href = '#';
+    btnWpp.textContent = '📱';
+    btnWpp.title = 'Abrir WhatsApp';
+    btnWpp.style.cssText = 'background:#25D366;color:#fff;padding:3px 8px;border-radius:5px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block';
+    btnWpp.addEventListener('click', (e) => { e.preventDefault(); abrirWhatsApp(cli); });
+    tdWpp.appendChild(inputTel);
+    tdWpp.appendChild(btnWpp);
+    tr.appendChild(tdWpp);
+    tbodyEl.appendChild(tr);
+  });
+
+  document.getElementById('modal-estado').classList.add('open');
+}
+
+function kpiCard(label,val,cor){
+  return '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;flex:1;text-align:center">'
+    +'<div style="font-size:10px;color:var(--muted);margin-bottom:4px">'+label+'</div>'
+    +'<div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:'+cor+'">'+val+'</div>'
+    +'</div>';
+}
+
+// ── SAZONALIDADE ──
+
+function getMesSaz(d){
+  if(_sazAno==='todos') return d.por_mes;
+  return (d.por_mes_ano&&d.por_mes_ano[_sazAno])||{};
+}
+
+function initSazonalidade(){
+  const anos=[...new Set(
+    Object.values(DADOS_UF).flatMap(d=>Object.keys(d.por_mes_ano||{}))
+  )].sort().reverse();
+  const el=document.getElementById('saz-anos-btns');
+  if(!el) return;
+  el.innerHTML='';
+  const btnT=document.createElement('button');
+  btnT.className='btn-filtro ativo';btnT.textContent='Todos';btnT.dataset.ano='todos';
+  btnT.addEventListener('click',()=>selSazAno('todos'));
+  el.appendChild(btnT);
+  anos.forEach(a=>{
+    const btn=document.createElement('button');
+    btn.className='btn-filtro';btn.textContent=a;btn.dataset.ano=a;
+    btn.addEventListener('click',()=>selSazAno(a));
+    el.appendChild(btn);
+  });
+  renderSazonalidade();
+}
+
+function selSazAno(ano){
+  _sazAno=ano;
+  document.querySelectorAll('#saz-anos-btns .btn-filtro').forEach(b=>b.classList.toggle('ativo',b.dataset.ano===ano));
+  renderSazonalidade();
+}
+
+function renderSazonalidade(){
+  const meses=Array.from({length:12},(_,i)=>i+1);
+  let maxG=0;
+  Object.values(DADOS_UF).forEach(d=>{
+    const pm=getMesSaz(d);
+    meses.forEach(m=>{maxG=Math.max(maxG,pm[String(m)]||pm[m]||0);});
+  });
+  const mesAtual=new Date().getMonth()+1;
+  // Separar estados e fábricas
+  const todosKeys=Object.keys(DADOS_UF).sort((a,b)=>DADOS_UF[b].cocos-DADOS_UF[a].cocos);
+  const estados=todosKeys.filter(k=>!DADOS_UF[k].fabrica);
+  const fabricasKeys=todosKeys.filter(k=>DADOS_UF[k].fabrica);
+  const ordemFinal=[...estados,...fabricasKeys];
+  const table=document.getElementById('saz-table');
+  let html='<thead><tr><th style="padding:6px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border)">Estado</th>';
+  meses.forEach(m=>{
+    const isCur=m===mesAtual;
+    html+='<th style="padding:6px 3px;font-size:10px;font-family:var(--font-mono);color:'+(isCur?'var(--forest)':'var(--muted)')+';text-align:center;border-bottom:1px solid var(--border);'+(isCur?'font-weight:800':'')+'">'+MESES_NOME[m-1]+'</th>';
+  });
+  html+='<th style="padding:6px 10px;font-size:10px;font-family:var(--font-mono);color:var(--muted);border-bottom:1px solid var(--border)">Total</th></tr></thead><tbody>';
+  ordemFinal.forEach(uf=>{
+    const d=DADOS_UF[uf];
+    const pmSazTotal=getMesSaz(d); const total=meses.reduce((s,m)=>s+(pmSazTotal[String(m)]||pmSazTotal[m]||0),0);
+    const isFabSaz=DADOS_UF[uf].fabrica===true;
+    const nomeSaz=isFabSaz?'🏭 '+(DADOS_UF[uf].nome_fab||uf.replace('FAB_','')):(NOMES_UF[uf]||uf);
+    const ufSaz=isFabSaz?'FÁBRICA':uf;
+    const corNomeSaz=isFabSaz?'#856404':'var(--forest)';
+    html+='<tr style="border-bottom:1px solid var(--surface2);'+(isFabSaz?'background:#fffbea;':'')+'">';
+    html+='<td style="padding:6px 10px;font-size:12px;font-weight:800;color:'+corNomeSaz+';white-space:nowrap">'+nomeSaz+' <span style="font-size:9px;font-family:var(--font-mono);color:var(--muted)">'+ufSaz+'</span></td>';
+    meses.forEach(m=>{
+      const pmSaz=getMesSaz(d); const val=pmSaz[String(m)]||pmSaz[m]||0;
+      const ratio=maxG>0?val/maxG:0;
+      const alpha=val>0?(0.1+ratio*0.85).toFixed(2):'0';
+      const isCur=m===mesAtual;
+      const txt=val>0?val.toLocaleString('pt-BR'):'—';
+      html+='<td style="padding:4px 2px;text-align:center;background:rgba(26,92,26,'+alpha+');'+(isCur?'outline:2px solid var(--forest);outline-offset:-2px;':'')+'">'
+        +'<span style="font-size:9px;font-family:var(--font-mono);font-weight:700;color:'+(ratio>0.3?'#fff':'var(--text)')+'">'+txt+'</span></td>';
+    });
+    html+='<td style="padding:6px 10px;font-size:11px;font-family:var(--font-mono);font-weight:700;color:var(--muted)">'+total.toLocaleString('pt-BR')+'</td></tr>';
+  });
+  html+='</tbody>';
+  table.innerHTML=html;
+}
+
+// ── OPORTUNIDADES ──
+function renderOportunidades(){
+  const el=document.getElementById('oport-lista');
+  if(Object.keys(_dadosClima).length===0){setTimeout(renderOportunidades,800);return;}
+  const mesAtual=new Date().getMonth()+1;
+  const oport=[];
+  CIDADES_CLIMA.forEach(c=>{
+    const dados=_dadosClima[c.nome];
+    if(!dados) return;
+    const{dias}=dados;
+    const chegadaRuim=c.chegada.some(idx=>dias[idx]?.chuva);
+    const diasChegada=c.chegada.map(i=>dias[i]?.tmax||0);
+    const tempMedia=diasChegada.length?diasChegada.reduce((s,v)=>s+v,0)/diasChegada.length:0;
+    const d=DADOS_UF[c.uf];
+    const histMes=d?.por_mes[mesAtual]||0;
+    const histTotal=d?Object.values(d.por_mes).reduce((s,v)=>s+v,0):0;
+    const pctMes=histTotal>0?histMes/histTotal:0;
+    let score=0; const motivos=[];
+    if(!chegadaRuim){score+=40;}
+    if(tempMedia>=30){score+=30;motivos.push('🌡️ Calor forte ('+Math.round(tempMedia)+'°C)');}
+    else if(tempMedia>=26){score+=15;motivos.push('☀️ Temp boa ('+Math.round(tempMedia)+'°C)');}
+    if(pctMes>0.1){score+=20;motivos.push('📅 Bom histórico em '+MESES_NOME[mesAtual-1]);}
+    if(chegadaRuim){score-=50;motivos.push('🌧️ Chuva na chegada');}
+    if(score>20) oport.push({cidade:c.nome,uf:c.uf,score,motivos,chegadaRuim,tempMedia});
+  });
+  oport.sort((a,b)=>b.score-a.score);
+  el.innerHTML='';
+  if(oport.length===0){
+    el.innerHTML='<div style="padding:16px;color:var(--muted);font-size:12px">Nenhuma oportunidade destacada esta semana.</div>';
+    return;
+  }
+  oport.slice(0,6).forEach((op,i)=>{
+    const div=document.createElement('div');
+    div.style.cssText='padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;';
+    div.addEventListener('mouseenter',()=>div.style.background='var(--surface2)');
+    div.addEventListener('mouseleave',()=>div.style.background='');
+    const icon=i===0?'🏆':op.score>=70?'🔥':op.score>=50?'⚡':'💡';
+    const cor=op.score>=70?'var(--verde)':op.score>=50?'var(--amarelo)':'var(--muted)';
+    div.style.cursor='pointer';
+    div.addEventListener('click',()=>abrirModalEstado(op.uf));
+    div.innerHTML='<div style="display:flex;align-items:center;gap:10px">'
+      +'<span style="font-size:20px">'+icon+'</span>'
+      +'<div style="flex:1">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--forest)">'+(NOMES_UF[op.uf]||op.uf)+' — '+op.cidade+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+op.motivos.join(' · ')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:'+cor+'">'+op.score+'pts</span>'
+        +'<span style="font-size:11px;color:var(--forest);font-weight:700">Ver clientes →</span>'
+      +'</div>'
+      +'</div>';
+    el.appendChild(div);
+  });
+}
+
+// ── CLIMA ──
+function fmtDia(s){const d=new Date(s+'T12:00:00');return DIAS_PT[d.getDay()]+' '+d.getDate()+'/'+MESES_PT[d.getMonth()];}
+function wcEmoji(wc){if(wc<=1)return'☀️';if(wc<=3)return'🌤️';if(wc<=48)return'☁️';if(wc<=67)return'🌧️';if(wc<=77)return'❄️';return'⛈️';}
+function wcDesc(wc){if(wc<=1)return'Sol aberto';if(wc<=3)return'Nublado';if(wc<=48)return'Névoa';if(wc<=57)return'Garoa';if(wc<=67)return'Chuva';return'Tempestade';}
+function temChuva(wc){return wc>=51;}
+
+async function carregarClima(){
+  const grid=document.getElementById('clima-grid');
+  const alertaEl=document.getElementById('alerta');
+  const alertaTxt=document.getElementById('alerta-txt');
+  const cidadesChuva=[];
+  const resultados=await Promise.all(CIDADES_CLIMA.map(async c=>{
+    try{
+      const url='https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon
+        +'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum'
+        +'&timezone=America%2FSao_Paulo&forecast_days=16';
+      let resp;
+      for(let t=0;t<3;t++){
+        try{resp=await fetch(url);if(resp.ok)break;}catch(e){if(t===2)throw e;await new Promise(r=>setTimeout(r,800*(t+1)));}
+      }
+      if(!resp||!resp.ok)throw new Error('HTTP '+(resp?resp.status:'timeout'));
+      const d=await resp.json();const dl=d.daily;
+      const dias=dl.time.map((dt,i)=>({
+        data:fmtDia(dt),wc:dl.weathercode[i],
+        tmax:Math.round(dl.temperature_2m_max[i]),
+        tmin:Math.round(dl.temperature_2m_min[i]),
+        mm:parseFloat(dl.precipitation_sum[i]||0).toFixed(1),
+        chuva:temChuva(dl.weathercode[i])
+      }));
+      _dadosClima[c.nome]={cidade:c,dias};
+      const chegadaRuim=c.chegada.some(i=>dias[i]?.chuva);
+      if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
+      return{c,dias,chegadaRuim,ok:true};
+    }catch(e){console.warn(c.nome,e.message);return{c,dias:null,chegadaRuim:false,ok:false};}
+  }));
+  grid.innerHTML='';
+  resultados.forEach(r=>{
+    const card=document.createElement('div');
+    card.className='clima-card'+(r.chegadaRuim?' ruim':(!r.dias||r.dias[0].chuva||r.dias[0].tmax<28)?'':' otimo');
+    if(!r.ok||!r.dias){card.innerHTML='<div class="card-header"><span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span></div><div class="card-loading">Sem dados</div>';grid.appendChild(card);return;}
+    const diasCard=r.dias.slice(0,7);
+    const bCls=r.chegadaRuim?'ruim':r.dias[0].tmax>=28?'ok':'neutro';
+    const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':r.dias[0].tmax>=28?'☀️ FAVORÁVEL':'🌤️ NEUTRO';
+    const hdr=document.createElement('div');hdr.className='card-header';
+    hdr.innerHTML='<span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span>';
+    card.appendChild(hdr);
+    const bdg=document.createElement('span');bdg.className='card-badge '+bCls;bdg.textContent=bTxt;card.appendChild(bdg);
+    const ftr=document.createElement('div');ftr.className='card-footer';
+    const tbl=document.createElement('table');tbl.className='dias-table';
+    const thead=document.createElement('thead');const trH=document.createElement('tr');
+    diasCard.forEach(di=>{const th=document.createElement('th');th.textContent=di.data;trH.appendChild(th);});
+    thead.appendChild(trH);tbl.appendChild(thead);
+    const tbdy=document.createElement('tbody');
+    const trE=document.createElement('tr');const trT=document.createElement('tr');
+    diasCard.forEach((di,i)=>{
+      const cls=c.chegada.includes(i)?(di.chuva?'chegada-ruim':'chegada'):'';
+      const tdE=document.createElement('td');tdE.className=cls;
+      const spE=document.createElement('span');spE.className='dia-emoji';spE.textContent=wcEmoji(di.wc);tdE.appendChild(spE);
+      if(parseFloat(di.mm)>0){const mm=document.createElement('span');mm.className='dia-mm';mm.textContent=di.mm+'mm';tdE.appendChild(mm);}
+      trE.appendChild(tdE);
+      const tdT=document.createElement('td');tdT.className=cls;
+      const spT=document.createElement('span');spT.className='dia-temp';spT.textContent=di.tmax+'°';tdT.appendChild(spT);
+      trT.appendChild(tdT);
+    });
+    tbdy.appendChild(trE);tbdy.appendChild(trT);tbl.appendChild(tbdy);
+    const tft=document.createElement('tfoot');const trF=document.createElement('tr');
+    diasCard.forEach((di,i)=>{
+      const td=document.createElement('td');
+      if(c.chegada.includes(i)){const sp=document.createElement('span');sp.className=di.chuva?'tag-ch-ruim':'tag-ch';sp.textContent=(i===0?'hoje':'+'+i+'d');td.appendChild(sp);}
+      trF.appendChild(td);
+    });
+    tft.appendChild(trF);tbl.appendChild(tft);
+    ftr.appendChild(tbl);card.appendChild(ftr);
+    card.addEventListener('click',()=>abrirModalClima(r.c.nome));
+    grid.appendChild(card);
+  });
+  if(cidadesChuva.length>0){
+    alertaEl.classList.add('show');
+    alertaTxt.innerHTML='<strong>🌧️ Chuva prevista na chegada (dia +2 ou +3) em:</strong> '+cidadesChuva.join(', ')+' — avalie antes de carregar';
+  }
+  renderOportunidades();
+}
+
+// ── MODAL CLIMA ──
+function abrirModalClima(nome){
+  const dados=_dadosClima[nome];if(!dados){alert('Aguarde o carregamento.');return;}
+  const{cidade,dias}=dados;
+  document.getElementById('mclima-titulo').textContent=cidade.nome+' / '+cidade.uf;
+  const chegadaRuim=cidade.chegada.some(idx=>dias[idx]?.chuva);
+  const subEl=document.getElementById('mclima-sub');
+  subEl.textContent=chegadaRuim?'🌧️ Chuva prevista na chegada — desfavorável':'☀️ Sem chuva na chegada — favorável';
+  subEl.style.background=chegadaRuim?'var(--vermelho-bg)':'var(--verde-bg)';
+  subEl.style.color=chegadaRuim?'var(--vermelho)':'var(--verde)';
+  const grid=document.getElementById('mclima-dias');grid.innerHTML='';
+  dias.forEach((di,i)=>{
+    const isC=dados.cidade.chegada.includes(i);
+    const div=document.createElement('div');div.className='modal-dia'+(isC?(di.chuva?' chegada-ruim':' chegada'):'');
+    let h='<div class="modal-dia-data">'+di.data+'</div>'
+      +'<div class="modal-dia-emoji">'+wcEmoji(di.wc)+'</div>'
+      +'<div class="modal-dia-tmax">'+di.tmax+'°</div>'
+      +'<div class="modal-dia-tmin">mín '+di.tmin+'°</div>';
+    if(parseFloat(di.mm)>0)h+='<div class="modal-dia-mm">🌧️ '+di.mm+'mm</div>';
+    h+='<div class="modal-dia-desc">'+wcDesc(di.wc)+'</div>';
+    if(isC)h+='<div><span class="modal-tag '+(di.chuva?'chegada-ruim':'chegada')+'">'+(i===0?'hoje':'+'+i+'d')+'</span></div>';
+    div.innerHTML=h;grid.appendChild(div);
+  });
+  document.getElementById('modal-clima').classList.add('open');
+}
+
+function fecharModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===e.currentTarget)m.classList.remove('open');});
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));});
+
+
+// ── HEATMAP DIAS DA SEMANA ──
+function renderHeatmapDias(){
+  const DIAS_SEMANA=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const max=Math.max(...Object.values(HEATMAP_DIAS).map(d=>d.cocos),1);
+  const wrap=document.getElementById('heatmap-dias');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  DIAS_SEMANA.forEach((dia,i)=>{
+    const d=HEATMAP_DIAS[String(i)]||{cocos:0,n:0};
+    const ratio=d.cocos/max;
+    const alpha=(0.1+ratio*0.85).toFixed(2);
+    const isUtil=i>=1&&i<=5;
+    const div=document.createElement('div');
+    div.style.cssText='flex:1;border-radius:10px;padding:12px 8px;text-align:center;'
+      +'background:rgba(26,92,26,'+alpha+');'
+      +'border:1.5px solid '+(isUtil?'rgba(26,92,26,0.2)':'rgba(200,200,200,0.3)')+';';
+    div.innerHTML='<div style="font-size:11px;font-weight:800;color:'+(ratio>0.4?'#fff':'var(--text)')+'">'+dia+'</div>'
+      +'<div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:'+(ratio>0.4?'#fff':'var(--forest)')+'">'+d.cocos.toLocaleString('pt-BR')+'</div>'
+      +'<div style="font-size:9px;color:'+(ratio>0.4?'rgba(255,255,255,0.8)':'var(--muted)')+'">'+d.n+' vendas</div>';
+    wrap.appendChild(div);
+  });
+}
+
+initRanking();
+initSazonalidade();
+renderHeatmapDias();
+carregarClima();
+
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -464,6 +991,77 @@
     .eitos-table th:nth-child(4), .eitos-table td:nth-child(4),
     .eitos-table th:nth-child(5), .eitos-table td:nth-child(5) { display: none; }
   }
+
+/* ── MERCADOS ── */
+:root{--bg:#f0f7ee;--surface:#fff;--surface2:#e8f3e4;--border:#c8dfc0;--text:#1a3a1a;--muted:#5a7a52;--verde:#1e7e34;--verde-bg:#d4edda;--verde-border:#b8ddc0;--vermelho:#dc3545;--vermelho-bg:#fde8ea;--amarelo:#856404;--forest:#1a5c1a;--teal:#1a7a6e;--font-main:'Syne',sans-serif;--font-mono:'DM Mono',monospace;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-main);padding:24px;}
+.page-title{font-size:22px;font-weight:800;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:4px;}
+.sec-desc{font-size:11px;color:var(--muted);margin-bottom:12px;}
+.alerta{display:none;background:var(--vermelho-bg);border:2px solid var(--vermelho);border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:13px;font-weight:700;color:var(--vermelho);gap:10px;align-items:flex-start;}
+.alerta.show{display:flex;}
+.clima-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px;}
+.clima-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;}
+.clima-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.13);transform:translateY(-2px);}
+.clima-card.ruim{border-color:var(--vermelho);border-width:2px;}
+.clima-card.otimo{border-color:var(--verde-border);background:#fafff8;}
+.card-header{padding:8px 10px 6px;border-bottom:1px solid var(--border);text-align:center;}
+.card-cidade{font-size:12px;font-weight:800;display:block;}
+.card-uf{font-size:10px;font-family:var(--font-mono);color:var(--muted);}
+.card-badge{font-size:9px;font-weight:800;padding:3px 6px;border-radius:5px;margin:6px 8px 2px;text-align:center;display:block;}
+.card-badge.ok{background:#d4edda;color:#1e7e34;}
+.card-badge.ruim{background:#fde8ea;color:#dc3545;}
+.card-badge.neutro{background:#fff3cd;color:#856404;}
+.dias-table{width:100%;border-collapse:collapse;}
+.dias-table th{font-size:7px;font-family:var(--font-mono);color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase;}
+.dias-table td{text-align:center;padding:2px 1px;border-top:1px solid var(--surface2);}
+.dia-emoji{font-size:14px;display:block;line-height:1.2;}
+.dia-temp{font-family:var(--font-mono);font-weight:700;font-size:10px;}
+.dia-mm{font-family:var(--font-mono);font-size:7px;color:var(--vermelho);display:block;}
+.chegada{background:#fffde7;}
+.chegada-ruim{background:#fde8ea;}
+.tag-ch{background:#f5f5a0;color:#5a5a00;border-radius:3px;padding:1px 3px;font-size:6.5px;font-weight:800;}
+.tag-ch-ruim{background:#fde8ea;color:#dc3545;border-radius:3px;padding:1px 3px;font-size:6.5px;font-weight:800;}
+.card-footer{padding:4px 6px 8px;}
+.card-loading{padding:20px;text-align:center;color:var(--muted);font-size:11px;}
+.painel-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.painel-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+.painel-card-full{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+.painel-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.painel-header-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);}
+.btn-filtro{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-family:var(--font-mono);font-size:11px;cursor:pointer;color:var(--muted);transition:all 0.1s;}
+.btn-filtro:hover{border-color:var(--forest);color:var(--forest);}
+.btn-filtro.ativo{background:var(--forest);color:#fff;border-color:var(--forest);}
+.filtros-grupo{display:flex;gap:4px;flex-wrap:wrap;}
+.rank-table{width:100%;border-collapse:collapse;}
+.rank-table th{padding:8px 8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
+.saz-wrap{overflow-x:auto;}
+.saz-table{border-collapse:collapse;width:100%;}
+.saz-table th,.saz-table td{white-space:nowrap;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:none;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--surface);border-radius:16px;padding:24px;max-width:700px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,0.2);max-height:88vh;overflow-y:auto;position:relative;}
+.modal-box h3{font-size:18px;font-weight:800;margin-bottom:16px;padding-right:32px;}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;}
+.modal-clima-wide{max-width:960px;}
+.modal-sub{font-size:12px;font-weight:600;margin-bottom:16px;padding:8px 12px;border-radius:8px;}
+.modal-dias-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;}
+.modal-dia{background:var(--surface2);border-radius:8px;padding:6px 3px;text-align:center;}
+.modal-dia.chegada{background:#fffde7;border:1.5px solid #e0d000;}
+.modal-dia.chegada-ruim{background:#fde8ea;border:1.5px solid var(--vermelho);}
+.modal-dia-data{font-size:8px;font-family:var(--font-mono);color:var(--muted);margin-bottom:3px;}
+.modal-dia-emoji{font-size:22px;margin:3px 0;}
+.modal-dia-tmax{font-size:14px;font-weight:800;font-family:var(--font-mono);}
+.modal-dia-tmin{font-size:10px;color:var(--muted);font-family:var(--font-mono);}
+.modal-dia-mm{font-size:10px;color:var(--vermelho);font-family:var(--font-mono);font-weight:700;margin-top:2px;}
+.modal-dia-desc{font-size:8px;color:var(--muted);margin-top:2px;}
+.modal-tag{font-size:8px;font-weight:800;padding:2px 4px;border-radius:4px;margin-top:3px;display:inline-block;}
+.modal-tag.chegada{background:#f5f5a0;color:#5a5a00;}
+.modal-tag.chegada-ruim{background:#fde8ea;color:#dc3545;}
+.cli-table{width:100%;border-collapse:collapse;}
+.cli-table th{padding:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -498,6 +1096,7 @@
     <button class="nav-tab" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
     <button class="nav-tab" onclick="showPage('vendas')">💰 VENDAS</button>
     <button class="nav-tab" onclick="showPage('gestao')">⚙️ GESTÃO</button>
+    <button class="nav-tab" onclick="showPage('mercados')">🌎 MERCADOS</button>
   </div>
   <div class="nav-actions">
     <button class="btn btn-green" onclick="exportarExcel()">↓ EXPORTAR</button>
@@ -1624,17 +2223,52 @@ function renderComparativo() {
 
 // ─────────── AREA DETAIL ───────────
 function abrirTodasFiltrado(filtro) {
-  // encontrar a área com mais eitos no status selecionado
-  let melhorArea = null, melhorCount = -1;
-  for (const [area, eitos] of Object.entries(DB)) {
-    const count = eitos.filter(e => {
-      const ult = getUltima(e);
+  const labels = {vermelho:'🔴 Vencidos (+21 dias)', amarelo:'🟡 Atenção (15-20 dias)', verde:'🟢 Em dia (1-14 dias)'};
+  const cores  = {vermelho:'var(--vermelho)', amarelo:'var(--amarelo)', verde:'var(--verde)'};
+
+  // coletar todos os eitos do filtro em todas as áreas
+  const linhas = [];
+  for(const [area, eitos] of Object.entries(DB)) {
+    for(const e of eitos) {
+      const ult  = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
-      return statusDias(dias) === filtro;
-    }).length;
-    if (count > melhorCount) { melhorCount = count; melhorArea = area; }
+      const st   = statusDias(dias);
+      if(st !== filtro) continue;
+      linhas.push({area, e, ult, dias, st});
+    }
   }
-  if (melhorArea) openAreaFiltrada(melhorArea, filtro);
+  // ordenar por dias decrescente (mais urgente primeiro)
+  linhas.sort((a,b) => (b.dias??0) - (a.dias??0));
+
+  document.getElementById('modal-todos-eitos-title').textContent = labels[filtro] || filtro;
+  document.getElementById('modal-todos-eitos-sub').textContent =
+    linhas.length + ' eito' + (linhas.length!==1?'s':'') + ' encontrado' + (linhas.length!==1?'s':'');
+
+  const tbody = document.getElementById('modal-todos-eitos-tbody');
+  tbody.innerHTML = '';
+  const nomesCurtos = {'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
+    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'};
+
+  linhas.forEach(({area, e, ult, dias, st}) => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.title = 'Ver histórico de ' + area + ' · Eito ' + e.id;
+    tr.innerHTML =
+      '<td style="font-size:12px;color:var(--muted)">' + (nomesCurtos[area]||area) + '</td>'
+     +'<td style="font-family:var(--font-mono);font-weight:700;color:var(--forest)">' + e.id + '</td>'
+     +'<td><span style="font-size:11px;font-weight:700;color:'+cores[st]+'">' + (st==='vermelho'?'VENCIDO':st==='amarelo'?'ATENÇÃO':'VERDE') + '</span></td>'
+     +'<td><span class="dias-badge dias-'+st+'">' + (dias!==null?dias+'d':'—') + '</span></td>'
+     +'<td style="font-family:var(--font-mono);font-size:12px">' + (ult?fmtData(ult.data):'—') + '</td>'
+     +'<td style="font-family:var(--font-mono)">' + (ult?fmtNum(ult.total):'—') + '</td>'
+     +'<td style="font-family:var(--font-mono);color:var(--muted)">' + fmtNum(e.plantas) + '</td>';
+    tr.addEventListener('click', () => {
+      closeModal('modal-todos-eitos');
+      openSidePanel(area, e.id);
+    });
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('modal-todos-eitos').classList.add('open');
 }
 
 function openAreaFiltrada(area, filtro) {
@@ -1867,6 +2501,9 @@ function showPage(id) {
   } else if (id==='gestao') {
     document.querySelectorAll('.nav-tab')[4].classList.add('active');
     initGestao();
+  } else if (id==='mercados') {
+    document.querySelectorAll('.nav-tab')[5].classList.add('active');
+    if(!window._mercadosIniciado) { window._mercadosIniciado=true; initMercados(); }
   }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -2135,7 +2772,7 @@ function renderLancamento() {
       const med3Fmt = med3 !== null ? fmtNum(med3) : '—';
 
       rows += `<tr id="row-${area}-${e.id}">
-        <td class="p-eito">${e.id}</td>
+        <td class="p-eito" style="cursor:pointer;color:var(--forest);text-decoration:underline dotted" onclick="openSidePanel('${area}','${e.id}')" title="Ver histórico do eito">${e.id}</td>
         <td class="p-status"><span class="status-dot sd-${st}" style="margin:0 auto;display:block;width:8px;height:8px"></span></td>
         <td class="p-dias">${dias!==null?dias+'d':'—'}</td>
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center">${e.plantas}</td>
@@ -3345,12 +3982,16 @@ async function excluirVendaSupabase(id){
 }
 function fmtR(v){return v!=null&&!isNaN(v)?'R$ '+fmtNum(Math.round(v)):'—';}
 
-async function initVendas(){
-  // mostrar loading
-  const kpi=document.getElementById('v-kpi-grid');
-  if(kpi)kpi.innerHTML='<div style="padding:20px;color:var(--muted);font-size:13px">⏳ Carregando vendas...</div>';
-  // carregar do Supabase
-  const db = await loadVendasSupabase();
+async function initVendas(forcarReload=false){
+  // usar cache se disponível e não forçar reload
+  let db;
+  if(_vendasCache && !forcarReload) {
+    db = _vendasCache;
+  } else {
+    const kpi=document.getElementById('v-kpi-grid');
+    if(kpi)kpi.innerHTML='<div style="padding:20px;color:var(--muted);font-size:13px">⏳ Carregando vendas...</div>';
+    db = await loadVendasSupabase();
+  }
   const anos=[...new Set(db.map(v=>parseInt(v.data?v.data.substring(0,4):0)).filter(a=>a>2000))].sort((a,b)=>b-a);
   // selecionar ano e mês atual por padrão sempre que entrar
   const _hoje=new Date();
@@ -4171,6 +4812,8 @@ function setMapaFiltro(filtro) {
 const _SB = supabase.createClient('https://gdskveecuarclajuchfx.supabase.co', 'sb_publishable_ocksk4S_Gw9cAXCZSHtFmw_l0IqAERL');
 
 // ─────────── AUTH ───────────
+let _appIniciado = false;
+
 async function checkAuth() {
   const { data: { session } } = await _SB.auth.getSession();
   if (!session) {
@@ -4180,7 +4823,10 @@ async function checkAuth() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = session.user.email;
-    await initApp();
+    if(!_appIniciado) {
+      _appIniciado = true;
+      await initApp();
+    }
   }
 }
 
@@ -4192,6 +4838,7 @@ async function loginGoogle() {
 }
 
 async function logout() {
+  _appIniciado = false;
   await _SB.auth.signOut();
   location.reload();
 }
@@ -4201,7 +4848,10 @@ _SB.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = session.user.email;
-    await initApp();
+    if(!_appIniciado) {
+      _appIniciado = true;
+      await initApp();
+    }
   } else if (event === 'SIGNED_OUT') {
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
@@ -4214,8 +4864,12 @@ async function initApp() {
   window._gestaoAreaAtiva = null;
   window._vendaAnoAtivo = 'todos';
   window._vendaMesAtivo = 'todos';
-  // carregar colheitas do Supabase
-  await loadDBFromSupabase();
+  // carregar colheitas e vendas do Supabase em paralelo
+  await Promise.all([
+    loadDBFromSupabase(),
+    loadVendasSupabase(),
+    carregarTelefones()
+  ]);
   renderDashboard();
   setTimeout(renderProjecao, 60);
   setTimeout(renderComparativo, 70);
@@ -4229,6 +4883,23 @@ document.addEventListener('DOMContentLoaded', checkAuth);
 </script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
+<!-- MODAL TODOS EITOS -->
+<div class="modal-overlay" id="modal-todos-eitos" style="z-index:1050">
+  <div class="modal" style="max-width:720px;max-height:88vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h3 style="margin:0" id="modal-todos-eitos-title">Eitos</h3>
+      <button onclick="closeModal('modal-todos-eitos')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <div class="modal-sub" id="modal-todos-eitos-sub"></div>
+    <div style="overflow-y:auto;flex:1;margin-top:12px">
+      <table class="vtable" style="width:100%">
+        <thead><tr><th>ÁREA</th><th>EITO</th><th>STATUS</th><th>DIAS</th><th>ÚLT. COLHEITA</th><th>COCOS</th><th>PLANTAS</th></tr></thead>
+        <tbody id="modal-todos-eitos-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL TODOS CLIENTES -->
 <div class="modal-overlay" id="modal-todos-clientes" style="z-index:1100">
   <div class="modal" style="max-width:680px;max-height:85vh;display:flex;flex-direction:column">
@@ -4280,6 +4951,111 @@ document.addEventListener('DOMContentLoaded', checkAuth);
       <div id="side-hist-list"></div>
     </div>
   </div>
+</div>
+
+<!-- PÁGINA MERCADOS -->
+<div id="page-mercados" class="page" style="display:none">
+<div class="page-title">🌎 Mercados</div>
+<p class="page-sub">Inteligência comercial — clima, sazonalidade e oportunidades por destino</p>
+
+<div id="alerta" class="alerta">
+  <span style="font-size:22px">🌧️</span>
+  <div id="alerta-txt"></div>
+</div>
+
+<div class="sec-title">🌤️ Previsão do Tempo</div>
+<p class="sec-desc">Dias +2 e +3 destacados — são os dias de chegada do coco ao destino. 🟡 = chegada normal · 🔴 = chuva prevista. Clique no card para ver 16 dias.</p>
+<div class="clima-grid" id="clima-grid">
+  <div style="grid-column:1/-1" class="card-loading">⏳ Carregando previsão...</div>
+</div>
+
+<div class="painel-grid">
+  <div class="painel-card">
+    <div class="painel-header">
+      <span class="painel-header-title">🏆 Ranking de Estados</span>
+      <div class="filtros-grupo" id="rank-anos"></div>
+    </div>
+    <p style="font-size:10px;color:var(--muted);padding:6px 16px 0">Volume histórico por estado · clique para ver detalhes e clientes</p>
+    <div style="padding:0 0 8px">
+      <table class="rank-table">
+        <thead><tr>
+          <th>#</th><th>Estado</th>
+          <th>Cocos vendidos</th>
+          <th>Receita</th>
+          <th>R$/coco</th>
+          <th>2024→2025</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="rank-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="painel-card">
+    <div class="painel-header">
+      <span class="painel-header-title">⚡ Oportunidades da Semana</span>
+    </div>
+    <p style="font-size:10px;color:var(--muted);padding:6px 16px 0">Cruza clima real × histórico de vendas por mês. Pontuação: calor + sem chuva na chegada + bom histórico no mês. Clique para ver clientes do estado.</p>
+    <div id="oport-lista" style="padding:0 0 8px;margin-top:8px">
+      <div class="card-loading">⏳ Aguardando clima...</div>
+    </div>
+  </div>
+</div>
+
+<div class="painel-card-full">
+  <div class="painel-header">
+    <span class="painel-header-title">🌡️ Sazonalidade por Estado</span>
+    <div class="filtros-grupo" id="saz-anos-btns"></div>
+  </div>
+  <p style="font-size:10px;color:var(--muted);padding:8px 16px 0">
+    Soma de todos os anos (2023–2026) · Quanto mais escuro = mais cocos vendidos naquele mês · 
+    <strong style="color:var(--forest)">Mês atual destacado em verde</strong>
+  </p>
+  <div class="saz-wrap" style="padding:12px">
+    <table class="saz-table" id="saz-table"></table>
+  </div>
+</div>
+
+<div class="painel-card-full" style="margin-bottom:20px">
+  <div class="painel-header">
+    <span class="painel-header-title">📅 Dias da Semana com Mais Vendas</span>
+  </div>
+  <p style="font-size:10px;color:var(--muted);padding:8px 16px 0">
+    Volume histórico de cocos vendidos por dia da semana · Útil para planejar quando prospectar clientes
+  </p>
+  <div style="display:flex;gap:10px;padding:16px" id="heatmap-dias"></div>
+</div>
+
+<!-- MODAL CLIMA -->
+<div class="modal-overlay" id="modal-clima">
+  <div class="modal-box modal-clima-wide">
+    <button class="modal-close" onclick="fecharModal('modal-clima')">✕</button>
+    <h3 id="mclima-titulo">—</h3>
+    <div class="modal-sub" id="mclima-sub"></div>
+    <div class="modal-dias-grid" id="mclima-dias"></div>
+  </div>
+</div>
+
+<!-- MODAL ESTADO -->
+<div class="modal-overlay" id="modal-estado">
+  <div class="modal-box" style="max-width:780px;text-align:left">
+    <button class="modal-close" onclick="fecharModal('modal-estado')">✕</button>
+    <h3 id="mest-titulo">—</h3>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap" id="mest-kpis"></div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">Evolução por Ano</div>
+      <div id="mest-evo"></div>
+    </div>
+    <div style="margin-bottom:16px;font-size:12px;color:var(--text)" id="mest-comp"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">Clientes neste Estado</div>
+    <table class="cli-table">
+      <thead><tr>
+        <th>Cliente</th><th>Cocos</th><th>Receita</th><th>Última compra</th><th>Telefone · WhatsApp</th>
+      </tr></thead>
+      <tbody id="mest-clientes"></tbody>
+    </table>
+  </div>
+</div>
 </div>
 
 </div>
