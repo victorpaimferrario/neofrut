@@ -4795,7 +4795,7 @@ async function carregarClima(){
     const tbdy=document.createElement('tbody');
     const trE=document.createElement('tr');const trT=document.createElement('tr');
     diasCard.forEach((di,i)=>{
-      const cls=c.chegada.includes(i)?(di.chuva?'chegada-ruim':'chegada'):'';
+      const cls=r.c.chegada.includes(i)?(di.chuva?'chegada-ruim':'chegada'):'';
       const tdE=document.createElement('td');tdE.className=cls;
       const spE=document.createElement('span');spE.className='dia-emoji';spE.textContent=wcEmoji(di.wc);tdE.appendChild(spE);
       if(parseFloat(di.mm)>0){const mm=document.createElement('span');mm.className='dia-mm';mm.textContent=di.mm+'mm';tdE.appendChild(mm);}
@@ -4808,7 +4808,7 @@ async function carregarClima(){
     const tft=document.createElement('tfoot');const trF=document.createElement('tr');
     diasCard.forEach((di,i)=>{
       const td=document.createElement('td');
-      if(c.chegada.includes(i)){const sp=document.createElement('span');sp.className=di.chuva?'tag-ch-ruim':'tag-ch';sp.textContent=(i===0?'hoje':'+'+i+'d');td.appendChild(sp);}
+      if(r.c.chegada.includes(i)){const sp=document.createElement('span');sp.className=di.chuva?'tag-ch-ruim':'tag-ch';sp.textContent=(i===0?'hoje':'+'+i+'d');td.appendChild(sp);}
       trF.appendChild(td);
     });
     tft.appendChild(trF);tbl.appendChild(tft);
