@@ -1954,15 +1954,18 @@ function exportarExcel() {
 
 // ─────────── PAGES / MODAL ───────────
 function showPage(id) {
+  localStorage.setItem('neofrut_aba_ativa', id);
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   if (id==='dashboard') {
     document.querySelector('.nav-tab').classList.add('active');
-    renderDashboard();
-    setTimeout(renderProjecao, 60);
-    setTimeout(renderComparativo, 70);
-    setTimeout(renderMapa, 80);
+    setTimeout(()=>{
+      renderDashboard();
+      setTimeout(renderProjecao, 60);
+      setTimeout(renderComparativo, 70);
+      setTimeout(renderMapa, 80);
+    }, 30);
   } else if (id==='analise') {
     document.querySelectorAll('.nav-tab')[1].classList.add('active');
     initAnalise();
@@ -1971,7 +1974,7 @@ function showPage(id) {
     initLancamento();
   } else if (id==='vendas') {
     document.querySelectorAll('.nav-tab')[3].classList.add('active');
-    initVendas();
+    setTimeout(()=>initVendas(false), 30);
   } else if (id==='gestao') {
     document.querySelectorAll('.nav-tab')[4].classList.add('active');
     initGestao();
@@ -4342,19 +4345,15 @@ async function initApp() {
   window._gestaoAreaAtiva = null;
   window._vendaAnoAtivo = 'todos';
   window._vendaMesAtivo = 'todos';
-  // carregar colheitas e vendas do Supabase em paralelo
+  // carregar dados do Supabase em paralelo
   await Promise.all([
     loadDBFromSupabase(),
     loadVendasSupabase(),
     carregarTelefones()
   ]);
-  // Pequeno delay para garantir DOM visível antes de renderizar
-  setTimeout(() => {
-    renderDashboard();
-    setTimeout(renderProjecao, 60);
-    setTimeout(renderComparativo, 70);
-    setTimeout(renderMapa, 80);
-  }, 50);
+  // Restaurar aba ativa salva ou ir para dashboard
+  const abaAtiva = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+  setTimeout(() => showPage(abaAtiva), 50);
 }
 
 // Aguardar DOM pronto e verificar autenticação
@@ -4742,6 +4741,7 @@ async function carregarClima(){
   const alertaEl=document.getElementById('alerta');
   const alertaTxt=document.getElementById('alerta-txt');
   const cidadesChuva=[];
+  if(grid) grid.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;text-align:center">⏳ Carregando previsão do tempo...</div>';
   const resultados=await Promise.all(CIDADES_CLIMA.map(async c=>{
     try{
       const url='https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon
@@ -4749,9 +4749,18 @@ async function carregarClima(){
         +'&timezone=America%2FSao_Paulo&forecast_days=16';
       let resp;
       for(let t=0;t<3;t++){
-        try{resp=await fetch(url);if(resp.ok)break;}catch(e){if(t===2)throw e;await new Promise(r=>setTimeout(r,800*(t+1)));}
+        try{
+          const ctrl = new AbortController();
+          const tid = setTimeout(()=>ctrl.abort(), 8000);
+          resp = await fetch(url, {signal:ctrl.signal});
+          clearTimeout(tid);
+          if(resp.ok) break;
+        }catch(e){
+          if(t===2) throw e;
+          await new Promise(r=>setTimeout(r,1000*(t+1)));
+        }
       }
-      if(!resp||!resp.ok)throw new Error('HTTP '+(resp?resp.status:'timeout'));
+      if(!resp||!resp.ok) throw new Error('HTTP '+(resp?resp.status:'timeout'));
       const d=await resp.json();const dl=d.daily;
       const dias=dl.time.map((dt,i)=>({
         data:fmtDia(dt),wc:dl.weathercode[i],
