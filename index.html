@@ -1047,6 +1047,7 @@ async function loadDataSupabase() {
       if(!db[c.area]) continue;
       const eito = db[c.area].find(e => e.id === c.eito_id);
       if(eito) eito.historico.push({
+        _id: c.id,
         data: c.data.substring(0,10),
         total: c.total,
         mesa: c.mesa,
@@ -1725,6 +1726,14 @@ function renderAreaTable() {
           <button class="btn-salvar-inline" id="drawer-btn-${e.id}"
             onclick="salvarInline('${e.id}')" disabled>✓</button>
           <button class="btn-hist" onclick="openHistorico('${e.id}')">Hist.</button>
+          ${(() => {
+            const _ult = getUltima(e);
+            const _hist = e.historico || [];
+            const _ultIdx = _hist.length - 1;
+            if(!_ult || _ultIdx < 0) return '';
+            return '<button onclick="editarColheitaSidePanel(\''+currentArea+'\',\''+e.id+'\','+_ultIdx+')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--muted)" title="Editar última">✏️</button>'
+              +'<button onclick="excluirColheitaSidePanel(\''+currentArea+'\',\''+e.id+'\','+_ultIdx+')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--vermelho)" title="Excluir última">✕</button>';
+          })()}
         </div>
       </td>
     </tr>`;
@@ -1776,9 +1785,13 @@ async function salvarColheita() {
       // edição — remover antiga do Supabase e substituir
       const antiga = eito.historico[editIdx];
       try {
-        await _SB.from('colheitas').delete()
-          .eq('area', currentArea).eq('eito_id', currentEitoId)
-          .eq('data', antiga.data).eq('total', antiga.total);
+        if(antiga._id) {
+          await _SB.from('colheitas').delete().eq('id', antiga._id);
+        } else {
+          await _SB.from('colheitas').delete()
+            .eq('area', currentArea).eq('eito_id', currentEitoId)
+            .eq('data', antiga.data).eq('total', antiga.total);
+        }
       } catch(err) { console.error(err); }
       eito.historico[editIdx] = reg;
     } else {
@@ -4106,14 +4119,14 @@ async function excluirColheitaSidePanel(area, eitoId, idx){
   if(!eito||!eito.historico) return;
   const h = eito.historico[idx];
   if(!confirm('Excluir colheita de '+fmtData(h.data)+' ('+fmtNum(h.total)+' cocos)?')) return;
-  // excluir do Supabase
+  // excluir do Supabase — usar _id se disponível, senão filtrar por campos
   try {
-    await _SB.from('colheitas')
-      .delete()
-      .eq('area', area)
-      .eq('eito_id', eitoId)
-      .eq('data', h.data)
-      .eq('total', h.total);
+    if(h._id) {
+      await _SB.from('colheitas').delete().eq('id', h._id);
+    } else {
+      await _SB.from('colheitas').delete()
+        .eq('area', area).eq('eito_id', eitoId).eq('data', h.data).eq('total', h.total);
+    }
   } catch(err) { console.error('Erro ao excluir colheita:', err); }
   eito.historico.splice(idx, 1);
   await saveData();
