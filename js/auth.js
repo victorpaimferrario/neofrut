@@ -1,5 +1,7 @@
 // ─────────── AUTH ───────────
 let _appIniciado = false;
+// Salvar aba ativa antes do reload para restaurar depois
+let _abaParaRestaurar = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
 
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
@@ -12,7 +14,13 @@ async function enterApp(session) {
   document.getElementById('user-email').textContent = session.user.email;
   if (!_appIniciado) {
     _appIniciado = true;
-    await initApp();
+    try {
+      await initApp();
+    } catch(e) {
+      console.error('Erro ao iniciar app:', e);
+      // Garantir que pelo menos o dashboard seja exibido
+      showPage('dashboard');
+    }
   }
 }
 
@@ -34,7 +42,10 @@ async function logout() {
 _SB.auth.onAuthStateChange(async (event, session) => {
   if (session) {
     await enterApp(session);
-  } else {
+  } else if (event === 'INITIAL_SESSION') {
+    // Sem sessao no carregamento inicial — mostrar login
+    showLogin();
+  } else if (event === 'SIGNED_OUT') {
     showLogin();
   }
 });

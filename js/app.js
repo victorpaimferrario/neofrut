@@ -13,7 +13,7 @@ async function initApp() {
     loadVendasSupabase(),
     carregarTelefones()
   ]);
-  // Restaurar aba ativa salva ou ir para dashboard
-  const abaAtiva = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+  // Restaurar aba ativa salva ANTES do reload (capturada em auth.js)
+  const abaAtiva = _abaParaRestaurar || 'dashboard';
   showPage(abaAtiva);
 }
