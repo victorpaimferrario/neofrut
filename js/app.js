@@ -8,19 +8,33 @@ async function initApp() {
   window._vendaMesAtivo = 'todos';
   window._mercadosIniciado = false;
 
-  // Carregar TODOS os dados do Supabase ANTES de renderizar qualquer página
-  try {
-    await Promise.all([
-      loadDBFromSupabase(),
-      loadVendasSupabase(),
-      carregarTelefones()
-    ]);
-  } catch(e) {
-    console.error('Erro ao carregar dados do Supabase:', e);
-    // Mesmo com erro, DB já tem dados locais do loadDataLocal()
+  // PASSO 1: Garantir que DB tem dados do localStorage (instantâneo)
+  if (!DB || Object.keys(DB).length === 0) {
+    DB = loadDataLocal();
+  }
+  // Garantir que vendas tem dados do localStorage
+  if (!_vendasCache || _vendasCache.length === 0) {
+    const localVendas = JSON.parse(localStorage.getItem(SK_VENDAS) || '[]');
+    if (localVendas.length > 0) _vendasCache = localVendas;
   }
 
-  // Só renderizar depois que os dados estiverem prontos
+  // PASSO 2: Renderizar IMEDIATAMENTE com dados locais
   const abaAtiva = _abaParaRestaurar || 'dashboard';
   showPage(abaAtiva);
+
+  // PASSO 3: Sincronizar com Supabase em background (não bloqueia a UI)
+  setTimeout(async () => {
+    try {
+      await Promise.all([
+        loadDBFromSupabase(),
+        loadVendasSupabase(),
+        carregarTelefones()
+      ]);
+      // Re-renderizar a página atual com dados atualizados do Supabase
+      const paginaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+      showPage(paginaAtual);
+    } catch (e) {
+      console.warn('Sync Supabase em background falhou — usando dados locais:', e.message);
+    }
+  }, 100);
 }
