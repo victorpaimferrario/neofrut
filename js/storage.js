@@ -1,5 +1,5 @@
 // ─────────── STORAGE ───────────
-let DB = loadData();
+let DB = loadDataLocal();
 
 async function loadDataSupabase() {
   try {
@@ -68,8 +68,6 @@ function loadDataLocal() {
   return d;
 }
 
-function loadData() { return loadDataLocal(); }
-
 async function saveData() {
   localStorage.setItem(SK, JSON.stringify(DB));
   try {
@@ -116,7 +114,12 @@ async function loadDBFromSupabase() {
 let _vendasCache = null;
 
 function loadVendas() {
-  return _vendasCache || JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');
+  if (_vendasCache && _vendasCache.length > 0) return _vendasCache;
+  const local = JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');
+  if (local.length > 0) {
+    _vendasCache = local;
+  }
+  return _vendasCache || [];
 }
 
 async function loadVendasSupabase() {

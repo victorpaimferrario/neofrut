@@ -7,13 +7,20 @@ async function initApp() {
   window._vendaAnoAtivo = 'todos';
   window._vendaMesAtivo = 'todos';
   window._mercadosIniciado = false;
-  // carregar dados do Supabase em paralelo
-  await Promise.all([
-    loadDBFromSupabase(),
-    loadVendasSupabase(),
-    carregarTelefones()
-  ]);
-  // Restaurar aba ativa salva ANTES do reload (capturada em auth.js)
+
+  // Carregar TODOS os dados do Supabase ANTES de renderizar qualquer página
+  try {
+    await Promise.all([
+      loadDBFromSupabase(),
+      loadVendasSupabase(),
+      carregarTelefones()
+    ]);
+  } catch(e) {
+    console.error('Erro ao carregar dados do Supabase:', e);
+    // Mesmo com erro, DB já tem dados locais do loadDataLocal()
+  }
+
+  // Só renderizar depois que os dados estiverem prontos
   const abaAtiva = _abaParaRestaurar || 'dashboard';
   showPage(abaAtiva);
 }

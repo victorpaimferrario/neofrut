@@ -1,6 +1,7 @@
 // ─────────── AUTH ───────────
 let _appIniciado = false;
 // Salvar aba ativa antes do reload para restaurar depois
+// Lido imediatamente ao carregar o script (antes de qualquer async)
 let _abaParaRestaurar = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
 
 function showLogin() {
@@ -18,13 +19,16 @@ async function enterApp(session) {
       await initApp();
     } catch(e) {
       console.error('Erro ao iniciar app:', e);
-      // Garantir que pelo menos o dashboard seja exibido
+      // Garantir que pelo menos o dashboard seja exibido com dados locais
       showPage('dashboard');
     }
   }
 }
 
 async function loginGoogle() {
+  // Salvar aba atual antes do redirect do OAuth
+  const abaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+  localStorage.setItem('neofrut_aba_ativa', abaAtual);
   await _SB.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + window.location.pathname }
