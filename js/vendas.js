@@ -115,7 +115,7 @@ function renderVendasPainel(){
   const kpi=document.getElementById('v-kpi-grid');
   if(kpi){
     const _pendKpi = tPend>0
-      ? '<div class="vkpi" style="border-color:var(--amarelo-border)"><div class="vkpi-label">A Receber</div><div class="vkpi-val" style="color:#854d0e">'+fmtR(tPend)+'</div></div>'
+      ? '<div class="vkpi" style="border-color:var(--amarelo-border);cursor:pointer" onclick="showVendasTab(\'pendentes\')" title="Ver pendentes"><div class="vkpi-label">A Receber</div><div class="vkpi-val" style="color:#854d0e">'+fmtR(tPend)+'</div></div>'
       : '';
     const _freteP = tReceita>0 ? Math.round(tFrete/tReceita*100)+'% da receita' : '';
     const _ticket = sel.length>0 ? fmtR(tReceita/sel.length) : '—';
