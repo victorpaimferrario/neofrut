@@ -876,12 +876,10 @@ function showPage(id) {
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   if (id==='dashboard') {
     document.querySelector('.nav-tab').classList.add('active');
-    setTimeout(()=>{
-      renderDashboard();
-      setTimeout(renderProjecao, 60);
-      setTimeout(renderComparativo, 70);
-      setTimeout(renderMapa, 80);
-    }, 30);
+    renderDashboard();
+    renderProjecao();
+    renderComparativo();
+    renderMapa();
   } else if (id==='analise') {
     document.querySelectorAll('.nav-tab')[1].classList.add('active');
     initAnalise();
@@ -3221,26 +3219,25 @@ const _SB = supabase.createClient('https://gdskveecuarclajuchfx.supabase.co', 's
 // ─────────── AUTH ───────────
 let _appIniciado = false;
 
-async function checkAuth() {
-  const { data: { session } } = await _SB.auth.getSession();
-  if (!session) {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
-  } else {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('user-email').textContent = session.user.email;
-    if(!_appIniciado) {
-      _appIniciado = true;
-      await initApp();
-    }
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function enterApp(session) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-email').textContent = session.user.email;
+  if (!_appIniciado) {
+    _appIniciado = true;
+    await initApp();
   }
 }
 
 async function loginGoogle() {
   await _SB.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: { redirectTo: window.location.origin + window.location.pathname }
   });
 }
 
@@ -3250,18 +3247,13 @@ async function logout() {
   location.reload();
 }
 
+// Único ponto de controle de auth — onAuthStateChange dispara INITIAL_SESSION
+// ao carregar a página (inclusive após redirect do OAuth)
 _SB.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN') {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('user-email').textContent = session.user.email;
-    if(!_appIniciado) {
-      _appIniciado = true;
-      await initApp();
-    }
-  } else if (event === 'SIGNED_OUT') {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
+  if (session) {
+    await enterApp(session);
+  } else {
+    showLogin();
   }
 });
 
@@ -3279,11 +3271,8 @@ async function initApp() {
   ]);
   // Restaurar aba ativa salva ou ir para dashboard
   const abaAtiva = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
-  setTimeout(() => showPage(abaAtiva), 50);
+  showPage(abaAtiva);
 }
-
-// Aguardar DOM pronto e verificar autenticação
-document.addEventListener('DOMContentLoaded', checkAuth);
 // initAnalise será chamado ao abrir a página
 
 
