@@ -663,6 +663,11 @@
   </div>
   <div class="side-panel-body">
     <div id="ev-erro" style="display:none;background:var(--vermelho-bg);color:var(--vermelho);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px"></div>
+    <div id="ev-status-bar" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border)">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted)">Status:</span>
+      <span id="ev-status-badge" style="font-size:12px;font-weight:800;padding:3px 10px;border-radius:8px"></span>
+      <button id="ev-status-toggle" class="btn" style="margin-left:auto;font-size:11px;padding:5px 14px;border-radius:6px;cursor:pointer;font-weight:700;border:1px solid var(--border);background:var(--surface)" onclick="toggleEditStatus()">Alterar Status</button>
+    </div>
     <div class="form-group">
       <label class="form-label">Data</label>
       <input type="date" id="ev-data" class="form-input">
@@ -676,13 +681,7 @@
         <label class="form-label">Nº NF / Recibo</label>
         <input type="text" id="ev-nf" class="form-input" placeholder="ex: 2416">
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select id="ev-status" class="form-input">
-          <option value="PAGO">PAGO</option>
-          <option value="PENDENTE">PENDENTE</option>
-        </select>
-      </div>
+      <input type="hidden" id="ev-status" value="PAGO">
     </div>
     <div class="form-row" style="margin-bottom:16px">
       <div class="form-group">

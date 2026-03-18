@@ -534,6 +534,7 @@ function editarVenda(id){
   set('ev-frete',v.frete||'');
   set('ev-recebido',v.valorRecebido||'');
   set('ev-status',v.status||'PAGO');
+  updateEditStatusBadge();
   set('ev-deposito',v.dataDeposito||'');
   // UF select - popular se ainda não populado
   const ufSel=document.getElementById('ev-uf');
@@ -568,6 +569,24 @@ function editarVenda(id){
   // abrir panel
   document.getElementById('edit-venda-overlay').classList.add('open');
   document.getElementById('edit-venda-panel').classList.add('open');
+}
+
+function toggleEditStatus(){
+  const el=document.getElementById('ev-status');
+  el.value=el.value==='PAGO'?'PENDENTE':'PAGO';
+  updateEditStatusBadge();
+}
+function updateEditStatusBadge(){
+  const st=document.getElementById('ev-status').value;
+  const badge=document.getElementById('ev-status-badge');
+  const bar=document.getElementById('ev-status-bar');
+  if(st==='PAGO'){
+    badge.textContent='PAGO';badge.style.background='var(--verde-bg)';badge.style.color='var(--verde)';
+    bar.style.borderColor='var(--verde-border)';
+  }else{
+    badge.textContent='PENDENTE';badge.style.background='var(--amarelo-bg)';badge.style.color='#854d0e';
+    bar.style.borderColor='var(--amarelo-border)';
+  }
 }
 
 function closeEditVendaPanel(){
