@@ -494,10 +494,13 @@ function renderVendasLista(){
 
 function renderVendasPendentes(){
   const db=loadVendas();
-  const pend=db.filter(v=>v.status==='PENDENTE').sort((a,b)=>a.data.localeCompare(b.data));
+  const ano=window._vendaAnoAtivo||'todos';
+  const mes=window._vendaMesAtivo||'todos';
+  const pend=filtrarVendas(db,ano,mes).filter(v=>v.status==='PENDENTE').sort((a,b)=>a.data.localeCompare(b.data));
   const wrap=document.getElementById('v-pendentes-wrap');
   if(!wrap)return;
-  if(!pend.length){wrap.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">✅ Nenhuma venda pendente!</div>';return;}
+  const totalGeral=db.filter(v=>v.status==='PENDENTE').length;
+  if(!pend.length){wrap.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">✅ Nenhuma venda pendente'+(ano!=='todos'||mes!=='todos'?' no período selecionado':'')+'!</div>'+(totalGeral>0&&(ano!=='todos'||mes!=='todos')?'<div style="text-align:center;color:var(--muted);font-size:12px;margin-top:-32px">'+totalGeral+' pendente'+(totalGeral!==1?'s':'')+' no total</div>':'');return;}
   const tot=pend.reduce((s,v)=>s+(v.valorRecebido||v.total||0),0);
   wrap.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--vermelho);margin-bottom:16px">${pend.length} pendente${pend.length!==1?'s':''} · ${fmtR(tot)} a receber</div>
     <div style="overflow-x:auto"><table class="vtable"><thead><tr><th>DATA</th><th>CLIENTE</th><th>NF</th><th>COCOS</th><th>A RECEBER</th><th>AÇÃO</th></tr></thead><tbody>
