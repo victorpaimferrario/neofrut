@@ -108,6 +108,7 @@ function initRanking(){
     el.appendChild(btn);
   });
   renderRanking();
+}
 
 // ── MODAL ESTADO ──
 function abrirModalEstado(uf){

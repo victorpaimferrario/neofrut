@@ -302,6 +302,7 @@ function renderProjecao() {
         ${buildCard(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo', false)}
       </div>
     </div>`;
+}
 
 // ─────────── COMPARATIVO SEMANAL ───────────
 function renderComparativo() {
