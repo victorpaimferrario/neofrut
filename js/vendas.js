@@ -502,7 +502,7 @@ function renderVendasPendentes(){
   wrap.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--vermelho);margin-bottom:16px">${pend.length} pendente${pend.length!==1?'s':''} · ${fmtR(tot)} a receber</div>
     <div style="overflow-x:auto"><table class="vtable"><thead><tr><th>DATA</th><th>CLIENTE</th><th>NF</th><th>COCOS</th><th>A RECEBER</th><th>AÇÃO</th></tr></thead><tbody>
     ${pend.map(v=>{const[y,m,d]=v.data.split('-');return`<tr class="pendente">
-      <td style="font-family:var(--font-mono)">${d}/${m}/${y}</td><td style="font-weight:700">${v.cliente}</td>
+      <td style="font-family:var(--font-mono)">${d}/${m}/${y}</td><td style="font-weight:700;cursor:pointer;color:var(--forest);text-decoration:underline" onclick="editarVenda(${v.id})" title="Editar venda">${v.cliente}</td>
       <td style="font-family:var(--font-mono);color:var(--muted)">${v.nf}</td>
       <td style="font-family:var(--font-mono)">${fmtNum(v.qtde)}</td>
       <td style="font-family:var(--font-mono);font-weight:700">${fmtR(v.valorRecebido||v.total)}</td>
