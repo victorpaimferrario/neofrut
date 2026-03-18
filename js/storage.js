@@ -160,7 +160,9 @@ async function loadVendasSupabase() {
       tipoVenda: v.tipo_venda||'coco',
       pesoKg: v.peso_kg,
       litragem: v.litragem,
-      vPorLitro: v.v_por_litro
+      vPorLitro: v.v_por_litro,
+      ufDestino: v.uf_destino||null,
+      cidadeDestino: v.cidade_destino||null
     }));
     localStorage.setItem(SK_VENDAS, JSON.stringify(_vendasCache));
     return _vendasCache;
@@ -191,7 +193,9 @@ async function salvarVendaSupabase(v) {
     tipo_venda: v.tipoVenda||'coco',
     peso_kg: v.pesoKg||null,
     litragem: v.litragem||null,
-    v_por_litro: v.vPorLitro||null
+    v_por_litro: v.vPorLitro||null,
+    uf_destino: v.ufDestino||null,
+    cidade_destino: v.cidadeDestino||null
   };
   const { error } = await _SB.from('vendas').upsert(row);
   if(error) console.error('Erro ao salvar venda:', error);

@@ -413,8 +413,12 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Campos calculados atualizam automaticamente.</div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Data</label><input class="form-input" type="date" id="v-data"></div>
-        <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" type="text" id="v-cliente" placeholder="Nome do cliente" list="v-clientes-dl"><datalist id="v-clientes-dl"></datalist></div>
+        <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" type="text" id="v-cliente" placeholder="Nome do cliente" list="v-clientes-dl" onchange="onClienteChange()"><datalist id="v-clientes-dl"></datalist></div>
         <div class="form-group"><label class="form-label">Nº NF / Recibo</label><input class="form-input" type="text" id="v-nf" placeholder="ex: 2416 ou RECIBO"></div>
+        <div class="form-group" style="display:flex;gap:12px">
+          <div style="flex:1"><label class="form-label">UF Destino</label><select class="form-input" id="v-uf-destino"><option value="">— Selecione —</option></select></div>
+          <div style="flex:2"><label class="form-label">Cidade Destino</label><input class="form-input" type="text" id="v-cidade-destino" placeholder="Cidade de destino"></div>
+        </div>
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:16px;cursor:pointer">
         <input type="checkbox" id="v-modo-litro" onchange="onModoLitro()"> Venda por litro (FRYSK)
@@ -562,19 +566,19 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1773808754"></script>
-<script src="js/utils.js?v=1773808754"></script>
-<script src="js/storage.js?v=1773808754"></script>
-<script src="js/components.js?v=1773808754"></script>
-<script src="js/dashboard.js?v=1773808754"></script>
-<script src="js/lancamento.js?v=1773808754"></script>
-<script src="js/analise.js?v=1773808754"></script>
-<script src="js/vendas.js?v=1773808754"></script>
-<script src="js/gestao.js?v=1773808754"></script>
-<script src="js/mercados.js?v=1773808754"></script>
-<script src="js/router.js?v=1773808754"></script>
-<script src="js/app.js?v=1773808754"></script>
-<script src="js/auth.js?v=1773808754"></script>
+<script src="js/config.js?v=1773813587"></script>
+<script src="js/utils.js?v=1773813587"></script>
+<script src="js/storage.js?v=1773813587"></script>
+<script src="js/components.js?v=1773813587"></script>
+<script src="js/dashboard.js?v=1773813587"></script>
+<script src="js/lancamento.js?v=1773813587"></script>
+<script src="js/analise.js?v=1773813587"></script>
+<script src="js/vendas.js?v=1773813587"></script>
+<script src="js/gestao.js?v=1773813587"></script>
+<script src="js/mercados.js?v=1773813587"></script>
+<script src="js/router.js?v=1773813587"></script>
+<script src="js/app.js?v=1773813587"></script>
+<script src="js/auth.js?v=1773813587"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->

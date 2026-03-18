@@ -153,8 +153,13 @@ function abrirModalEstado(uf){
     +' entre '+todos.length+' estados · '
     +'<span style="font-weight:700">'+pct+'%</span> do total de cocos vendidos';
 
-  // Clientes
-  const clientes = Object.entries(d.clientes).sort((a,b)=>(b[1].ultima||'').localeCompare(a[1].ultima||''));
+  // Clientes — filtrar pelo MAPA_CLIENTES para mostrar apenas clientes do estado correto
+  const clientes = Object.entries(d.clientes).filter(([cli]) => {
+    const mapa = MAPA_CLIENTES[cli];
+    if (!mapa) return true; // cliente não mapeado, manter
+    if (d.fabrica) return mapa.fabrica === true; // fábricas
+    return mapa.uf === uf; // só clientes do estado correto
+  }).sort((a,b)=>(b[1].ultima||'').localeCompare(a[1].ultima||''));
   const tbodyEl = document.getElementById('mest-clientes');
   tbodyEl.innerHTML='';
   clientes.forEach(([cli,cv])=>{

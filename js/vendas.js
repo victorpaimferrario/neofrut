@@ -21,6 +21,13 @@ async function initVendas(forcarReload=false){
   if(el&&!el.value)el.value=today();
   const dl=document.getElementById('v-clientes-dl');
   if(dl){const cl=[...new Set(db.map(v=>v.cliente))].sort();dl.innerHTML=cl.map(c=>`<option value="${c}">`).join('');}
+  // popular select de UFs
+  const ufSel=document.getElementById('v-uf-destino');
+  if(ufSel&&ufSel.options.length<=1){
+    const ufs=[...new Set(Object.values(MAPA_CLIENTES).map(c=>c.uf).filter(u=>u&&u!=='FÁBRICA'))].sort();
+    ufs.forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u+(NOMES_UF[u]?' - '+NOMES_UF[u]:'');ufSel.appendChild(o);});
+    const oFab=document.createElement('option');oFab.value='FÁBRICA';oFab.textContent='FÁBRICA';ufSel.appendChild(oFab);
+  }
   renderVendasPainel();
   renderVendasLista();
   renderVendasPendentes();
@@ -346,6 +353,17 @@ function calcVendaRecebido(){
   if(r&&t>0)r.value=(t-f).toFixed(2);
 }
 
+function onClienteChange(){
+  const nome=(document.getElementById('v-cliente').value||'').trim().toUpperCase();
+  const info=MAPA_CLIENTES[nome];
+  if(info){
+    const ufSel=document.getElementById('v-uf-destino');
+    const cidadeInp=document.getElementById('v-cidade-destino');
+    if(ufSel)ufSel.value=info.uf||'';
+    if(cidadeInp)cidadeInp.value=info.cidade||'';
+  }
+}
+
 async function salvarVenda(){
   // tratar edição — remover original se estiver editando
   const _dataEl=document.getElementById('v-data');
@@ -364,6 +382,8 @@ async function salvarVenda(){
   const recebido=parseFloat(document.getElementById('v-recebido')?.value)||0;
   const status=document.getElementById('v-status').value;
   const dep=document.getElementById('v-deposito').value||null;
+  const ufDestino=document.getElementById('v-uf-destino')?.value||null;
+  const cidadeDestino=(document.getElementById('v-cidade-destino')?.value||'').trim()||null;
   const litro=document.getElementById('v-modo-litro').checked;
   const erro=document.getElementById('v-erro');
   if(!data){erro.textContent='Informe a data.';erro.style.display='block';return;}
@@ -375,6 +395,7 @@ async function salvarVenda(){
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const v=parseInt(document.getElementById('va-'+a)?.value)||0;if(v>0)areas[a]=v;});
   const db=loadVendas();
   db.push({id:Date.now(),data,cliente,nf,areas,qtde,total,frete,valorRecebido:recebido,status,dataDeposito:dep,
+    ufDestino:ufDestino,cidadeDestino:cidadeDestino,
     tipoVenda:litro?'litro':'coco',
     pesoKg:litro?(parseFloat(document.getElementById('v-peso')?.value)||0):null,
     litragem:litro?(parseFloat(document.getElementById('v-litragem')?.value)||0):null,
@@ -388,7 +409,8 @@ async function salvarVenda(){
 }
 
 function limparFormVenda(){
-  ['v-cliente','v-nf','v-total','v-frete','v-recebido','v-peso','v-litragem','v-vlitro','v-deposito'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['v-cliente','v-nf','v-total','v-frete','v-recebido','v-peso','v-litragem','v-vlitro','v-deposito','v-cidade-destino'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const ufSel=document.getElementById('v-uf-destino');if(ufSel)ufSel.value='';
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const el=document.getElementById('va-'+a);if(el){el.value='';el.classList.remove('filled');}});
   const t=document.getElementById('va-total');if(t){t.value='';t.classList.remove('filled');}
   document.getElementById('v-data').value=today();
