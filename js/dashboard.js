@@ -78,7 +78,11 @@ function renderDashboard() {
 
   const grid = document.getElementById('areas-grid');
   grid.innerHTML = '';
-  for (const [area, eitos] of Object.entries(DB)) {
+  const ORDEM_AREAS = ['AREA A1','AREA A2','AREA C','AREA D','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
+  const areasOrdenadas = ORDEM_AREAS.filter(a=>DB[a]).map(a=>[a,DB[a]]);
+  // incluir áreas que existam em DB mas não estejam na ordem definida
+  Object.keys(DB).forEach(a=>{if(!ORDEM_AREAS.includes(a))areasOrdenadas.push([a,DB[a]]);});
+  for (const [area, eitos] of areasOrdenadas) {
     let v=0,a=0,r=0,s=0,cocos=0,plantas=0;
     let maisAntiga = null, maisRecente = null;
     let somaMediaPl=0, eitosComColheita=0;
