@@ -397,7 +397,8 @@
 
   /* ── RESPONSIVE: MOBILE (max 600px) ── */
   @media (max-width: 600px) {
-    .side-panel { width: 100vw; right: -100vw; }
+    .side-panel { width: 100vw !important; right: -100vw !important; }
+    .side-panel.open { right: 0 !important; }
     nav { padding: 0 12px; }
     .nav-tabs { gap: 0; }
     .nav-tab { padding: 10px 8px; font-size: 10px; }

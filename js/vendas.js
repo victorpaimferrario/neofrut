@@ -525,49 +525,114 @@ function editarVenda(id){
   const db=loadVendas();
   const v=db.find(x=>x.id===id);
   if(!v)return;
-  // mudar para aba Nova Venda
-  showVendasTab('nova');
-  // preencher formulário
+  window._editVendaId=id;
   const set=(sel,val)=>{const el=document.getElementById(sel);if(el)el.value=val||'';};
-  set('v-data',v.data);
-  set('v-cliente',v.cliente);
-  set('v-nf',v.nf);
-  set('v-total',v.total||'');
-  set('v-frete',v.frete||'');
-  set('v-recebido',v.valorRecebido||'');
-  set('v-status',v.status||'PAGO');
-  set('v-deposito',v.dataDeposito||'');
-  set('v-uf-destino',v.ufDestino||'');
-  set('v-cidade-destino',v.cidadeDestino||'');
-  // áreas
-  ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{
-    const el=document.getElementById('va-'+a);
-    if(el){el.value=(v.areas&&v.areas[a])||'';el.classList.toggle('filled',(v.areas&&v.areas[a])>0);}
-  });
-  const tot=document.getElementById('va-total');
-  if(tot){tot.value=v.qtde||'';tot.classList.toggle('filled',(v.qtde||0)>0);}
-  // modo litro
-  const isLitro=v.tipoVenda==='litro';
-  const chk=document.getElementById('v-modo-litro');
-  if(chk)chk.checked=isLitro;
-  document.getElementById('v-campos-litro').style.display=isLitro?'':'none';
-  if(isLitro){
-    set('v-peso',v.pesoKg||'');
-    set('v-litragem',v.litragem||'');
-    set('v-vlitro',v.vPorLitro||'');
+  set('ev-data',v.data);
+  set('ev-cliente',v.cliente);
+  set('ev-nf',v.nf);
+  set('ev-total',v.total||'');
+  set('ev-frete',v.frete||'');
+  set('ev-recebido',v.valorRecebido||'');
+  set('ev-status',v.status||'PAGO');
+  set('ev-deposito',v.dataDeposito||'');
+  // UF select - popular se ainda não populado
+  const ufSel=document.getElementById('ev-uf');
+  if(ufSel&&ufSel.options.length<=1){
+    const UFS=[['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],
+      ['CE','Ceará'],['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],
+      ['MA','Maranhão'],['MT','Mato Grosso'],['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],
+      ['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],['PE','Pernambuco'],['PI','Piauí'],
+      ['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],['RS','Rio Grande do Sul'],
+      ['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],['SP','São Paulo'],
+      ['SE','Sergipe'],['TO','Tocantins']];
+    UFS.forEach(([s,n])=>{const o=document.createElement('option');o.value=s;o.textContent=s+' - '+n;ufSel.appendChild(o);});
+    const oFab=document.createElement('option');oFab.value='FÁBRICA';oFab.textContent='FÁBRICA';ufSel.appendChild(oFab);
   }
-  // pré-carregar cidades da UF
-  if(v.ufDestino&&v.ufDestino!=='FÁBRICA'){
-    onUfDestinoChange(true);
+  if(ufSel)ufSel.value=v.ufDestino||'';
+  set('ev-cidade',v.cidadeDestino||'');
+  // áreas grid
+  const AREAS=['A1','A2','C','D','MA','MDC','MDB'];
+  const grid=document.getElementById('ev-areas-grid');
+  if(grid){
+    grid.innerHTML=AREAS.map(a=>{
+      const val=(v.areas&&v.areas[a])||'';
+      return '<div class="av-wrap"><div class="av-label">'+a+'</div><input type="number" id="eva-'+a+'" class="av-inp'+(val?' filled':'')+'" value="'+val+'" min="0" oninput="onEditAreaVenda()"></div>';
+    }).join('')+'<div class="av-wrap"><div class="av-label">TOTAL</div><input type="number" id="eva-total" class="av-inp filled" value="'+(v.qtde||'')+'" readonly style="font-weight:700"></div>';
   }
-  // marcar que está editando
-  const dataEl=document.getElementById('v-data');
-  dataEl.dataset.editandoId=String(id);
-  // atualizar cálculos
-  calcVenda();
-  // scroll para o topo do formulário
-  window.scrollTo({top:0,behavior:'smooth'});
-  showToast('Editando venda de '+v.cliente+' — altere e clique Salvar');
+  // sub
+  const [y,m,d]=(v.data||'').split('-');
+  document.getElementById('ev-sub').textContent=v.cliente+' · '+(d?d+'/'+m+'/'+y:'');
+  document.getElementById('ev-title').textContent='Editar Venda';
+  document.getElementById('ev-erro').style.display='none';
+  calcEditVenda();
+  // abrir panel
+  document.getElementById('edit-venda-overlay').classList.add('open');
+  document.getElementById('edit-venda-panel').classList.add('open');
+}
+
+function closeEditVendaPanel(){
+  document.getElementById('edit-venda-overlay').classList.remove('open');
+  document.getElementById('edit-venda-panel').classList.remove('open');
+  window._editVendaId=null;
+}
+
+function onEditAreaVenda(){
+  const AREAS=['A1','A2','C','D','MA','MDC','MDB'];
+  const soma=AREAS.reduce((s,a)=>s+(parseInt(document.getElementById('eva-'+a)?.value)||0),0);
+  const t=document.getElementById('eva-total');
+  if(t){t.value=soma||'';t.classList.toggle('filled',soma>0);}
+  AREAS.forEach(a=>{const el=document.getElementById('eva-'+a);if(el)el.classList.toggle('filled',(parseInt(el.value)||0)>0);});
+  calcEditVenda();
+}
+
+function calcEditVenda(){
+  const q=parseInt(document.getElementById('eva-total')?.value)||0;
+  const t=parseFloat(document.getElementById('ev-total')?.value)||0;
+  const el1=document.getElementById('ev-calc-cocos');
+  const el2=document.getElementById('ev-calc-preco');
+  if(el1)el1.textContent=q>0?fmtNum(q):'—';
+  if(el2)el2.textContent=q>0&&t>0?'R$ '+(t/q).toFixed(2):'—';
+  // auto calc recebido
+  const f=parseFloat(document.getElementById('ev-frete')?.value)||0;
+  const r=document.getElementById('ev-recebido');
+  if(r&&t>0)r.value=(t-f).toFixed(2);
+}
+
+async function salvarEditVenda(){
+  const id=window._editVendaId;if(!id)return;
+  const db=loadVendas();
+  const idx=db.findIndex(x=>x.id===id);if(idx<0)return;
+  const v=db[idx];
+  const erro=document.getElementById('ev-erro');
+  const data=document.getElementById('ev-data').value;
+  const cliente=(document.getElementById('ev-cliente').value||'').trim().toUpperCase();
+  const qtde=parseInt(document.getElementById('eva-total')?.value)||0;
+  const total=parseFloat(document.getElementById('ev-total')?.value)||0;
+  if(!data){erro.textContent='Informe a data.';erro.style.display='block';return;}
+  if(!cliente){erro.textContent='Informe o cliente.';erro.style.display='block';return;}
+  if(qtde===0){erro.textContent='Informe a quantidade.';erro.style.display='block';return;}
+  if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
+  erro.style.display='none';
+  // atualizar campos
+  v.data=data;
+  v.cliente=cliente;
+  v.nf=(document.getElementById('ev-nf').value||'RECIBO').trim().toUpperCase()||'RECIBO';
+  v.status=document.getElementById('ev-status').value;
+  v.ufDestino=document.getElementById('ev-uf')?.value||null;
+  v.cidadeDestino=(document.getElementById('ev-cidade')?.value||'').trim()||null;
+  v.total=total;
+  v.frete=parseFloat(document.getElementById('ev-frete')?.value)||0;
+  v.valorRecebido=parseFloat(document.getElementById('ev-recebido')?.value)||0;
+  v.dataDeposito=document.getElementById('ev-deposito')?.value||null;
+  v.qtde=qtde;
+  const areas={};
+  ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const val=parseInt(document.getElementById('eva-'+a)?.value)||0;if(val>0)areas[a]=val;});
+  v.areas=areas;
+  saveVendas(db);
+  await salvarVendaSupabase(v);
+  closeEditVendaPanel();
+  renderVendasLista();renderVendasPendentes();renderVendasPainel();
+  showToast('✓ Venda de '+v.cliente+' atualizada');
 }
 
 async function excluirVenda(id){
