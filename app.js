@@ -16,9 +16,15 @@ async function loadDataSupabase() {
     if(e1) throw e1;
     if(e2) throw e2;
 
+    // Se Supabase retornou vazio, não sobrescrever dados locais
+    if(!eitos || eitos.length === 0) {
+      console.warn('Supabase retornou sem eitos — usando dados locais');
+      return loadDataLocal();
+    }
+
     // Montar estrutura DB = { area: [ { id, plantas, historico: [...] } ] }
     const db = {};
-    for(const e of (eitos||[])) {
+    for(const e of eitos) {
       if(!db[e.area]) db[e.area] = [];
       db[e.area].push({ id: e.eito_id, plantas: e.plantas, historico: [] });
     }
@@ -38,6 +44,7 @@ async function loadDataSupabase() {
     if(db['MDC']) { db['MAMÃO DE CIMA'] = db['MDC']; delete db['MDC']; }
     if(db['MDB']) { db['MAMÃO DE BAIXO'] = db['MDB']; delete db['MDB']; }
     if(db['AREA B']) delete db['AREA B'];
+    // Salvar no localStorage como cache offline
     localStorage.setItem(SK, JSON.stringify(db));
     console.log('Colheitas carregadas do Supabase:', Object.keys(db).length, 'áreas');
     return db;
@@ -108,12 +115,15 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
 
 let DB = loadData();
 
-// Carregar do Supabase assim que autenticado
+// Carregar do Supabase (fonte primária) — localStorage é fallback offline
 async function loadDBFromSupabase() {
   const newDB = await loadDataSupabase();
   if(newDB && Object.keys(newDB).length > 0) {
     DB = newDB;
     localStorage.setItem(SK, JSON.stringify(DB));
+  } else {
+    console.warn('Supabase indisponível — usando cache local');
+    DB = loadDataLocal();
   }
 }
 
@@ -2309,9 +2319,18 @@ async function loadVendasSupabase(){
       from += pageSize;
     }
     const data = allData;
-    if(data) console.log('Vendas carregadas:', data.length);
+    console.log('Vendas carregadas do Supabase:', data.length);
+
+    // Se Supabase retornou vazio mas temos dados locais, manter os locais
+    const localVendas = JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');
+    if(data.length === 0 && localVendas.length > 0) {
+      console.warn('Supabase sem vendas mas há dados locais — mantendo cache');
+      _vendasCache = localVendas;
+      return _vendasCache;
+    }
+
     // mapear colunas snake_case → camelCase
-    _vendasCache = (data||[]).map(v=>({
+    _vendasCache = data.map(v=>({
       id: v.id,
       data: typeof v.data === 'string' ? v.data.substring(0,10) : v.data,
       cliente: v.cliente,
@@ -2328,6 +2347,7 @@ async function loadVendasSupabase(){
       litragem: v.litragem,
       vPorLitro: v.v_por_litro
     }));
+    // Salvar no localStorage como cache offline
     localStorage.setItem(SK_VENDAS, JSON.stringify(_vendasCache));
     return _vendasCache;
   } catch(e) {
