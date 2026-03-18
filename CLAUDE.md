@@ -7,9 +7,21 @@ Espaçamento de plantio: triângulo equilátero 7,5m x 7,5m x 7,5m.
 
 ## Estrutura de arquivos
 ```
-index.html   → HTML (estrutura das páginas e modais)
-styles.css   → CSS (estilos, variáveis de tema)
-app.js       → JavaScript (toda a lógica — ~3800 linhas)
+index.html        → HTML (estrutura das páginas e modais)
+styles.css        → CSS (estilos, variáveis de tema)
+js/config.js      → Supabase client, constantes (DADOS_INICIAIS, DADOS_UF, etc.)
+js/utils.js       → Funções utilitárias (today, diasDesde, fmtData, fmtNum, etc.)
+js/storage.js     → Persistência (DB, loadData, saveData, Supabase sync)
+js/components.js  → Componentes UI (side panel, drawers, modais, inline edit)
+js/dashboard.js   → Painel geral, projeção, comparativo, mapa
+js/lancamento.js  → Lançamento em lote, rascunho, resumo WhatsApp
+js/analise.js     → Análise de produtividade por eito
+js/vendas.js      → Registro de vendas, ranking, gráficos
+js/gestao.js      → Cadastro de áreas e eitos
+js/mercados.js    → Inteligência comercial (clima, ranking, sazonalidade)
+js/router.js      → Navegação entre páginas, modais, toast
+js/app.js         → Inicialização (initApp)
+js/auth.js        → Autenticação Google via Supabase (DEVE ser último script)
 ```
 
 ## Regras de negócio
