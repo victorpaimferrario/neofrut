@@ -352,24 +352,30 @@ async function carregarClima(){
   const alertaEl=document.getElementById('alerta');
   const alertaTxt=document.getElementById('alerta-txt');
   const cidadesChuva=[];
-  if(grid) grid.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;text-align:center">⏳ Carregando previsão do tempo...</div>';
+  // Se já tem dados em cache, renderizar imediatamente
+  const temCache=Object.keys(_dadosClima).length>=CIDADES_CLIMA.length;
+  if(!temCache&&grid) grid.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;text-align:center">⏳ Carregando previsão do tempo...</div>';
   const resultados=await Promise.all(CIDADES_CLIMA.map(async c=>{
     try{
+      // Usar cache se disponível e recente (menos de 30min)
+      if(_dadosClima[c.nome]&&_dadosClima[c.nome]._ts&&Date.now()-_dadosClima[c.nome]._ts<1800000){
+        const cached=_dadosClima[c.nome];
+        const chegadaRuim=c.chegada.some(i=>cached.dias[i]?.chuva);
+        if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
+        return{c,dias:cached.dias,chegadaRuim,ok:true};
+      }
       const url='https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon
         +'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum'
         +'&timezone=America%2FSao_Paulo&forecast_days=16';
       let resp;
-      for(let t=0;t<3;t++){
-        try{
-          const ctrl = new AbortController();
-          const tid = setTimeout(()=>ctrl.abort(), 8000);
-          resp = await fetch(url, {signal:ctrl.signal});
-          clearTimeout(tid);
-          if(resp.ok) break;
-        }catch(e){
-          if(t===2) throw e;
-          await new Promise(r=>setTimeout(r,1000*(t+1)));
-        }
+      const ctrl = new AbortController();
+      const tid = setTimeout(()=>ctrl.abort(), 5000);
+      try{
+        resp = await fetch(url, {signal:ctrl.signal});
+        clearTimeout(tid);
+      }catch(e){
+        clearTimeout(tid);
+        throw e;
       }
       if(!resp||!resp.ok) throw new Error('HTTP '+(resp?resp.status:'timeout'));
       const d=await resp.json();const dl=d.daily;
@@ -380,7 +386,7 @@ async function carregarClima(){
         mm:parseFloat(dl.precipitation_sum[i]||0).toFixed(1),
         chuva:temChuva(dl.weathercode[i])
       }));
-      _dadosClima[c.nome]={cidade:c,dias};
+      _dadosClima[c.nome]={cidade:c,dias,_ts:Date.now()};
       const chegadaRuim=c.chegada.some(i=>dias[i]?.chuva);
       if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
       return{c,dias,chegadaRuim,ok:true};
