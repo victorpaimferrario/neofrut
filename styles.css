@@ -524,5 +524,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-main);padding
 .modal-tag{font-size:8px;font-weight:800;padding:2px 4px;border-radius:4px;margin-top:3px;display:inline-block;}
 .modal-tag.chegada{background:#f5f5a0;color:#5a5a00;}
 .modal-tag.chegada-ruim{background:#fde8ea;color:#dc3545;}
+/* Autocomplete */
+.ac-wrap{position:relative;}
+.ac-list{position:absolute;top:100%;left:0;right:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);display:none;}
+.ac-list.open{display:block;}
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer;transition:background .15s;}
+.ac-item:hover,.ac-item.active{background:var(--verde-bg);color:var(--forest);}
+.ac-item .ac-sub{font-size:10px;color:var(--muted);margin-top:1px;}
 .cli-table{width:100%;border-collapse:collapse;}
 .cli-table th{padding:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}

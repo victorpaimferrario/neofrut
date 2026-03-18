@@ -19,13 +19,21 @@ async function initVendas(forcarReload=false){
   renderMesesBtns();
   const el=document.getElementById('v-data');
   if(el&&!el.value)el.value=today();
-  const dl=document.getElementById('v-clientes-dl');
-  if(dl){const cl=[...new Set(db.map(v=>v.cliente))].sort();dl.innerHTML=cl.map(c=>`<option value="${c}">`).join('');}
-  // popular select de UFs
+  // popular lista de clientes para autocomplete
+  window._acClientesLista=[...new Set(db.map(v=>v.cliente))].sort();
+  // popular select de UFs (todos os estados do Brasil)
   const ufSel=document.getElementById('v-uf-destino');
   if(ufSel&&ufSel.options.length<=1){
-    const ufs=[...new Set(Object.values(MAPA_CLIENTES).map(c=>c.uf).filter(u=>u&&u!=='FÁBRICA'))].sort();
-    ufs.forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u+(NOMES_UF[u]?' - '+NOMES_UF[u]:'');ufSel.appendChild(o);});
+    const UFS_BR=[
+      ['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],
+      ['CE','Ceará'],['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],
+      ['MA','Maranhão'],['MT','Mato Grosso'],['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],
+      ['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],['PE','Pernambuco'],['PI','Piauí'],
+      ['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],['RS','Rio Grande do Sul'],
+      ['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],['SP','São Paulo'],
+      ['SE','Sergipe'],['TO','Tocantins']
+    ];
+    UFS_BR.forEach(([s,n])=>{const o=document.createElement('option');o.value=s;o.textContent=s+' - '+n;ufSel.appendChild(o);});
     const oFab=document.createElement('option');oFab.value='FÁBRICA';oFab.textContent='FÁBRICA';ufSel.appendChild(oFab);
   }
   renderVendasPainel();
@@ -360,7 +368,14 @@ function onClienteChange(){
     const ufSel=document.getElementById('v-uf-destino');
     const cidadeInp=document.getElementById('v-cidade-destino');
     if(ufSel)ufSel.value=info.uf||'';
-    if(cidadeInp)cidadeInp.value=info.cidade||'';
+    // pre-fetch cities for this UF, then set cidade
+    if(info.uf&&info.uf!=='FÁBRICA'){
+      onUfDestinoChange(true).then(()=>{
+        if(cidadeInp)cidadeInp.value=info.cidade||'';
+      });
+    }else{
+      if(cidadeInp)cidadeInp.value=info.cidade||'';
+    }
   }
 }
 
@@ -579,6 +594,117 @@ function importarPlanilhaVendas(input){
   };
   reader.readAsArrayBuffer(file);
 }
+
+// ─────────── AUTOCOMPLETE CLIENTE ───────────
+function acCliente(){
+  const inp=document.getElementById('v-cliente');
+  const list=document.getElementById('ac-cliente-list');
+  if(!inp||!list)return;
+  const q=(inp.value||'').trim().toUpperCase();
+  if(q.length<1){list.classList.remove('open');return;}
+  const all=window._acClientesLista||[];
+  const mapaNomes=Object.keys(MAPA_CLIENTES);
+  const merged=[...new Set([...all,...mapaNomes])].sort();
+  const filtered=merged.filter(c=>c.toUpperCase().includes(q)).slice(0,12);
+  if(!filtered.length){list.classList.remove('open');return;}
+  list.innerHTML=filtered.map((c,i)=>{
+    const info=MAPA_CLIENTES[c];
+    const sub=info?info.uf+(info.cidade&&info.cidade!=='—'?' · '+info.cidade:''):'';
+    return `<div class="ac-item${i===0?' active':''}" data-val="${c.replace(/"/g,'&quot;')}" onmousedown="acSelCliente(this)">${c}${sub?'<div class="ac-sub">'+sub+'</div>':''}</div>`;
+  }).join('');
+  list.classList.add('open');
+  window._acClienteIdx=0;
+}
+function acSelCliente(el){
+  const inp=document.getElementById('v-cliente');
+  const list=document.getElementById('ac-cliente-list');
+  inp.value=el.dataset.val;
+  list.classList.remove('open');
+  onClienteChange();
+}
+// keyboard nav for cliente autocomplete
+document.addEventListener('keydown',function(e){
+  const list=document.getElementById('ac-cliente-list');
+  if(!list||!list.classList.contains('open'))return;
+  const active=document.activeElement;
+  if(active&&active.id!=='v-cliente')return;
+  const items=list.querySelectorAll('.ac-item');
+  if(!items.length)return;
+  let idx=window._acClienteIdx||0;
+  if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(idx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(idx-1,0);}
+  else if(e.key==='Enter'){e.preventDefault();acSelCliente(items[idx]);return;}
+  else if(e.key==='Escape'){list.classList.remove('open');return;}
+  else return;
+  items.forEach(i=>i.classList.remove('active'));
+  items[idx].classList.add('active');
+  items[idx].scrollIntoView({block:'nearest'});
+  window._acClienteIdx=idx;
+});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#v-cliente')&&!e.target.closest('#ac-cliente-list')){
+    const l=document.getElementById('ac-cliente-list');if(l)l.classList.remove('open');
+  }
+  if(!e.target.closest('#v-cidade-destino')&&!e.target.closest('#ac-cidade-list')){
+    const l=document.getElementById('ac-cidade-list');if(l)l.classList.remove('open');
+  }
+});
+
+// ─────────── AUTOCOMPLETE CIDADE (API IBGE) ───────────
+window._acCidadesCache={};
+async function onUfDestinoChange(skipClear){
+  const uf=document.getElementById('v-uf-destino')?.value;
+  const cidadeInp=document.getElementById('v-cidade-destino');
+  if(!skipClear&&cidadeInp)cidadeInp.value='';
+  if(!uf||uf==='FÁBRICA')return;
+  if(window._acCidadesCache[uf])return; // already cached
+  try{
+    const resp=await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/'+uf+'/municipios?orderBy=nome');
+    if(!resp.ok)return;
+    const data=await resp.json();
+    window._acCidadesCache[uf]=data.map(m=>m.nome.toUpperCase());
+  }catch(e){console.warn('Erro ao buscar cidades IBGE:',e);}
+}
+function acCidade(){
+  const inp=document.getElementById('v-cidade-destino');
+  const list=document.getElementById('ac-cidade-list');
+  if(!inp||!list)return;
+  const uf=document.getElementById('v-uf-destino')?.value;
+  const q=(inp.value||'').trim().toUpperCase();
+  if(q.length<1||!uf||!window._acCidadesCache[uf]){list.classList.remove('open');return;}
+  const filtered=window._acCidadesCache[uf].filter(c=>c.includes(q)).slice(0,12);
+  if(!filtered.length){list.classList.remove('open');return;}
+  list.innerHTML=filtered.map((c,i)=>
+    `<div class="ac-item${i===0?' active':''}" data-val="${c.replace(/"/g,'&quot;')}" onmousedown="acSelCidade(this)">${c}</div>`
+  ).join('');
+  list.classList.add('open');
+  window._acCidadeIdx=0;
+}
+function acSelCidade(el){
+  const inp=document.getElementById('v-cidade-destino');
+  const list=document.getElementById('ac-cidade-list');
+  inp.value=el.dataset.val;
+  list.classList.remove('open');
+}
+// keyboard nav for cidade autocomplete
+document.addEventListener('keydown',function(e){
+  const list=document.getElementById('ac-cidade-list');
+  if(!list||!list.classList.contains('open'))return;
+  const active=document.activeElement;
+  if(active&&active.id!=='v-cidade-destino')return;
+  const items=list.querySelectorAll('.ac-item');
+  if(!items.length)return;
+  let idx=window._acCidadeIdx||0;
+  if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(idx+1,items.length-1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(idx-1,0);}
+  else if(e.key==='Enter'){e.preventDefault();acSelCidade(items[idx]);return;}
+  else if(e.key==='Escape'){list.classList.remove('open');return;}
+  else return;
+  items.forEach(i=>i.classList.remove('active'));
+  items[idx].classList.add('active');
+  items[idx].scrollIntoView({block:'nearest'});
+  window._acCidadeIdx=idx;
+});
 
 function exportarVendasCSV(){
   const db=loadVendas();
