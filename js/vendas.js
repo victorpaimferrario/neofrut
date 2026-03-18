@@ -513,11 +513,61 @@ function renderVendasPendentes(){
 
 async function marcarPago(id){
   const db=loadVendas();const v=db.find(v=>v.id===id);if(!v)return;
+  if(!confirm('Confirmar pagamento de '+v.cliente+'?\n'+fmtNum(v.qtde)+' cocos · '+fmtR(v.valorRecebido||v.total)))return;
   v.status='PAGO';v.dataDeposito=v.dataDeposito||today();
   saveVendas(db);
   await salvarVendaSupabase(v);
-  renderVendasPendentes();renderVendasLista();
+  renderVendasPendentes();renderVendasLista();renderVendasPainel();
   showToast('✓ '+v.cliente+' — marcada como paga');
+}
+
+function editarVenda(id){
+  const db=loadVendas();
+  const v=db.find(x=>x.id===id);
+  if(!v)return;
+  // mudar para aba Nova Venda
+  showVendasTab('nova');
+  // preencher formulário
+  const set=(sel,val)=>{const el=document.getElementById(sel);if(el)el.value=val||'';};
+  set('v-data',v.data);
+  set('v-cliente',v.cliente);
+  set('v-nf',v.nf);
+  set('v-total',v.total||'');
+  set('v-frete',v.frete||'');
+  set('v-recebido',v.valorRecebido||'');
+  set('v-status',v.status||'PAGO');
+  set('v-deposito',v.dataDeposito||'');
+  set('v-uf-destino',v.ufDestino||'');
+  set('v-cidade-destino',v.cidadeDestino||'');
+  // áreas
+  ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{
+    const el=document.getElementById('va-'+a);
+    if(el){el.value=(v.areas&&v.areas[a])||'';el.classList.toggle('filled',(v.areas&&v.areas[a])>0);}
+  });
+  const tot=document.getElementById('va-total');
+  if(tot){tot.value=v.qtde||'';tot.classList.toggle('filled',(v.qtde||0)>0);}
+  // modo litro
+  const isLitro=v.tipoVenda==='litro';
+  const chk=document.getElementById('v-modo-litro');
+  if(chk)chk.checked=isLitro;
+  document.getElementById('v-campos-litro').style.display=isLitro?'':'none';
+  if(isLitro){
+    set('v-peso',v.pesoKg||'');
+    set('v-litragem',v.litragem||'');
+    set('v-vlitro',v.vPorLitro||'');
+  }
+  // pré-carregar cidades da UF
+  if(v.ufDestino&&v.ufDestino!=='FÁBRICA'){
+    onUfDestinoChange(true);
+  }
+  // marcar que está editando
+  const dataEl=document.getElementById('v-data');
+  dataEl.dataset.editandoId=String(id);
+  // atualizar cálculos
+  calcVenda();
+  // scroll para o topo do formulário
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('Editando venda de '+v.cliente+' — altere e clique Salvar');
 }
 
 async function excluirVenda(id){
