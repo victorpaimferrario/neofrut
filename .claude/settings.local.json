@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '11,538p' \"G:/Meu Drive/1 - SISTEMA NEOFRUT/neofrut/index.html\")",
+      "Bash(\"G:/Meu Drive/1 - SISTEMA NEOFRUT/neofrut/styles.css\")",
+      "Bash(sed -n '1095,4897p' \"G:/Meu Drive/1 - SISTEMA NEOFRUT/neofrut/index.html\")",
+      "Bash(\"G:/Meu Drive/1 - SISTEMA NEOFRUT/neofrut/app.js\")"
+    ]
+  }
+}
