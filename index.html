@@ -651,6 +651,82 @@
   </div>
 </div>
 
+<!-- SIDE PANEL EDITAR VENDA -->
+<div class="side-panel-overlay" id="edit-venda-overlay" onclick="closeEditVendaPanel()"></div>
+<div class="side-panel" id="edit-venda-panel">
+  <div class="side-panel-header">
+    <div>
+      <div class="side-panel-title" id="ev-title">Editar Venda</div>
+      <div class="side-panel-sub" id="ev-sub"></div>
+    </div>
+    <button class="side-panel-close" onclick="closeEditVendaPanel()">✕</button>
+  </div>
+  <div class="side-panel-body">
+    <div id="ev-erro" style="display:none;background:var(--vermelho-bg);color:var(--vermelho);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:12px"></div>
+    <div class="form-group">
+      <label class="form-label">Data</label>
+      <input type="date" id="ev-data" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cliente</label>
+      <input type="text" id="ev-cliente" class="form-input" placeholder="Nome do cliente">
+    </div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group">
+        <label class="form-label">Nº NF / Recibo</label>
+        <input type="text" id="ev-nf" class="form-input" placeholder="ex: 2416">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select id="ev-status" class="form-input">
+          <option value="PAGO">PAGO</option>
+          <option value="PENDENTE">PENDENTE</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group">
+        <label class="form-label">UF Destino</label>
+        <select id="ev-uf" class="form-input"><option value="">—</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cidade Destino</label>
+        <input type="text" id="ev-cidade" class="form-input" placeholder="Cidade">
+      </div>
+    </div>
+    <label class="form-label">Cocos por Área</label>
+    <div class="areas-venda" style="margin-bottom:16px" id="ev-areas-grid"></div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group">
+        <label class="form-label">Valor Total (R$)</label>
+        <input type="number" id="ev-total" class="form-input" step="0.01" oninput="calcEditVenda()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Frete (R$)</label>
+        <input type="number" id="ev-frete" class="form-input" step="0.01" oninput="calcEditVenda()">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:16px">
+      <div class="form-group">
+        <label class="form-label">Valor Recebido (R$)</label>
+        <input type="number" id="ev-recebido" class="form-input" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Depósito</label>
+        <input type="date" id="ev-deposito" class="form-input">
+      </div>
+    </div>
+    <div id="ev-calc" class="vcalc" style="margin-bottom:16px">
+      <div class="vcalc-item"><div class="vcalc-label">COCOS</div><div class="vcalc-val" id="ev-calc-cocos">—</div></div>
+      <div class="vcalc-item"><div class="vcalc-label">R$/COCO</div><div class="vcalc-val" id="ev-calc-preco">—</div></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarEditVenda()">Salvar Alterações</button>
+      <button class="btn" style="padding:12px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:8px" onclick="closeEditVendaPanel()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- PÁGINA MERCADOS -->
 <div id="page-mercados" class="page">
 <div class="page-title">🌎 Mercados</div>
