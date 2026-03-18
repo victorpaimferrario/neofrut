@@ -337,25 +337,6 @@
   /* ALERTA DE QUEDA */
   .alerta-queda { font-size: 13px; margin-left: 5px; cursor: help; vertical-align: middle; }
 
-  /* DRAWER DE ÁREA */
-  .area-drawer { position: fixed; top: 0; right: -72%; width: 70%; height: 100vh; background: var(--bg); border-left: 2px solid var(--accent); z-index: 148; transition: right 0.32s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; box-shadow: -8px 0 40px rgba(0,0,0,0.15); }
-  .area-drawer.open { right: 0; }
-  .area-drawer-header { padding: 14px 20px; background: linear-gradient(135deg, #e0f0d8, #d4eacc); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-  .area-drawer-close { background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1; transition: color 0.15s; margin-left: auto; }
-  .area-drawer-close:hover { color: var(--text); }
-  .area-drawer-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
-  .area-drawer-overlay { position: fixed; inset: 0; background: rgba(26,58,26,0.3); z-index: 147; display: none; backdrop-filter: blur(2px); }
-  .area-drawer-overlay.open { display: block; }
-  @media (max-width: 768px) {
-    .area-drawer { width: 100%; right: -100%; }
-  }
-  /* BOTÕES DE ÁREA — LANÇAMENTO */
-  .area-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-  .area-btn { padding: 8px 16px; border-radius: 8px; font-family: var(--font-main); font-size: 13px; font-weight: 700; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); transition: all 0.15s; }
-  .area-btn:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
-  .area-btn.ativo { background: var(--forest); color: #fff; border-color: var(--forest); box-shadow: 0 2px 8px rgba(26,92,26,0.25); }
-  .area-btn.todas.ativo { background: var(--accent); border-color: var(--accent); }
-
   /* EDIÇÃO INLINE NO DRAWER */
   .inline-inputs { display: flex; gap: 4px; align-items: center; }
   .inline-inp { width: 70px; padding: 4px 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: var(--font-mono); font-size: 12px; text-align: right; transition: border-color 0.12s; }
@@ -405,65 +386,65 @@
   .vrank-bar{height:6px;background:var(--accent);border-radius:3px;min-width:4px}
   .vrank-val{font-size:12px;font-family:var(--font-mono);color:var(--forest);font-weight:700}
 
-  /* ─── VENDAS ─── */
-  .vd-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:24px;flex-wrap:wrap}
-  .vd-tab{padding:10px 18px;font-size:13px;font-weight:700;font-family:var(--font-main);color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s}
-  .vd-tab:hover{color:var(--text)}
-  .vd-tab.active{color:var(--forest);border-bottom-color:var(--accent)}
-  .vd-sec{display:none}
-  .vd-sec.active{display:block}
-  .vkpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-  .vkpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-  .vkpi.destaque{border-color:var(--accent);background:var(--verde-bg)}
-  .vkpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:6px}
-  .vkpi-val{font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--forest)}
-  .vkpi-sub{font-size:11px;color:var(--muted);margin-top:2px}
-  .vtable{width:100%;border-collapse:collapse;font-size:12px}
-  .vtable th{background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);white-space:nowrap}
-  .vtable td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
-  .vtable tr:hover td{background:var(--surface2)}
-  .vtable tr.pendente td{background:rgba(234,179,8,0.04)}
-  .badge-pago{background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
-  .badge-pendente{background:var(--amarelo-bg);color:#854d0e;border:1px solid var(--amarelo-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
-  .vform{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:700px}
-  .areas-venda{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
-  .av-wrap{display:flex;flex-direction:column;gap:4px}
-  .av-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted)}
-  .av-inp{width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:13px;text-align:right;transition:border-color 0.12s}
-  .av-inp:focus{outline:none;border-color:var(--accent);background:#d8f0e8}
-  .av-inp.filled{border-color:var(--verde-border);color:var(--forest);font-weight:700}
-  .vcalc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap}
-  .vcalc-item{text-align:center}
-  .vcalc-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:2px}
-  .vcalc-val{font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--forest)}
-  .vfiltros{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
-  .vfiltros select,.vfiltros input{padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;font-family:var(--font-mono)}
-  .vfiltros input{min-width:160px}
-  .vrank-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
-  .vrank-pos{font-size:12px;font-weight:800;color:var(--muted);min-width:20px}
-  .vrank-nome{flex:1;font-size:13px;font-weight:700}
-  .vrank-bar{height:6px;background:var(--accent);border-radius:3px;min-width:4px}
-  .vrank-val{font-size:12px;font-family:var(--font-mono);color:var(--forest);font-weight:700}
-  @media (max-width: 600px) {
+  /* ── RESPONSIVE: TABLET (max 900px) ── */
+  @media (max-width: 900px) {
+    .proj-cards { grid-template-columns: 1fr 1fr; }
+    .clima-grid { grid-template-columns: repeat(3, 1fr); }
+    .painel-grid { grid-template-columns: 1fr; }
+    .modal-dias-grid { grid-template-columns: repeat(5, 1fr); }
+    .areas-venda { grid-template-columns: repeat(4, 1fr); }
+  }
 
+  /* ── RESPONSIVE: MOBILE (max 600px) ── */
+  @media (max-width: 600px) {
     .side-panel { width: 100vw; right: -100vw; }
     nav { padding: 0 12px; }
-    .page { padding: 16px; }
+    .nav-tabs { gap: 0; }
+    .nav-tab { padding: 10px 8px; font-size: 10px; }
+    .page { padding: 12px; }
     .kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .areas-grid { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
     .eitos-table th:nth-child(4), .eitos-table td:nth-child(4),
     .eitos-table th:nth-child(5), .eitos-table td:nth-child(5) { display: none; }
+    /* Projeção */
+    .proj-cards { grid-template-columns: 1fr; }
+    /* Vendas */
+    .vform { padding: 16px; max-width: 100%; }
+    .areas-venda { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .vkpi-val { font-size: 18px; }
+    .vfiltros input { min-width: 120px; }
+    .vd-tab { padding: 8px 10px; font-size: 12px; }
+    /* Mercados */
+    .clima-grid { grid-template-columns: repeat(2, 1fr); }
+    .painel-grid { grid-template-columns: 1fr; }
+    .modal-dias-grid { grid-template-columns: repeat(4, 1fr); }
+    /* Gestão */
+    .gestao-card { max-width: 100%; }
+    .gestao-lista { max-width: 100%; }
+    /* Modais */
+    .modal { padding: 18px; max-width: 95vw; }
+    .modal-box { max-width: 95vw; padding: 16px; }
+    .modal-clima-wide { max-width: 95vw; }
+    /* Lançamento sticky */
+    .lancamento-sticky { padding: 10px 12px; margin: 0 -12px; flex-wrap: wrap; gap: 8px; }
+    .search-input { width: 100%; }
+    /* Comparativo */
+    .comp-body { padding: 12px; }
+  }
+
+  /* ── RESPONSIVE: SMALL MOBILE (max 400px) ── */
+  @media (max-width: 400px) {
+    .areas-venda { grid-template-columns: repeat(2, 1fr); }
+    .clima-grid { grid-template-columns: 1fr 1fr; }
+    .modal-dias-grid { grid-template-columns: repeat(3, 1fr); }
+    .vkpi-grid { gap: 8px; }
+    .vkpi { padding: 10px 12px; }
+    .vkpi-val { font-size: 16px; }
+    body { padding: 12px; }
   }
 
 /* ── MERCADOS ── */
-:root{--bg:#f0f7ee;--surface:#fff;--surface2:#e8f3e4;--border:#c8dfc0;--text:#1a3a1a;--muted:#5a7a52;--verde:#1e7e34;--verde-bg:#d4edda;--verde-border:#b8ddc0;--vermelho:#dc3545;--vermelho-bg:#fde8ea;--amarelo:#856404;--forest:#1a5c1a;--teal:#1a7a6e;--font-main:'Syne',sans-serif;--font-mono:'DM Mono',monospace;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:var(--font-main);padding:24px;}
-.page-title{font-size:22px;font-weight:800;margin-bottom:4px;}
-.page-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
-.sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:4px;}
-.sec-desc{font-size:11px;color:var(--muted);margin-bottom:12px;}
 .alerta{display:none;background:var(--vermelho-bg);border:2px solid var(--vermelho);border-radius:12px;padding:14px 20px;margin-bottom:20px;font-size:13px;font-weight:700;color:var(--vermelho);gap:10px;align-items:flex-start;}
 .alerta.show{display:flex;}
 .clima-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px;}
@@ -531,5 +512,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-main);padding
 .ac-item{padding:8px 12px;font-size:13px;cursor:pointer;transition:background .15s;}
 .ac-item:hover,.ac-item.active{background:var(--verde-bg);color:var(--forest);}
 .ac-item .ac-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+/* Tables responsive wrapper */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .cli-table{width:100%;border-collapse:collapse;}
 .cli-table th{padding:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
