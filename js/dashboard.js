@@ -152,17 +152,14 @@ function renderProjecao() {
   const wrap = document.getElementById('projecao-wrap');
   if (!wrap) return;
 
-  // Calcular janelas de semana de trabalho (seg→sex)
+  // Semana atual: segunda a sexta da semana em que estamos
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const dow   = hoje.getDay(); // 0=dom,1=seg...6=sab
-  const diasAteSeg = dow === 0 ? 1 : dow === 6 ? 2 : -(dow - 1); // ajuste para seg
-  // se hoje é sáb(6) ou dom(0), avançar para próxima seg
-  const offsetSeg = (dow === 0) ? 1 : (dow === 6) ? 2 : -(dow - 1);
-  const segEsta = new Date(hoje); segEsta.setDate(hoje.getDate() + offsetSeg);
-  // se offsetSeg negativo significa que seg já passou nesta semana — ficamos na seg atual
-  // revalidar: garantir que segEsta >= hoje para "esta semana"
-  if (segEsta < hoje) segEsta.setDate(segEsta.getDate() + 7);
+  const dow = hoje.getDay(); // 0=dom,1=seg...6=sab
+  // Voltar para segunda desta semana (ou avançar se dom)
+  const offsetParaSeg = dow === 0 ? -6 : -(dow - 1);
+  const segEsta = new Date(hoje); segEsta.setDate(hoje.getDate() + offsetParaSeg);
   const sexEsta = new Date(segEsta); sexEsta.setDate(segEsta.getDate() + 4);
+  // Próxima semana
   const segProx = new Date(segEsta); segProx.setDate(segEsta.getDate() + 7);
   const sexProx = new Date(segProx); sexProx.setDate(segProx.getDate() + 4);
 
@@ -177,7 +174,7 @@ function renderProjecao() {
     'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
   };
 
-  // Função auxiliar: média histórica do eito
+  // Média histórica do eito
   function mediaEito(e) {
     const hist = e.historico || [];
     const ult  = getUltima(e);
@@ -186,102 +183,77 @@ function renderProjecao() {
       : (ult ? ult.total : 0);
   }
 
-  // Card 1 — Esta semana:
-  // vencidos (>=21 dias) + os que vencem até sexta desta semana
-  function calcEsta() {
+  // Calcula projeção para um período (seg a sex)
+  // Retorna: total, porArea com {cocos, maxDias, nEitos}
+  function calcPeriodo(segInicio, sexFim) {
     let totalGeral = 0;
-    const porArea  = {};
+    const porArea = {};
     for (const [area, eitos] of Object.entries(DB)) {
-      let totalArea = 0;
+      let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
         const ult = getUltima(e);
         if (!ult) continue;
-        const diasDesdeUlt = diasDesde(ult.data);
-        const dataProxima  = new Date(ult.data + 'T00:00:00');
+        const d = diasDesde(ult.data);
+        const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
-        // inclui: já vencidos OU vence até sexta desta semana
-        if (diasDesdeUlt >= 21 || dataProxima <= sexEsta) {
+        // Inclui: já vencidos (>=21 dias) OU vence dentro do período
+        if (d >= 21 || (dataProxima >= segInicio && dataProxima <= sexFim)) {
           const m = mediaEito(e);
-          totalArea  += m;
+          totalArea += m;
           totalGeral += m;
+          nEitosArea++;
+          if (d > maxDiasArea) maxDiasArea = d;
         }
       }
-      if (totalArea > 0) porArea[area] = totalArea;
+      if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
     }
     return { total: totalGeral, porArea };
   }
 
-  // Card 2 — Próxima semana:
-  // eitos cujo ciclo vence entre seg e sex da próxima semana
-  function calcProxima() {
-    // vencidos não colhidos (acumulados desta semana) + os que vencem na próxima semana
-    let totalGeral = 0;
-    const porArea  = {};
-    for (const [area, eitos] of Object.entries(DB)) {
-      let totalArea = 0;
-      for (const e of eitos) {
-        const ult = getUltima(e);
-        if (!ult) continue;
-        const diasDesdeUlt = diasDesde(ult.data);
-        const dataProxima  = new Date(ult.data + 'T00:00:00');
-        dataProxima.setDate(dataProxima.getDate() + 21);
-        // acumulados: vencidos que NÃO entraram nesta semana por já estarem no calcEsta
-        // mas ainda não foram colhidos — diasDesdeUlt >= 21 E data do próximo ciclo < segProx
-        const acumulado  = diasDesdeUlt >= 21 && dataProxima < segProx;
-        // novos: vencem exatamente na próxima semana
-        const novoProx   = dataProxima >= segProx && dataProxima <= sexProx;
-        if (acumulado || novoProx) {
-          const m = mediaEito(e);
-          totalArea  += m;
-          totalGeral += m;
-        }
-      }
-      if (totalArea > 0) porArea[area] = totalArea;
-    }
-    return { total: totalGeral, porArea };
-  }
-
-  // Card 3 — Próximos 21 dias:
-  // todos que vencem em até 21 dias a partir de hoje (inclui já vencidos)
+  // Card 3 — Próximos 21 dias (ciclo completo)
   function calc21() {
     let totalGeral = 0;
-    const porArea  = {};
+    const porArea = {};
+    const limite = new Date(hoje); limite.setDate(hoje.getDate() + 21);
     for (const [area, eitos] of Object.entries(DB)) {
-      let totalArea = 0;
+      let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
         const ult = getUltima(e);
         if (!ult) continue;
-        const diasDesdeUlt = diasDesde(ult.data);
-        if (diasDesdeUlt >= 0) { // tem colheita registrada
-          const diasAteProximo = 21 - diasDesdeUlt;
-          if (diasAteProximo <= 21) { // vence em até 21 dias (inclui já vencidos)
-            const m = mediaEito(e);
-            totalArea  += m;
-            totalGeral += m;
-          }
+        const d = diasDesde(ult.data);
+        const dataProxima = new Date(ult.data + 'T00:00:00');
+        dataProxima.setDate(dataProxima.getDate() + 21);
+        // já vencidos OU vencem nos próximos 21 dias
+        if (d >= 21 || dataProxima <= limite) {
+          const m = mediaEito(e);
+          totalArea += m;
+          totalGeral += m;
+          nEitosArea++;
+          if (d > maxDiasArea) maxDiasArea = d;
         }
       }
-      if (totalArea > 0) porArea[area] = totalArea;
+      if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
     }
     return { total: totalGeral, porArea };
   }
 
-  const r1 = calcEsta();
-  const r2 = calcProxima();
+  const r1 = calcPeriodo(segEsta, sexEsta);
+  const r2 = calcPeriodo(segProx, sexProx);
   const r3 = calc21();
 
   const buildCard = (r, icon, label, sublabel, destaque) => {
+    // Ordenar por dias vencidos (mais velho primeiro)
     const breakdown = Object.entries(r.porArea)
-      .sort((a,b) => b[1]-a[1])
-      .slice(0, 5)
-      .map(([area, val]) => `
-        <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area}">
+      .sort((a,b) => b[1].maxDias - a[1].maxDias)
+      .map(([area, info]) => `
+        <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area} · ${info.nEitos} eitos">
           <span class="proj-row-area">${nomes[area]||area}</span>
-          <span class="proj-row-val">${fmtNum(val)}</span>
+          <span style="font-size:11px;font-family:var(--font-mono);color:${info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};min-width:40px;text-align:center">${info.maxDias}d</span>
+          <span class="proj-row-val">${fmtNum(info.cocos)}</span>
         </div>`).join('');
-    const eitos = Object.values(r.porArea).length;
+    const totalEitos = Object.values(r.porArea).reduce((s,v) => s + v.nEitos, 0);
     const borda = destaque ? 'border:2px solid var(--accent);' : '';
-    const btnLancar = destaque && eitos > 0
+    const btnLancar = destaque && totalEitos > 0
       ? `<button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>`
       : '';
     return `
@@ -289,8 +261,11 @@ function renderProjecao() {
         <div class="proj-card-label">${icon} ${label}</div>
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
-        <div class="proj-card-sub">${eitos} eito${eitos!==1?'s':''} prontos</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.3">Projeção baseada na média histórica dos eitos vencidos ou a vencer no período</div>
+        <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.3">Média histórica dos eitos vencidos ou a vencer no período</div>
+        <div style="display:flex;gap:4px;font-size:9px;color:var(--muted);margin-top:2px;padding:0 4px">
+          <span style="flex:1">ÁREA</span><span style="min-width:40px;text-align:center">DIAS</span><span style="min-width:50px;text-align:right">PROJEÇÃO</span>
+        </div>
         <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
         ${btnLancar}
       </div>`;
