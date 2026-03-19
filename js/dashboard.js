@@ -246,10 +246,10 @@ function renderProjecao() {
     const breakdown = Object.entries(r.porArea)
       .sort((a,b) => b[1].maxDias - a[1].maxDias)
       .map(([area, info]) => `
-        <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area} · ${info.nEitos} eitos">
-          <span class="proj-row-area">${nomes[area]||area}</span>
-          <span style="font-size:11px;font-family:var(--font-mono);color:${info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};min-width:40px;text-align:center">${info.maxDias}d</span>
-          <span class="proj-row-val">${fmtNum(info.cocos)}</span>
+        <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area} · ${info.nEitos} eitos" style="display:grid;grid-template-columns:1fr 50px 70px;align-items:center;padding:4px 6px;border-radius:6px">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">${nomes[area]||area}</span>
+          <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:${info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};text-align:center">${info.maxDias}d</span>
+          <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:var(--forest);text-align:right">${fmtNum(info.cocos)}</span>
         </div>`).join('');
     const totalEitos = Object.values(r.porArea).reduce((s,v) => s + v.nEitos, 0);
     const borda = destaque ? 'border:2px solid var(--accent);' : '';
@@ -262,9 +262,11 @@ function renderProjecao() {
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.3">Média histórica dos eitos vencidos ou a vencer no período</div>
-        <div style="display:flex;gap:4px;font-size:9px;color:var(--muted);margin-top:2px;padding:0 4px">
-          <span style="flex:1">ÁREA</span><span style="min-width:40px;text-align:center">DIAS</span><span style="min-width:50px;text-align:right">PROJEÇÃO</span>
+        <div style="font-size:9px;color:var(--muted);margin-top:6px;line-height:1.3">Média histórica dos eitos vencidos ou a vencer no período</div>
+        <div style="display:grid;grid-template-columns:1fr 50px 70px;padding:6px 6px 2px;margin-top:4px;border-bottom:1px solid var(--border)">
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Área</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center">Dias</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:right">Projeção</span>
         </div>
         <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
         ${btnLancar}
