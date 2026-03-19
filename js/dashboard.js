@@ -192,25 +192,38 @@ function renderProjecao() {
     for (const [area, eitos] of Object.entries(DB)) {
       let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
+        const hist = e.historico || [];
         const ult = getUltima(e);
         if (!ult) continue;
-        const d = diasDesde(ult.data);
-        const dataProxima = new Date(ult.data + 'T00:00:00');
-        dataProxima.setDate(dataProxima.getDate() + 21);
-        if (d >= 21 || dataProxima <= sexEsta) {
+
+        // Verificar se este eito tem colheita feita NESTA semana
+        const colheitasEstaSemana = hist.filter(h => h.data >= segISO && h.data <= sexISO);
+        const foiColhidoEstaSemana = colheitasEstaSemana.length > 0;
+
+        if (foiColhidoEstaSemana) {
+          // Eito já colhido: somar os cocos efetivamente colhidos
+          colhidoGeral += colheitasEstaSemana.reduce((s,h) => s + h.total, 0);
+          // Calcular projeção usando a média (entra no total projetado)
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
           nEitosArea++;
-          if (d > maxDiasArea) maxDiasArea = d;
-        }
-      }
-      // Somar colheitas já feitas nesta semana
-      for (const e of eitos) {
-        const hist = e.historico || [];
-        for (const h of hist) {
-          if (h.data >= segISO && h.data <= sexISO) {
-            colhidoGeral += h.total;
+          // Dias: usar a colheita ANTERIOR para saber quantos dias estava vencido
+          const anteriores = hist.filter(h => h.data < segISO);
+          const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
+          const diasAnterior = ultAnterior ? Math.round((segEsta - new Date(ultAnterior.data + 'T00:00:00')) / 86400000) : 0;
+          if (diasAnterior > maxDiasArea) maxDiasArea = diasAnterior;
+        } else {
+          // Eito não colhido: verificar se está vencido ou vence até sexta
+          const d = diasDesde(ult.data);
+          const dataProxima = new Date(ult.data + 'T00:00:00');
+          dataProxima.setDate(dataProxima.getDate() + 21);
+          if (d >= 21 || dataProxima <= sexEsta) {
+            const m = mediaEito(e);
+            totalArea += m;
+            totalGeral += m;
+            nEitosArea++;
+            if (d > maxDiasArea) maxDiasArea = d;
           }
         }
       }
