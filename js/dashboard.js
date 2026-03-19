@@ -185,8 +185,10 @@ function renderProjecao() {
 
   // Card 1 — Esta semana: vencidos (>=21d) + vencem até sexta desta semana
   function calcEsta() {
-    let totalGeral = 0;
+    let totalGeral = 0, colhidoGeral = 0;
     const porArea = {};
+    const segISO = segEsta.toISOString().slice(0,10);
+    const sexISO = sexEsta.toISOString().slice(0,10);
     for (const [area, eitos] of Object.entries(DB)) {
       let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
@@ -203,12 +205,21 @@ function renderProjecao() {
           if (d > maxDiasArea) maxDiasArea = d;
         }
       }
+      // Somar colheitas já feitas nesta semana
+      for (const e of eitos) {
+        const hist = e.historico || [];
+        for (const h of hist) {
+          if (h.data >= segISO && h.data <= sexISO) {
+            colhidoGeral += h.total;
+          }
+        }
+      }
       if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
     }
-    return { total: totalGeral, porArea };
+    return { total: totalGeral, porArea, colhido: colhidoGeral };
   }
 
-  // Card 2 — Próxima semana: SOMENTE eitos que vencem entre seg e sex da próxima semana
+  // Card 2 — Próxima semana: eitos que vencem na próxima semana + acumulados não colhidos desta semana
   function calcProxima() {
     let totalGeral = 0;
     const porArea = {};
@@ -220,13 +231,15 @@ function renderProjecao() {
         const d = diasDesde(ult.data);
         const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
-        // Somente os que vencem na próxima semana (não inclui acumulados)
-        if (dataProxima >= segProx && dataProxima <= sexProx) {
+        // Acumulado: vencidos que não foram colhidos (última colheita antes desta semana)
+        const acumulado = d >= 21 && ult.data < segEsta.toISOString().slice(0,10);
+        // Novos: vencem na próxima semana
+        const novoProx = dataProxima >= segProx && dataProxima <= sexProx;
+        if (acumulado || novoProx) {
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
           nEitosArea++;
-          // Dias: quantos dias terá desde a última colheita na sexta da próxima semana
           const diasNaSex = Math.round((sexProx - new Date(ult.data + 'T00:00:00')) / 86400000);
           if (diasNaSex > maxDiasArea) maxDiasArea = diasNaSex;
         }
@@ -236,7 +249,7 @@ function renderProjecao() {
     return { total: totalGeral, porArea };
   }
 
-  // Card 3 — Próximos 21 dias: eitos que vencem de HOJE até 21 dias (sem repetir os de esta semana/próxima)
+  // Card 3 — Próximos 21 dias: todos que vencem em até 21 dias (inclui vencidos + acumulados)
   function calc21() {
     let totalGeral = 0;
     const porArea = {};
@@ -249,7 +262,6 @@ function renderProjecao() {
         const d = diasDesde(ult.data);
         const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
-        // Todos que já venceram OU vencem nos próximos 21 dias
         if (d >= 21 || dataProxima <= limite) {
           const m = mediaEito(e);
           totalArea += m;
@@ -267,9 +279,9 @@ function renderProjecao() {
   const r2 = calcProxima();
   const r3 = calc21();
 
-  const buildCard = (r, icon, label, sublabel, destaque) => {
-    // Ordenar por dias vencidos (mais velho primeiro)
-    const breakdown = Object.entries(r.porArea)
+  // Breakdown de áreas (usado em todos os cards)
+  function buildBreakdown(porArea) {
+    return Object.entries(porArea)
       .sort((a,b) => b[1].maxDias - a[1].maxDias)
       .map(([area, info]) => `
         <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area} · ${info.nEitos} eitos" style="display:grid;grid-template-columns:1fr 50px 70px;align-items:center;padding:4px 6px;border-radius:6px">
@@ -277,35 +289,70 @@ function renderProjecao() {
           <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:${info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};text-align:center">${info.maxDias}d</span>
           <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:var(--forest);text-align:right">${fmtNum(info.cocos)}</span>
         </div>`).join('');
+  }
+
+  function buildHeader() {
+    return `<div style="display:grid;grid-template-columns:1fr 50px 70px;padding:6px 6px 2px;margin-top:4px;border-bottom:1px solid var(--border)">
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Área</span>
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center">Dias</span>
+      <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:right">Projeção</span>
+    </div>`;
+  }
+
+  // Card "Esta semana" com colhido / a colher
+  const totalEitosEsta = Object.values(r1.porArea).reduce((s,v) => s + v.nEitos, 0);
+  const aColher = Math.max(0, r1.total - r1.colhido);
+  const pctColhido = r1.total > 0 ? Math.round(r1.colhido / r1.total * 100) : 0;
+  const pctAColher = r1.total > 0 ? 100 - pctColhido : 0;
+  const breakdownEsta = buildBreakdown(r1.porArea);
+  const cardEsta = `
+    <div class="proj-card" style="border:2px solid var(--accent);">
+      <div class="proj-card-label">📅 Esta semana</div>
+      <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${fmtSemana(segEsta, sexEsta)}</div>
+      <div class="proj-card-val">${fmtNum(r1.total)}</div>
+      <div class="proj-card-sub">${totalEitosEsta} eito${totalEitosEsta!==1?'s':''} prontos</div>
+      <div style="display:flex;gap:12px;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+        <div style="flex:1;text-align:center">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--verde)">✅ Colhido</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--verde)">${fmtNum(r1.colhido)}</div>
+          <div style="font-size:10px;color:var(--muted)">${pctColhido}%</div>
+        </div>
+        <div style="width:1px;background:var(--border)"></div>
+        <div style="flex:1;text-align:center">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 A colher</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho)">${fmtNum(aColher)}</div>
+          <div style="font-size:10px;color:var(--muted)">${pctAColher}%</div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.4">Média histórica dos eitos vencidos ou a vencer no período</div>
+      ${buildHeader()}
+      <div class="proj-breakdown">${breakdownEsta || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
+      <button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>
+    </div>`;
+
+  // Cards genéricos (próxima semana, 21 dias)
+  function buildCardGenerico(r, icon, label, sublabel) {
+    const breakdown = buildBreakdown(r.porArea);
     const totalEitos = Object.values(r.porArea).reduce((s,v) => s + v.nEitos, 0);
-    const borda = destaque ? 'border:2px solid var(--accent);' : '';
-    const btnLancar = destaque && totalEitos > 0
-      ? `<button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>`
-      : '';
     return `
-      <div class="proj-card" style="${borda}">
+      <div class="proj-card">
         <div class="proj-card-label">${icon} ${label}</div>
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
         <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">Média histórica dos eitos vencidos ou a vencer no período</div>
-        <div style="display:grid;grid-template-columns:1fr 50px 70px;padding:6px 6px 2px;margin-top:4px;border-bottom:1px solid var(--border)">
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Área</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center">Dias</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:right">Projeção</span>
-        </div>
+        ${buildHeader()}
         <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
-        ${btnLancar}
       </div>`;
-  };
+  }
 
   wrap.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
       <div class="proj-cards">
-        ${buildCard(r1, '📅', 'Esta semana',    fmtSemana(segEsta, sexEsta), true)}
-        ${buildCard(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx), false)}
-        ${buildCard(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo', false)}
+        ${cardEsta}
+        ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
+        ${buildCardGenerico(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo')}
       </div>
     </div>`;
 }
