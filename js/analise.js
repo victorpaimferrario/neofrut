@@ -2,7 +2,6 @@
 
 // ─────────── ANÁLISE ───────────
 function initAnalise() {
-  const ORDEM_AREAS = ['AREA A1','AREA A2','AREA C','AREA D','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
   const primeiraArea = window._analiseAreaAtiva || ORDEM_AREAS.find(a=>DB[a]) || Object.keys(DB)[0];
   window._analiseAreaAtiva = primeiraArea;
   renderAreaBtnsAnalise(primeiraArea);
@@ -12,7 +11,6 @@ function initAnalise() {
 function renderAreaBtnsAnalise(areaAtiva) {
   const wrap = document.getElementById('analise-area-btns');
   if (!wrap) return;
-  const ORDEM_AREAS = ['AREA A1','AREA A2','AREA C','AREA D','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
   const nomesCurtos = {
     'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
     'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'

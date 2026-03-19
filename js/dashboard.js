@@ -68,17 +68,15 @@ function renderDashboard() {
   }
 
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi vermelho clicavel" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias · clique para ver</div></div>
-    <div class="kpi amarelo clicavel" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias · clique para ver</div></div>
-    <div class="kpi verde clicavel" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias · clique para ver</div></div>
-    <div class="kpi"><div class="kpi-label">Última Colheita</div><div class="kpi-value" style="color:var(--accent2);font-size:16px">${ultimaStr}</div><div class="kpi-sub">${fmtNum(totalCocos)} cocos</div></div>
-    <div class="kpi"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
-    <div class="kpi" style="border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Frutos/Planta/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300 · fazenda inteira</div></div>
+    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias · clique para ver</div></div>
+    <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias · clique para ver</div></div>
+    <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias · clique para ver</div></div>
+    <div class="kpi" style="text-align:center"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
+    <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Frutos/Planta/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300 · fazenda inteira</div></div>
   `;
 
   const grid = document.getElementById('areas-grid');
   grid.innerHTML = '';
-  const ORDEM_AREAS = ['AREA A1','AREA A2','AREA C','AREA D','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
   const areasOrdenadas = ORDEM_AREAS.filter(a=>DB[a]).map(a=>[a,DB[a]]);
   // incluir áreas que existam em DB mas não estejam na ordem definida
   Object.keys(DB).forEach(a=>{if(!ORDEM_AREAS.includes(a))areasOrdenadas.push([a,DB[a]]);});

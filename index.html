@@ -29,20 +29,18 @@
 <div id="app" style="display:none">
 
 <nav>
-  <div style="display:flex;align-items:center;gap:16px;margin-left:auto">
-    <span id="user-email" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
-    <button onclick="logout()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--muted);font-family:var(--font-main)">Sair</button>
-  </div>
   <div class="nav-brand"><img src="logo.png" style="height:36px;width:auto;vertical-align:middle"></div>
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('dashboard')">PAINEL GERAL</button>
     <button class="nav-tab" onclick="showPage('analise')">ANÁLISE</button>
     <button class="nav-tab" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
     <button class="nav-tab" onclick="showPage('vendas')">💰 VENDAS</button>
+    <button class="nav-tab" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
     <button class="nav-tab" onclick="showPage('gestao')">⚙️ GESTÃO</button>
-    <button class="nav-tab" onclick="showPage('mercados')">🌎 MERCADOS</button>
   </div>
   <div class="nav-actions">
+    <span id="user-email" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+    <button onclick="logout()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--muted);font-family:var(--font-main)">Sair</button>
     <button class="btn btn-green" onclick="exportarExcel()">↓ EXPORTAR</button>
   </div>
 </nav>
@@ -591,13 +589,13 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1773813587"></script>
+<script src="js/config.js?v=1773885000"></script>
 <script src="js/utils.js?v=1773813587"></script>
 <script src="js/storage.js?v=1773813587"></script>
 <script src="js/components.js?v=1773813587"></script>
-<script src="js/dashboard.js?v=1773813587"></script>
-<script src="js/lancamento.js?v=1773813587"></script>
-<script src="js/analise.js?v=1773813587"></script>
+<script src="js/dashboard.js?v=1773885000"></script>
+<script src="js/lancamento.js?v=1773885000"></script>
+<script src="js/analise.js?v=1773885000"></script>
 <script src="js/vendas.js?v=1773884000"></script>
 <script src="js/gestao.js?v=1773813587"></script>
 <script src="js/mercados.js?v=1773813587"></script>

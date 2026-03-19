@@ -68,7 +68,8 @@ function initLancamento() {
 function renderAreaBtns(areaAtiva) {
   const wrap = document.getElementById('lanc-area-btns');
   if (!wrap) return;
-  const areas = Object.keys(DB);
+  const areas = ORDEM_AREAS.filter(a => DB[a]);
+  Object.keys(DB).forEach(a => { if (!areas.includes(a)) areas.push(a); });
   const nomesCurtos = {
     'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
     'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
@@ -86,7 +87,13 @@ function selecionarAreaLanc(area) {
 
 function renderLancamento() {
   const filtroArea = window._lancAreaAtiva || 'todas';
-  const areas = filtroArea === 'todas' ? Object.keys(DB) : [filtroArea];
+  let areas;
+  if (filtroArea === 'todas') {
+    areas = ORDEM_AREAS.filter(a => DB[a]);
+    Object.keys(DB).forEach(a => { if (!areas.includes(a)) areas.push(a); });
+  } else {
+    areas = [filtroArea];
+  }
   const tbody = document.getElementById('planilha-tbody');
   _allInputs = [];
 
