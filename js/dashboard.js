@@ -290,6 +290,7 @@ function renderProjecao() {
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${eitos} eito${eitos!==1?'s':''} prontos</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px;line-height:1.3">Projeção baseada na média histórica dos eitos vencidos ou a vencer no período</div>
         <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
         ${btnLancar}
       </div>`;
@@ -743,8 +744,7 @@ function renderAreaTable() {
   }).join('');
 
   tfoot.innerHTML = `<tr style="border-top:2px solid var(--border)">
-    <td class="total-row" colspan="2" style="color:var(--muted);font-size:12px;padding:12px 14px">TOTAL (${rows.length} eitos)</td>
-    <td></td><td></td>
+    <td class="total-row" colspan="5" style="color:var(--muted);font-size:12px;padding:12px 14px">TOTAL (${rows.length} eitos)</td>
     <td class="total-row" style="font-family:var(--font-mono);padding:12px 14px">${fmtNum(totalCocos)}</td>
     <td class="total-row" style="font-family:var(--font-mono);color:var(--muted);padding:12px 14px">${fmtNum(totalPlantas)}</td>
     <td></td><td></td>
