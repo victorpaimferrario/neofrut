@@ -184,46 +184,59 @@ function renderProjecao() {
   }
 
   // Card 1 — Esta semana: vencidos (>=21d) + vencem até sexta desta semana
+  // Formato ISO seguro (sem problemas de timezone do toISOString)
+  function toISO(dt) {
+    return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  }
   function calcEsta() {
     let totalGeral = 0, colhidoGeral = 0;
     const porArea = {};
-    const segISO = segEsta.toISOString().slice(0,10);
-    const sexISO = sexEsta.toISOString().slice(0,10);
+    const segISO = toISO(segEsta);
+    const sexISO = toISO(sexEsta);
     for (const [area, eitos] of Object.entries(DB)) {
       let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
         const hist = e.historico || [];
-        const ult = getUltima(e);
-        if (!ult) continue;
-
-        // Verificar se este eito tem colheita feita NESTA semana
+        // Encontrar a colheita mais recente ANTES desta semana
+        const anteriores = hist.filter(h => h.data < segISO);
+        const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
+        // Colheitas feitas nesta semana por este eito
         const colheitasEstaSemana = hist.filter(h => h.data >= segISO && h.data <= sexISO);
-        const foiColhidoEstaSemana = colheitasEstaSemana.length > 0;
 
-        if (foiColhidoEstaSemana) {
-          // Eito já colhido: somar os cocos efetivamente colhidos
-          colhidoGeral += colheitasEstaSemana.reduce((s,h) => s + h.total, 0);
-          // Calcular projeção usando a média (entra no total projetado)
+        // Determinar se este eito DEVERIA estar na projeção
+        // (baseado na colheita anterior à semana, não na atual)
+        let entraProjecao = false;
+        if (ultAnterior) {
+          const dAnterior = Math.round((segEsta - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
+          const proxColheita = new Date(ultAnterior.data + 'T00:00:00');
+          proxColheita.setDate(proxColheita.getDate() + 21);
+          // Estava vencido na segunda ou venceria até sexta
+          if (dAnterior >= 21 || proxColheita <= sexEsta) {
+            entraProjecao = true;
+            if (dAnterior > maxDiasArea) maxDiasArea = dAnterior;
+          }
+        } else {
+          // Sem colheita anterior: verificar se a última colheita (atual) indica vencimento
+          const ult = getUltima(e);
+          if (ult && colheitasEstaSemana.length === 0) {
+            const d = diasDesde(ult.data);
+            const proxColheita = new Date(ult.data + 'T00:00:00');
+            proxColheita.setDate(proxColheita.getDate() + 21);
+            if (d >= 21 || proxColheita <= sexEsta) {
+              entraProjecao = true;
+              if (d > maxDiasArea) maxDiasArea = d;
+            }
+          }
+        }
+
+        if (entraProjecao) {
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
           nEitosArea++;
-          // Dias: usar a colheita ANTERIOR para saber quantos dias estava vencido
-          const anteriores = hist.filter(h => h.data < segISO);
-          const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
-          const diasAnterior = ultAnterior ? Math.round((segEsta - new Date(ultAnterior.data + 'T00:00:00')) / 86400000) : 0;
-          if (diasAnterior > maxDiasArea) maxDiasArea = diasAnterior;
-        } else {
-          // Eito não colhido: verificar se está vencido ou vence até sexta
-          const d = diasDesde(ult.data);
-          const dataProxima = new Date(ult.data + 'T00:00:00');
-          dataProxima.setDate(dataProxima.getDate() + 21);
-          if (d >= 21 || dataProxima <= sexEsta) {
-            const m = mediaEito(e);
-            totalArea += m;
-            totalGeral += m;
-            nEitosArea++;
-            if (d > maxDiasArea) maxDiasArea = d;
+          // Se já colhido esta semana, somar ao colhido
+          if (colheitasEstaSemana.length > 0) {
+            colhidoGeral += colheitasEstaSemana.reduce((s,h) => s + h.total, 0);
           }
         }
       }
@@ -245,7 +258,7 @@ function renderProjecao() {
         const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
         // Acumulado: vencidos que não foram colhidos (última colheita antes desta semana)
-        const acumulado = d >= 21 && ult.data < segEsta.toISOString().slice(0,10);
+        const acumulado = d >= 21 && ult.data < toISO(segEsta);
         // Novos: vencem na próxima semana
         const novoProx = dataProxima >= segProx && dataProxima <= sexProx;
         if (acumulado || novoProx) {
