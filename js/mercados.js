@@ -368,14 +368,18 @@ async function carregarClima(){
         +'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum'
         +'&timezone=America%2FSao_Paulo&forecast_days=16';
       let resp;
-      const ctrl = new AbortController();
-      const tid = setTimeout(()=>ctrl.abort(), 5000);
-      try{
-        resp = await fetch(url, {signal:ctrl.signal});
-        clearTimeout(tid);
-      }catch(e){
-        clearTimeout(tid);
-        throw e;
+      for(let tentativa=0;tentativa<2;tentativa++){
+        const ctrl = new AbortController();
+        const tid = setTimeout(()=>ctrl.abort(), 10000);
+        try{
+          resp = await fetch(url, {signal:ctrl.signal});
+          clearTimeout(tid);
+          if(resp&&resp.ok) break;
+        }catch(e){
+          clearTimeout(tid);
+          if(tentativa===1) throw e;
+          await new Promise(r=>setTimeout(r,500));
+        }
       }
       if(!resp||!resp.ok) throw new Error('HTTP '+(resp?resp.status:'timeout'));
       const d=await resp.json();const dl=d.daily;

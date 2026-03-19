@@ -19,15 +19,15 @@ function showPage(id) {
   } else if (id === 'vendas') {
     document.querySelectorAll('.nav-tab')[3].classList.add('active');
     initVendas(false);
-  } else if (id === 'gestao') {
-    document.querySelectorAll('.nav-tab')[4].classList.add('active');
-    initGestao();
   } else if (id === 'mercados') {
-    document.querySelectorAll('.nav-tab')[5].classList.add('active');
+    document.querySelectorAll('.nav-tab')[4].classList.add('active');
     if (!window._mercadosIniciado) {
       window._mercadosIniciado = true;
       initMercados();
     }
+  } else if (id === 'gestao') {
+    document.querySelectorAll('.nav-tab')[5].classList.add('active');
+    initGestao();
   }
 }
 
