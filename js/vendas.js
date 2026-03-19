@@ -551,7 +551,7 @@ function abrirModalAReceber(){
   }).join('');
   tfoot.innerHTML=pend.length?'<tr style="font-weight:800"><td colspan="3">TOTAL</td><td style="font-family:var(--font-mono)">'+fmtNum(tCocos)+'</td><td style="font-family:var(--font-mono)">'+fmtR(tot)+'</td><td></td></tr>':'';
   if(!pend.length)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">✅ Nenhuma venda pendente no período</td></tr>';
-  document.getElementById('modal-a-receber').classList.add('active');
+  document.getElementById('modal-a-receber').classList.add('open');
 }
 
 async function marcarPagoModal(id){
