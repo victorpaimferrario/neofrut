@@ -183,9 +183,8 @@ function renderProjecao() {
       : (ult ? ult.total : 0);
   }
 
-  // Calcula projeção para um período (seg a sex)
-  // Retorna: total, porArea com {cocos, maxDias, nEitos}
-  function calcPeriodo(segInicio, sexFim) {
+  // Card 1 — Esta semana: vencidos (>=21d) + vencem até sexta desta semana
+  function calcEsta() {
     let totalGeral = 0;
     const porArea = {};
     for (const [area, eitos] of Object.entries(DB)) {
@@ -196,8 +195,7 @@ function renderProjecao() {
         const d = diasDesde(ult.data);
         const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
-        // Inclui: já vencidos (>=21 dias) OU vence dentro do período
-        if (d >= 21 || (dataProxima >= segInicio && dataProxima <= sexFim)) {
+        if (d >= 21 || dataProxima <= sexEsta) {
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
@@ -210,7 +208,35 @@ function renderProjecao() {
     return { total: totalGeral, porArea };
   }
 
-  // Card 3 — Próximos 21 dias (ciclo completo)
+  // Card 2 — Próxima semana: SOMENTE eitos que vencem entre seg e sex da próxima semana
+  function calcProxima() {
+    let totalGeral = 0;
+    const porArea = {};
+    for (const [area, eitos] of Object.entries(DB)) {
+      let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
+      for (const e of eitos) {
+        const ult = getUltima(e);
+        if (!ult) continue;
+        const d = diasDesde(ult.data);
+        const dataProxima = new Date(ult.data + 'T00:00:00');
+        dataProxima.setDate(dataProxima.getDate() + 21);
+        // Somente os que vencem na próxima semana (não inclui acumulados)
+        if (dataProxima >= segProx && dataProxima <= sexProx) {
+          const m = mediaEito(e);
+          totalArea += m;
+          totalGeral += m;
+          nEitosArea++;
+          // Dias: quantos dias terá desde a última colheita na sexta da próxima semana
+          const diasNaSex = Math.round((sexProx - new Date(ult.data + 'T00:00:00')) / 86400000);
+          if (diasNaSex > maxDiasArea) maxDiasArea = diasNaSex;
+        }
+      }
+      if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
+    }
+    return { total: totalGeral, porArea };
+  }
+
+  // Card 3 — Próximos 21 dias: eitos que vencem de HOJE até 21 dias (sem repetir os de esta semana/próxima)
   function calc21() {
     let totalGeral = 0;
     const porArea = {};
@@ -223,7 +249,7 @@ function renderProjecao() {
         const d = diasDesde(ult.data);
         const dataProxima = new Date(ult.data + 'T00:00:00');
         dataProxima.setDate(dataProxima.getDate() + 21);
-        // já vencidos OU vencem nos próximos 21 dias
+        // Todos que já venceram OU vencem nos próximos 21 dias
         if (d >= 21 || dataProxima <= limite) {
           const m = mediaEito(e);
           totalArea += m;
@@ -237,8 +263,8 @@ function renderProjecao() {
     return { total: totalGeral, porArea };
   }
 
-  const r1 = calcPeriodo(segEsta, sexEsta);
-  const r2 = calcPeriodo(segProx, sexProx);
+  const r1 = calcEsta();
+  const r2 = calcProxima();
   const r3 = calc21();
 
   const buildCard = (r, icon, label, sublabel, destaque) => {
@@ -262,7 +288,7 @@ function renderProjecao() {
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:6px;line-height:1.3">Média histórica dos eitos vencidos ou a vencer no período</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">Média histórica dos eitos vencidos ou a vencer no período</div>
         <div style="display:grid;grid-template-columns:1fr 50px 70px;padding:6px 6px 2px;margin-top:4px;border-bottom:1px solid var(--border)">
           <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Área</span>
           <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center">Dias</span>
