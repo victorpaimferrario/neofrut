@@ -42,7 +42,7 @@ async function initVendas(forcarReload=false){
 }
 
 function renderAnosBtns(anos){
-  ['v-anos-btns','vl-anos-btns'].forEach(id=>{
+  ['v-anos-btns','vl-anos-btns','vp-anos-btns'].forEach(id=>{
     const w=document.getElementById(id);if(!w)return;
     const a=window._vendaAnoAtivo||'todos';
     w.innerHTML=`<button class="area-btn todas ${a==='todos'?'ativo':''}" onclick="selAno('todos')">Todos</button>`+
@@ -58,13 +58,14 @@ function selAno(ano){
   renderMesesBtns();
   renderVendasPainel();
   renderVendasLista();
+  renderVendasPendentes();
 }
 
 function renderMesesBtns(){
   const MESES=[['todos','Todos'],['1','Jan'],['2','Fev'],['3','Mar'],['4','Abr'],['5','Mai'],['6','Jun'],
                ['7','Jul'],['8','Ago'],['9','Set'],['10','Out'],['11','Nov'],['12','Dez']];
   const ativo=window._vendaMesAtivo||'todos';
-  ['v-meses-btns','vl-meses-btns'].forEach(id=>{
+  ['v-meses-btns','vl-meses-btns','vp-meses-btns'].forEach(id=>{
     const w=document.getElementById(id);if(!w)return;
     w.innerHTML=MESES.map(([v,l])=>
       `<button class="area-btn${v==='todos'?' todas':''}${ativo===v?' ativo':''}" onclick="selMes('${v}')">${l}</button>`
@@ -77,6 +78,7 @@ function selMes(mes){
   renderMesesBtns();
   renderVendasPainel();
   renderVendasLista();
+  renderVendasPendentes();
 }
 
 function showVendasTab(tab){
@@ -114,8 +116,9 @@ function renderVendasPainel(){
   const preco=tCocos>0?(tReceita/tCocos).toFixed(2):0;
   const kpi=document.getElementById('v-kpi-grid');
   if(kpi){
+    const _nPend = sel.filter(v=>v.status==='PENDENTE').length;
     const _pendKpi = tPend>0
-      ? '<div class="vkpi" style="border-color:var(--amarelo-border);cursor:pointer" onclick="showVendasTab(\'pendentes\')" title="Ver pendentes"><div class="vkpi-label">A Receber</div><div class="vkpi-val" style="color:#854d0e">'+fmtR(tPend)+'</div></div>'
+      ? '<div class="vkpi" style="border-color:var(--amarelo-border);cursor:pointer" onclick="abrirModalAReceber()" title="Ver pendentes"><div class="vkpi-label">A Receber</div><div class="vkpi-val" style="color:#854d0e">'+fmtR(tPend)+'</div><div class="vkpi-sub">'+_nPend+' venda'+(_nPend!==1?'s':'')+'</div></div>'
       : '';
     const _freteP = tReceita>0 ? Math.round(tFrete/tReceita*100)+'% da receita' : '';
     const _ticket = sel.length>0 ? fmtR(tReceita/sel.length) : '—';
@@ -496,22 +499,64 @@ function renderVendasPendentes(){
   const db=loadVendas();
   const ano=window._vendaAnoAtivo||'todos';
   const mes=window._vendaMesAtivo||'todos';
-  const pend=filtrarVendas(db,ano,mes).filter(v=>v.status==='PENDENTE').sort((a,b)=>a.data.localeCompare(b.data));
+  const busca=(document.getElementById('vp-busca')?.value||'').trim().toLowerCase();
+  let pend=db.filter(v=>v.status==='PENDENTE');
+  // filtrar por ano/mês
+  pend=filtrarVendas(pend,ano,mes);
+  // filtrar por busca
+  if(busca)pend=pend.filter(v=>v.cliente.toLowerCase().includes(busca)||(v.nf||'').toLowerCase().includes(busca));
+  pend.sort((a,b)=>a.data.localeCompare(b.data));
   const wrap=document.getElementById('v-pendentes-wrap');
   if(!wrap)return;
   const totalGeral=db.filter(v=>v.status==='PENDENTE').length;
-  if(!pend.length){wrap.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">✅ Nenhuma venda pendente'+(ano!=='todos'||mes!=='todos'?' no período selecionado':'')+'!</div>'+(totalGeral>0&&(ano!=='todos'||mes!=='todos')?'<div style="text-align:center;color:var(--muted);font-size:12px;margin-top:-32px">'+totalGeral+' pendente'+(totalGeral!==1?'s':'')+' no total</div>':'');return;}
+  const cnt=document.getElementById('vp-count');
+  if(cnt)cnt.textContent=pend.length+' de '+totalGeral+' pendente'+(totalGeral!==1?'s':'');
+  if(!pend.length){wrap.innerHTML='<div style="text-align:center;padding:48px;color:var(--muted);font-size:14px">✅ Nenhuma venda pendente'+(ano!=='todos'||mes!=='todos'||busca?' no filtro selecionado':'')+'!</div>'+(totalGeral>0&&(ano!=='todos'||mes!=='todos')?'<div style="text-align:center;color:var(--muted);font-size:12px;margin-top:-32px">'+totalGeral+' pendente'+(totalGeral!==1?'s':'')+' no total — limpe os filtros para ver todos</div>':'');return;}
   const tot=pend.reduce((s,v)=>s+(v.valorRecebido||v.total||0),0);
-  wrap.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--vermelho);margin-bottom:16px">${pend.length} pendente${pend.length!==1?'s':''} · ${fmtR(tot)} a receber</div>
-    <div style="overflow-x:auto"><table class="vtable"><thead><tr><th>DATA</th><th>CLIENTE</th><th>NF</th><th>COCOS</th><th>A RECEBER</th><th>AÇÃO</th></tr></thead><tbody>
+  const tCocos=pend.reduce((s,v)=>s+(v.qtde||0),0);
+  wrap.innerHTML=`<div style="font-size:13px;font-weight:700;color:var(--vermelho);margin-bottom:16px">${pend.length} pendente${pend.length!==1?'s':''} · ${fmtR(tot)} a receber · ${fmtNum(tCocos)} cocos</div>
+    <div style="overflow-x:auto"><table class="vtable"><thead><tr><th>DATA</th><th>CLIENTE</th><th>NF</th><th>COCOS</th><th>VALOR</th><th>A RECEBER</th><th>AÇÃO</th></tr></thead><tbody>
     ${pend.map(v=>{const[y,m,d]=v.data.split('-');return`<tr class="pendente">
       <td style="font-family:var(--font-mono)">${d}/${m}/${y}</td><td style="font-weight:700;cursor:pointer;color:var(--forest);text-decoration:underline" onclick="editarVenda(${v.id})" title="Editar venda">${v.cliente}</td>
       <td style="font-family:var(--font-mono);color:var(--muted)">${v.nf}</td>
       <td style="font-family:var(--font-mono)">${fmtNum(v.qtde)}</td>
+      <td style="font-family:var(--font-mono)">${fmtR(v.total)}</td>
       <td style="font-family:var(--font-mono);font-weight:700">${fmtR(v.valorRecebido||v.total)}</td>
-      <td><button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="marcarPago(${v.id})">✓ Marcar como Pago</button></td>
+      <td><button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="marcarPago(${v.id})">✓ Pago</button></td>
     </tr>`;}).join('')}
-    </tbody></table></div>`;
+    </tbody><tfoot><tr style="font-weight:800"><td colspan="3">TOTAL</td><td style="font-family:var(--font-mono)">${fmtNum(tCocos)}</td><td style="font-family:var(--font-mono)">${fmtR(pend.reduce((s,v)=>s+(v.total||0),0))}</td><td style="font-family:var(--font-mono)">${fmtR(tot)}</td><td></td></tr></tfoot></table></div>`;
+}
+
+function abrirModalAReceber(){
+  const db=loadVendas();
+  const ano=window._vendaAnoAtivo||'todos';
+  const mes=window._vendaMesAtivo||'todos';
+  const pend=filtrarVendas(db,ano,mes).filter(v=>v.status==='PENDENTE').sort((a,b)=>a.data.localeCompare(b.data));
+  const tot=pend.reduce((s,v)=>s+(v.valorRecebido||v.total||0),0);
+  const tCocos=pend.reduce((s,v)=>s+(v.qtde||0),0);
+  const periodo=ano!=='todos'?(mes!=='todos'?['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mes)]+'/'+ano:ano):'Todos os períodos';
+  document.getElementById('modal-receber-sub').textContent=periodo+' · '+pend.length+' venda'+(pend.length!==1?'s':'')+' · '+fmtNum(tCocos)+' cocos';
+  const tbody=document.getElementById('modal-receber-tbody');
+  const tfoot=document.getElementById('modal-receber-tfoot');
+  tbody.innerHTML=pend.map(v=>{
+    const[y,m,d]=v.data.split('-');
+    return`<tr class="pendente">
+      <td style="font-family:var(--font-mono)">${d}/${m}/${y}</td>
+      <td style="font-weight:700">${v.cliente}</td>
+      <td style="font-family:var(--font-mono);color:var(--muted)">${v.nf}</td>
+      <td style="font-family:var(--font-mono)">${fmtNum(v.qtde)}</td>
+      <td style="font-family:var(--font-mono);font-weight:700">${fmtR(v.valorRecebido||v.total)}</td>
+      <td><button class="btn btn-primary" style="font-size:11px;padding:5px 12px" onclick="marcarPagoModal(${v.id})">✓ Pago</button></td>
+    </tr>`;
+  }).join('');
+  tfoot.innerHTML=pend.length?'<tr style="font-weight:800"><td colspan="3">TOTAL</td><td style="font-family:var(--font-mono)">'+fmtNum(tCocos)+'</td><td style="font-family:var(--font-mono)">'+fmtR(tot)+'</td><td></td></tr>':'';
+  if(!pend.length)tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">✅ Nenhuma venda pendente no período</td></tr>';
+  document.getElementById('modal-a-receber').classList.add('active');
+}
+
+async function marcarPagoModal(id){
+  await marcarPago(id);
+  abrirModalAReceber();
 }
 
 async function marcarPago(id){

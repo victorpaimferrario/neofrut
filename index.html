@@ -489,7 +489,32 @@
 
   <!-- PENDENTES -->
   <div class="vd-sec" id="vsec-pendentes">
+    <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="vp-busca" placeholder="🔍 Buscar cliente..." oninput="renderVendasPendentes()"
+        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:180px;flex:1;max-width:280px">
+      <div class="area-btn-group" id="vp-anos-btns"></div>
+      <div class="area-btn-group" id="vp-meses-btns"></div>
+      <span id="vp-count" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+    </div>
     <div id="v-pendentes-wrap"></div>
+  </div>
+</div>
+
+<!-- MODAL A RECEBER -->
+<div class="modal-overlay" id="modal-a-receber" style="z-index:1100">
+  <div class="modal" style="max-width:780px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h3 style="margin:0">💰 A Receber</h3>
+      <button onclick="closeModal('modal-a-receber')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <div class="modal-sub" id="modal-receber-sub"></div>
+    <div style="overflow-y:auto;flex:1;margin-top:12px">
+      <table class="vtable" style="width:100%">
+        <thead><tr><th>DATA</th><th>CLIENTE</th><th>NF</th><th>COCOS</th><th>A RECEBER</th><th>AÇÃO</th></tr></thead>
+        <tbody id="modal-receber-tbody"></tbody>
+        <tfoot id="modal-receber-tfoot"></tfoot>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -573,7 +598,7 @@
 <script src="js/dashboard.js?v=1773813587"></script>
 <script src="js/lancamento.js?v=1773813587"></script>
 <script src="js/analise.js?v=1773813587"></script>
-<script src="js/vendas.js?v=1773813587"></script>
+<script src="js/vendas.js?v=1773883677"></script>
 <script src="js/gestao.js?v=1773813587"></script>
 <script src="js/mercados.js?v=1773813587"></script>
 <script src="js/router.js?v=1773813587"></script>
