@@ -619,8 +619,8 @@ function renderProjecao() {
 
       const eitoRows = l.eitos.map(ei => `
         <div style="display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:8px;padding:4px 6px;border-radius:5px">
-          <span style="font-size:10px;font-weight:700;color:var(--muted)">${nomes[ei.area] || ei.area}</span>
           <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--forest)">${ei.id}</span>
+          <span style="font-size:10px;color:var(--muted)">${nomes[ei.area] || ei.area}</span>
           <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);text-align:right">${fmtNum(ei.qtd)}</span>
         </div>`).join('');
 
