@@ -17,6 +17,11 @@ const NOMES_CURTOS = {
   'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
   'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
 };
+// Mapeamento nome curto da venda → nome longo do DB
+const AREA_CURTO_LONGO = {
+  'A1':'AREA A1','A2':'AREA A2','C':'AREA C','D':'AREA D',
+  'MA':'MARACUJÁ','MDC':'MAMÃO DE CIMA','MDB':'MAMÃO DE BAIXO'
+};
 
 // ─────────── STORAGE KEYS ───────────
 const SK = 'fazenda_paim_v1';

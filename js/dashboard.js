@@ -559,43 +559,78 @@ function renderProjecao() {
   const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const hojeISO = toISO(hoje);
   const segISO_c2 = toISO(segEsta);
-  // Coletar todas as colheitas desta semana agrupadas por lancamento_id (ou data+area)
-  const lancamentos = {};
+
+  // 1. Coletar colheitas por data → área → {total, eitos[]}
+  const colhPorDia = {};
   let totalColhidoSemana = 0, totalEitosSemana = 0;
-  const clientesSemana = new Set();
   for (const [area, eitos] of Object.entries(DB)) {
     for (const e of eitos) {
       for (const h of (e.historico || [])) {
         if (h.data >= segISO_c2 && h.data <= hojeISO) {
-          const key = h.lancamento_id || (h.data + '|' + area + '|' + (h.cliente || ''));
-          if (!lancamentos[key]) {
-            lancamentos[key] = {
-              data: h.data,
-              cliente: h.cliente || null,
-              areas: {},
-              total: 0,
-              eitos: []
-            };
-          }
-          const l = lancamentos[key];
-          if (!l.areas[area]) l.areas[area] = 0;
-          l.areas[area] += h.total;
-          l.total += h.total;
-          l.eitos.push({ id: e.id, area, qtd: h.total });
+          if (!colhPorDia[h.data]) colhPorDia[h.data] = {};
+          if (!colhPorDia[h.data][area]) colhPorDia[h.data][area] = { total: 0, eitos: [] };
+          colhPorDia[h.data][area].total += h.total;
+          colhPorDia[h.data][area].eitos.push({ id: e.id, area, qtd: h.total });
           totalColhidoSemana += h.total;
           totalEitosSemana++;
-          if (h.cliente) clientesSemana.add(h.cliente);
         }
       }
     }
   }
 
-  // Ordenar por data decrescente
-  const lancList = Object.values(lancamentos).sort((a,b) => a.data.localeCompare(b.data));
+  // 2. Cruzar com vendas da semana
+  const vendasSemana = (_vendasCache || []).filter(v => v.data >= segISO_c2 && v.data <= hojeISO);
+  const clientesSemana = new Set();
+
+  // Construir entradas: cada venda com breakdown de áreas + sobra "sem cliente"
+  const lancList = [];
+  const diasOrdenados = Object.keys(colhPorDia).sort();
+
+  for (const dia of diasOrdenados) {
+    const areasNoDia = colhPorDia[dia]; // { "AREA A2": {total, eitos}, "MAMÃO DE BAIXO": {total, eitos} }
+    const vendasDia = vendasSemana.filter(v => v.data === dia);
+
+    // Clonar totais para ir descontando
+    const restante = {};
+    for (const [area, info] of Object.entries(areasNoDia)) {
+      restante[area] = { total: info.total, eitos: [...info.eitos] };
+    }
+
+    // Para cada venda do dia, alocar áreas
+    for (const v of vendasDia) {
+      if (!v.areas || Object.keys(v.areas).length === 0) continue;
+      clientesSemana.add(v.cliente);
+      const entry = { data: dia, cliente: v.cliente, areas: {}, total: 0, eitos: [] };
+      for (const [aCurto, qtdVenda] of Object.entries(v.areas)) {
+        const aLongo = AREA_CURTO_LONGO[aCurto] || aCurto;
+        if (!restante[aLongo]) continue;
+        entry.areas[aLongo] = qtdVenda;
+        entry.total += qtdVenda;
+        // Associar eitos dessa área
+        entry.eitos.push(...restante[aLongo].eitos);
+        restante[aLongo].total -= qtdVenda;
+        if (restante[aLongo].total <= 0) delete restante[aLongo];
+      }
+      if (entry.total > 0) lancList.push(entry);
+    }
+
+    // Vendas sem breakdown de áreas
+    for (const v of vendasDia) {
+      if (v.areas && Object.keys(v.areas).length > 0) continue;
+      if (!v.qtde || v.qtde <= 0) continue;
+      clientesSemana.add(v.cliente);
+      lancList.push({ data: dia, cliente: v.cliente, areas: {}, total: v.qtde, eitos: [] });
+    }
+
+    // Sobra = colheita sem venda (quebra ou venda não registrada)
+    for (const [area, info] of Object.entries(restante)) {
+      if (info.total <= 0) continue;
+      lancList.push({ data: dia, cliente: null, areas: { [area]: info.total }, total: info.total, eitos: info.eitos });
+    }
+  }
 
   // Badge: Seg DD/MM – Hoje
   const segFmt = `${String(segEsta.getDate()).padStart(2,'0')}/${String(segEsta.getMonth()+1).padStart(2,'0')}`;
-  const badgeSemana = `📅 Seg ${segFmt} – hoje`;
 
   // Formatar valor abreviado para KPI
   function fmtK(v) {
@@ -613,7 +648,7 @@ function renderProjecao() {
       const diaSem = DIAS_PT[dt.getDay()];
       const dataFmt = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
       const areasNomes = Object.keys(l.areas).map(a => nomes[a] || a);
-      const areasStr = areasNomes.join(' · ');
+      const areasStr = areasNomes.length > 0 ? areasNomes.join(' · ') : '—';
       const clienteStr = l.cliente || '<span style="color:var(--muted);font-style:italic">sem cliente</span>';
       const safeIdx = 'lanc_' + idx;
 
@@ -633,16 +668,16 @@ function renderProjecao() {
             </div>
             <div>
               <div style="font-size:13px;font-weight:800;color:var(--forest)">${clienteStr}</div>
-              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${l.eitos.length} eitos</div>
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${l.eitos.length > 0 ? l.eitos.length + ' eitos' : fmtNum(l.total) + ' cocos'}</div>
             </div>
-            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${areasStr}</span>
+            ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${a}</span>`).join('')}
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
             </div>
             <span id="lanc-chev-${safeIdx}" style="font-size:10px;color:var(--muted);transition:transform 0.2s;text-align:center">▾</span>
           </div>
-          <div id="lanc-detail-${safeIdx}" style="display:none;border-top:1px solid var(--border);padding:10px 14px 12px;background:#fafcf8">
+          ${l.eitos.length > 0 ? `<div id="lanc-detail-${safeIdx}" style="display:none;border-top:1px solid var(--border);padding:10px 14px 12px;background:#fafcf8">
             <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center">
               Eitos colhidos
               ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)">${a}</span>`).join('')}
@@ -657,10 +692,7 @@ function renderProjecao() {
               <span style="font-size:10px;font-weight:700;color:var(--muted)">Total do lançamento</span>
               <span style="font-family:var(--font-mono);font-size:12px;font-weight:800;color:var(--forest)">${fmtNum(l.total)} cocos</span>
             </div>
-            <div style="margin-top:8px">
-              <span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;font-family:var(--font-mono);padding:2px 7px;border-radius:4px;background:#e8f5e0;color:var(--forest);border:1px solid var(--border)">🔍 ${l.eitos.length} eitos · ${areasStr} · ${dataFmt}</span>
-            </div>
-          </div>
+          </div>` : ''}
         </div>`;
     });
   }
