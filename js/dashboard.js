@@ -530,18 +530,24 @@ function renderProjecao() {
   }
 
   // Cards genéricos (próxima semana, 21 dias)
+  let _projCardIdx = 0;
   function buildCardGenerico(r, icon, label, sublabel) {
     const breakdown = buildBreakdown(r.porArea);
     const totalEitos = Object.values(r.porArea).reduce((s,v) => s + v.nEitos, 0);
+    const cardId = 'proj-gen-' + (++_projCardIdx);
     return `
       <div class="proj-card">
         <div class="proj-card-label">${icon} ${label}</div>
         <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.4">Média histórica dos eitos vencidos ou a vencer no período</div>
-        ${buildHeader()}
-        <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
+        <div style="margin-top:8px;text-align:center">
+          <button onclick="var d=document.getElementById('${cardId}');d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='none'?'▸ Ver áreas':'▾ Ocultar'" style="background:none;border:none;cursor:pointer;font-size:10px;font-weight:700;color:var(--accent2);font-family:var(--font-main)">▸ Ver áreas</button>
+        </div>
+        <div id="${cardId}" style="display:none">
+          ${buildHeader()}
+          <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
+        </div>
       </div>`;
   }
 
