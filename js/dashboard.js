@@ -211,7 +211,7 @@ function abrirColhidosPeriodo(periodo) {
     });
     tbody.appendChild(tr);
   });
-  openModal('modal-todos-eitos');
+  document.getElementById('modal-todos-eitos').classList.add('open');
 }
 
 function abrirColhidosAno() { abrirColhidosPeriodo('ano'); }
