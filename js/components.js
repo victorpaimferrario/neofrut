@@ -470,21 +470,24 @@ function openClientePanel(cliente){
   // Histórico
   document.getElementById('cli-hist').innerHTML=[...vendas].reverse().map((v,i)=>{
     const [y,m,d]=v.data.split('-');
-    const pc=v.qtde>0&&v.total>0?'R$ '+((v.total-(v.frete||0))/v.qtde).toFixed(2):null;
+    const pc=v.qtde>0&&v.total>0?((v.total-(v.frete||0))/v.qtde).toFixed(2):null;
     const areasKeys=v.areas?Object.keys(v.areas).filter(a=>v.areas[a]>0):[];
     const areasTag=areasKeys.length>0
-      ?'<span style="display:inline-flex;gap:3px;margin-top:3px">'+areasKeys.map(a=>'<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border)">'+a+'</span>').join('')+'</span>'
-      :'<span style="font-size:9px;color:#db2777;margin-top:3px;display:block">sem área vinculada</span>';
-    return '<div onclick="closeClientePanel();editarVenda('+v.id+')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:'+(i===0?'var(--verde-bg)':'var(--surface2)')+';border:1px solid '+(i===0?'var(--verde-border)':'var(--border)')+';border-radius:8px;margin-bottom:6px;transition:opacity .15s" onmouseenter="this.style.opacity=0.8" onmouseleave="this.style.opacity=1">'
-      +'<div>'
-        +'<div style="font-family:var(--font-mono);font-size:12px;font-weight:500">'+d+'/'+m+'/'+y+'</div>'
-        +'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+fmtNum(v.qtde)+' cocos'+(pc?' · '+pc:'')+(v.nf&&v.nf!=='RECIBO'?' · NF '+v.nf:'')+'</div>'
-        +areasTag
+      ?'<span style="display:inline-flex;gap:3px;margin-top:4px">'+areasKeys.map(a=>'<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border)">'+a+'</span>').join('')+'</span>'
+      :'<span style="font-size:9px;color:#db2777;margin-top:4px;display:block">sem área vinculada</span>';
+    const bgColor=i===0?'var(--verde-bg)':'var(--surface2)';
+    const bdColor=i===0?'var(--verde-border)':'var(--border)';
+    return '<div onclick="closeClientePanel();editarVenda('+v.id+')" style="cursor:pointer;padding:10px 12px;background:'+bgColor+';border:1px solid '+bdColor+';border-radius:8px;margin-bottom:6px;transition:opacity .15s" onmouseenter="this.style.opacity=0.8" onmouseleave="this.style.opacity=1">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
+        +'<div style="font-family:var(--font-mono);font-size:12px;font-weight:600">'+d+'/'+m+'/'+y+'</div>'
+        +'<div style="font-size:10px;color:var(--muted)">'+(v.nf&&v.nf!=='RECIBO'?'NF '+v.nf:'')+'  ✏️</div>'
       +'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px">'
-        +'<div style="font-family:var(--font-mono);font-size:15px;font-weight:700;color:'+(i===0?'var(--verde)':'var(--text)')+'">'+fmtR(v.total)+'</div>'
-        +'<span style="font-size:10px;color:var(--muted)">✏️</span>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
+        +'<div><div style="font-size:8px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Cocos</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text)">'+fmtNum(v.qtde)+'</div></div>'
+        +'<div><div style="font-size:8px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">R$/coco</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text)">'+(pc?'R$ '+pc:'—')+'</div></div>'
+        +'<div style="text-align:right"><div style="font-size:8px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Total</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--forest)">'+fmtR(v.total)+'</div></div>'
       +'</div>'
+      +areasTag
     +'</div>';
   }).join('');
   document.getElementById('cli-panel').classList.add('open');
