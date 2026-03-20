@@ -463,9 +463,11 @@ function renderVendasLista(){
       :'<span class="badge-pendente">PENDENTE</span>';
     const tr=document.createElement('tr');
     if(v.status==='PENDENTE')tr.classList.add('pendente');
+    tr.style.cursor='pointer';
+    tr.dataset.cli=v.cliente;
     tr.innerHTML=
       '<td style="font-family:var(--font-mono);white-space:nowrap">'+d+'/'+m+'/'+y+'</td>'
-     +'<td style="font-weight:700;cursor:pointer;color:var(--forest)" class="cli-link">'+v.cliente+'</td>'
+     +'<td style="font-weight:700;color:var(--forest)">'+v.cliente+'</td>'
      +'<td style="font-family:var(--font-mono);color:var(--muted)">'+v.nf+'</td>'
      +'<td style="font-family:var(--font-mono)">'+fmtNum(v.qtde)+'</td>'
      +'<td style="font-family:var(--font-mono)">'+fmtR(v.total)+'</td>'
@@ -477,9 +479,7 @@ function renderVendasLista(){
        +'<button class="btn-edit-venda" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;margin-right:4px" title="Editar">✏️</button>'
        +'<button class="btn-del-venda" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px" title="Excluir">✕</button>'
      +'</td>';
-    // guardar cliente no dataset para abrir panel
-    tr.querySelector('.cli-link').dataset.cli = v.cliente;
-    tr.querySelector('.cli-link').addEventListener('click', function(){ openClientePanel(this.dataset.cli); });
+    tr.addEventListener('click', function(e){ if(!e.target.closest('.btn-edit-venda,.btn-del-venda')) openClientePanel(this.dataset.cli); });
     tr.querySelector('.btn-edit-venda').addEventListener('click', function(){ editarVenda(parseInt(this.dataset.id)); });
     tr.querySelector('.btn-del-venda').addEventListener('click', function(){ excluirVenda(parseInt(this.dataset.id)); });
     tbody.appendChild(tr);
