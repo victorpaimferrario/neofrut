@@ -236,6 +236,37 @@
   </div>
 </div>
 
+<!-- MODAL VINCULAR CLIENTES -->
+<div class="modal-overlay" id="modal-vincular-clientes">
+  <div class="modal" style="max-width:720px">
+    <h3>Vincular Clientes às Colheitas</h3>
+    <div class="modal-sub" id="vincular-sub">Selecione o mês e vincule o cliente a cada colheita</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center">
+      <select id="vincular-mes" onchange="renderVincularClientes()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-main);font-size:13px;background:var(--surface2);outline:none;cursor:pointer"></select>
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">
+        <input type="checkbox" id="vincular-somente-sem" onchange="renderVincularClientes()" checked> Somente sem cliente
+      </label>
+    </div>
+    <div style="max-height:450px;overflow-y:auto;margin-bottom:14px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border)">
+            <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;padding:6px 8px">Data</th>
+            <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;padding:6px 8px">Área</th>
+            <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:center;padding:6px 8px">Eitos</th>
+            <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:right;padding:6px 8px">Cocos</th>
+            <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;padding:6px 8px">Cliente</th>
+          </tr>
+        </thead>
+        <tbody id="vincular-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-vincular-clientes')">Fechar</button>
+      <button class="btn btn-green" onclick="salvarVinculacaoClientes()">💾 Salvar Alterações</button>
+    </div>
+  </div>
+</div>
 
 <!-- DRAWER DE ÁREA -->
 <div class="area-drawer-overlay" id="area-drawer-overlay" onclick="closeAreaDrawer()"></div>
@@ -600,8 +631,8 @@
 <script src="js/utils.js?v=1773813587"></script>
 <script src="js/storage.js?v=1773990000"></script>
 <script src="js/components.js?v=1773813587"></script>
-<script src="js/dashboard.js?v=1773991000"></script>
-<script src="js/lancamento.js?v=1773990000"></script>
+<script src="js/dashboard.js?v=1774080000"></script>
+<script src="js/lancamento.js?v=1774080000"></script>
 <script src="js/analise.js?v=1773885000"></script>
 <script src="js/vendas.js?v=1773884000"></script>
 <script src="js/gestao.js?v=1773813587"></script>

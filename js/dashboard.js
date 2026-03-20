@@ -601,6 +601,9 @@ function renderProjecao() {
         <span style="font-size:11px;font-weight:700;color:var(--muted)">Total da semana</span>
         <span style="font-family:var(--font-mono);font-size:15px;font-weight:800;color:var(--forest)">${totalColhidoSemana > 0 ? fmtNum(totalColhidoSemana) + ' cocos' : '0 cocos'}</span>
       </div>
+      <div style="text-align:center;margin-top:8px">
+        <button onclick="abrirVincularClientes()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-sans)">✏️ Vincular Clientes a Colheitas</button>
+      </div>
     </div>`;
 
   wrap.innerHTML = `

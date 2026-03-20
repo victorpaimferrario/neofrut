@@ -502,3 +502,126 @@ function copiarResumo() {
     btn.classList.remove('copiado');
   }, 2500);
 }
+
+// ── VINCULAR CLIENTES A COLHEITAS ──
+function abrirVincularClientes() {
+  // Descobrir meses disponíveis
+  const meses = new Set();
+  for (const [area, eitos] of Object.entries(DB)) {
+    for (const e of eitos) {
+      for (const h of (e.historico || [])) {
+        if (h.data) meses.add(h.data.substring(0, 7));
+      }
+    }
+  }
+  const sel = document.getElementById('vincular-mes');
+  const mesesOrdenados = [...meses].sort().reverse();
+  sel.innerHTML = mesesOrdenados.map(m => {
+    const [a, mm] = m.split('-');
+    const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return `<option value="${m}">${nomesMes[parseInt(mm)]}/${a}</option>`;
+  }).join('');
+  renderVincularClientes();
+  document.getElementById('modal-vincular-clientes').classList.add('open');
+}
+
+function renderVincularClientes() {
+  const mesSel = document.getElementById('vincular-mes').value;
+  const somenteSem = document.getElementById('vincular-somente-sem').checked;
+  if (!mesSel) return;
+
+  const nomesCurtos = {
+    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
+    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
+  };
+
+  // Agrupar por data+area
+  const grupos = {};
+  for (const [area, eitos] of Object.entries(DB)) {
+    for (const e of eitos) {
+      for (const h of (e.historico || [])) {
+        if (!h.data || !h.data.startsWith(mesSel)) continue;
+        if (somenteSem && h.cliente) continue;
+        const key = h.data + '|' + area;
+        if (!grupos[key]) grupos[key] = { data: h.data, area, eitos: 0, total: 0, cliente: h.cliente || '' };
+        grupos[key].eitos++;
+        grupos[key].total += h.total;
+        // Se algum eito do grupo já tem cliente, usar esse
+        if (h.cliente && !grupos[key].cliente) grupos[key].cliente = h.cliente;
+      }
+    }
+  }
+
+  const lista = Object.values(grupos).sort((a, b) => a.data.localeCompare(b.data) || a.area.localeCompare(b.area));
+
+  // Opções de clientes
+  const clientes = Object.keys(MAPA_CLIENTES).sort();
+  const optionsHtml = '<option value="">— sem cliente —</option>' +
+    clientes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const tbody = document.getElementById('vincular-tbody');
+  if (lista.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted);font-size:12px">${somenteSem ? 'Todas as colheitas deste mês já têm cliente vinculado.' : 'Nenhuma colheita neste mês.'}</td></tr>`;
+    document.getElementById('vincular-sub').textContent = `${lista.length} colheitas`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map((g, i) => {
+    const [a, m, d] = g.data.split('-');
+    const dataFmt = `${d}/${m}`;
+    const nome = nomesCurtos[g.area] || g.area;
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--muted);padding:8px">${dataFmt}</td>
+      <td style="font-size:12px;font-weight:700;color:var(--forest);padding:8px">${nome}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--muted);text-align:center;padding:8px">${g.eitos}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--forest);text-align:right;padding:8px">${fmtNum(g.total)}</td>
+      <td style="padding:8px"><select data-data="${g.data}" data-area="${g.area}" class="vincular-sel" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-main);font-size:11px;background:var(--surface2);outline:none">${optionsHtml}</select></td>
+    </tr>`;
+  }).join('');
+
+  // Selecionar cliente atual
+  tbody.querySelectorAll('.vincular-sel').forEach((sel, i) => {
+    if (lista[i].cliente) sel.value = lista[i].cliente;
+  });
+
+  document.getElementById('vincular-sub').textContent = `${lista.length} colheita${lista.length !== 1 ? 's' : ''} · selecione o cliente de cada grupo`;
+}
+
+async function salvarVinculacaoClientes() {
+  const selects = document.querySelectorAll('#vincular-tbody .vincular-sel');
+  let count = 0;
+  for (const sel of selects) {
+    const data = sel.dataset.data;
+    const area = sel.dataset.area;
+    const cliente = sel.value;
+
+    // Atualizar no DB em memória
+    const eitos = DB[area] || [];
+    for (const e of eitos) {
+      for (const h of (e.historico || [])) {
+        if (h.data === data) {
+          if (h.cliente !== cliente) {
+            h.cliente = cliente || undefined;
+            count++;
+          }
+        }
+      }
+    }
+
+    // Atualizar no Supabase
+    if (_SB) {
+      try {
+        await _SB.from('colheitas')
+          .update({ cliente: cliente || null })
+          .eq('area', area)
+          .eq('data', data);
+      } catch (err) { console.error('Erro ao atualizar cliente:', err); }
+    }
+  }
+
+  // Salvar no localStorage
+  await saveData();
+  renderProjecao();
+  closeModal('modal-vincular-clientes');
+  showToast(`✓ ${count} colheita${count !== 1 ? 's' : ''} atualizada${count !== 1 ? 's' : ''}`);
+}
