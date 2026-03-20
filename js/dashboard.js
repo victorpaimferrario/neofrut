@@ -635,17 +635,22 @@ function renderProjecao() {
               <div style="font-size:13px;font-weight:800;color:var(--forest)">${clienteStr}</div>
               <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${areasStr}</div>
             </div>
+            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${l.eitos.length} eitos</span>
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
             </div>
-            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${l.eitos.length} eitos</span>
             <span id="lanc-chev-${safeIdx}" style="font-size:10px;color:var(--muted);transition:transform 0.2s;text-align:center">▾</span>
           </div>
           <div id="lanc-detail-${safeIdx}" style="display:none;border-top:1px solid var(--border);padding:10px 14px 12px;background:#fafcf8">
             <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center">
               Eitos colhidos
               ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)">${a}</span>`).join('')}
+            </div>
+            <div style="display:grid;grid-template-columns:80px 1fr auto;gap:8px;padding:2px 6px;margin-bottom:4px;border-bottom:1px solid var(--border)">
+              <span style="font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Eito</span>
+              <span style="font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">Área</span>
+              <span style="font-size:8px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:right">Qtde</span>
             </div>
             <div style="display:flex;flex-direction:column;gap:3px">${eitoRows}</div>
             <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 6px 0;border-top:1px solid var(--border);margin-top:6px">
