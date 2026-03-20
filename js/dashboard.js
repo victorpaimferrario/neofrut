@@ -183,91 +183,113 @@ function renderProjecao() {
       : (ult ? ult.total : 0);
   }
 
-  // Card 1 — Esta semana: vencidos (>=21d) + vencem até sexta desta semana
   // Formato ISO seguro (sem problemas de timezone do toISOString)
   function toISO(dt) {
     return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
   }
+
+  // Card 1 — Esta semana: Urgente (>=21d) + Esta Semana (vencem até sexta, <21d)
   function calcEsta() {
-    let totalGeral = 0, colhidoGeral = 0;
     const porArea = {};
-    const segISO = toISO(segEsta);
-    const sexISO = toISO(sexEsta);
+    let totalUrg = 0, totalSem = 0, nUrg = 0, nSem = 0;
     for (const [area, eitos] of Object.entries(DB)) {
-      let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
+      let cocosUrg = 0, cocosSem = 0, nUrgArea = 0, nSemArea = 0, maxDiasArea = 0;
+      const eitosDetalhe = [];
       for (const e of eitos) {
-        const hist = e.historico || [];
-        // Encontrar a colheita mais recente ANTES desta semana
-        const anteriores = hist.filter(h => h.data < segISO);
-        const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
-        // Colheitas feitas nesta semana por este eito
-        const colheitasEstaSemana = hist.filter(h => h.data >= segISO && h.data <= sexISO);
-
-        // Determinar se este eito DEVERIA estar na projeção
-        // (baseado na colheita anterior à semana, não na atual)
-        let entraProjecao = false;
-        if (ultAnterior) {
-          const dAnterior = Math.round((segEsta - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
-          const proxColheita = new Date(ultAnterior.data + 'T00:00:00');
-          proxColheita.setDate(proxColheita.getDate() + 21);
-          // Estava vencido na segunda ou venceria até sexta
-          if (dAnterior >= 21 || proxColheita <= sexEsta) {
-            entraProjecao = true;
-            if (dAnterior > maxDiasArea) maxDiasArea = dAnterior;
-          }
-        } else {
-          // Sem colheita anterior: verificar se a última colheita (atual) indica vencimento
-          const ult = getUltima(e);
-          if (ult && colheitasEstaSemana.length === 0) {
-            const d = diasDesde(ult.data);
-            const proxColheita = new Date(ult.data + 'T00:00:00');
-            proxColheita.setDate(proxColheita.getDate() + 21);
-            if (d >= 21 || proxColheita <= sexEsta) {
-              entraProjecao = true;
-              if (d > maxDiasArea) maxDiasArea = d;
-            }
-          }
-        }
-
-        if (entraProjecao) {
-          const m = mediaEito(e);
-          totalArea += m;
-          totalGeral += m;
-          nEitosArea++;
-          // Se já colhido esta semana, somar ao colhido
-          if (colheitasEstaSemana.length > 0) {
-            colhidoGeral += colheitasEstaSemana.reduce((s,h) => s + h.total, 0);
-          }
-        }
+        const ult = getUltima(e);
+        if (!ult) continue;
+        const d = diasDesde(ult.data);
+        const dataProx = new Date(ult.data + 'T00:00:00');
+        dataProx.setDate(dataProx.getDate() + 21);
+        const m = mediaEito(e);
+        const urgente = d >= 21;
+        const estaSemana = !urgente && dataProx <= sexEsta;
+        if (!urgente && !estaSemana) continue;
+        if (d > maxDiasArea) maxDiasArea = d;
+        if (urgente) { cocosUrg += m; nUrgArea++; }
+        else { cocosSem += m; nSemArea++; }
+        eitosDetalhe.push({ id: e.id, dias: d, tipo: urgente ? 'urg' : 'sem', cocos: m });
       }
-      if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
+      if (cocosUrg + cocosSem > 0) {
+        // Ordenar eitos por dias decrescente
+        eitosDetalhe.sort((a,b) => b.dias - a.dias);
+        porArea[area] = { cocosUrg, cocosSem, nUrg: nUrgArea, nSem: nSemArea, maxDias: maxDiasArea, eitos: eitosDetalhe };
+        totalUrg += cocosUrg; totalSem += cocosSem;
+        nUrg += nUrgArea; nSem += nSemArea;
+      }
     }
-    return { total: totalGeral, porArea, colhido: colhidoGeral };
+    return { totalUrg, totalSem, total: totalUrg + totalSem, nUrg, nSem, nTotal: nUrg + nSem, porArea };
   }
 
   // Card 2 — Próxima semana: eitos que vencem na próxima semana + acumulados não colhidos desta semana
   function calcProxima() {
     let totalGeral = 0;
     const porArea = {};
+    const segProxISO = toISO(segProx);
+    const sexProxISO = toISO(sexProx);
+    const segISO = toISO(segEsta);
+    const sexISO = toISO(sexEsta);
     for (const [area, eitos] of Object.entries(DB)) {
       let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
-        const ult = getUltima(e);
-        if (!ult) continue;
-        const d = diasDesde(ult.data);
-        const dataProxima = new Date(ult.data + 'T00:00:00');
-        dataProxima.setDate(dataProxima.getDate() + 21);
-        // Acumulado: vencidos que não foram colhidos (última colheita antes desta semana)
-        const acumulado = d >= 21 && ult.data < toISO(segEsta);
-        // Novos: vencem na próxima semana
-        const novoProx = dataProxima >= segProx && dataProxima <= sexProx;
-        if (acumulado || novoProx) {
+        const hist = e.historico || [];
+        // Colheita mais recente antes desta semana (base de referência)
+        const anteriores = hist.filter(h => h.data < segISO);
+        const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
+        // Colheitas desta semana
+        const colhidoEstaSemana = hist.filter(h => h.data >= segISO && h.data <= sexISO);
+
+        let entra = false;
+        let diasRef = 0; // dias na sexta da próxima semana
+
+        if (ultAnterior) {
+          const proxColheita = new Date(ultAnterior.data + 'T00:00:00');
+          proxColheita.setDate(proxColheita.getDate() + 21);
+          const proxISO = toISO(proxColheita);
+
+          // Caso 1: acumulado — era pra colher esta semana mas NÃO colheu
+          const deviaColherEstaSemana = proxISO <= sexISO;
+          if (deviaColherEstaSemana && colhidoEstaSemana.length === 0) {
+            entra = true;
+            diasRef = Math.round((sexProx - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
+          }
+          // Caso 2: novo — vence na próxima semana (entre seg e sex próxima)
+          else if (proxISO >= segProxISO && proxISO <= sexProxISO) {
+            entra = true;
+            diasRef = Math.round((sexProx - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
+          }
+        } else {
+          // Sem colheita anterior: usar última colheita geral
+          const ult = getUltima(e);
+          if (ult) {
+            const proxColheita = new Date(ult.data + 'T00:00:00');
+            proxColheita.setDate(proxColheita.getDate() + 21);
+            const proxISO = toISO(proxColheita);
+            if (proxISO >= segProxISO && proxISO <= sexProxISO) {
+              entra = true;
+              diasRef = Math.round((sexProx - new Date(ult.data + 'T00:00:00')) / 86400000);
+            }
+          }
+        }
+
+        // Se colheu esta semana, considerar a colheita desta semana como nova base
+        if (!entra && colhidoEstaSemana.length > 0) {
+          const ultEstaSemana = colhidoEstaSemana[colhidoEstaSemana.length - 1];
+          const proxColheita = new Date(ultEstaSemana.data + 'T00:00:00');
+          proxColheita.setDate(proxColheita.getDate() + 21);
+          const proxISO = toISO(proxColheita);
+          if (proxISO >= segProxISO && proxISO <= sexProxISO) {
+            entra = true;
+            diasRef = Math.round((sexProx - new Date(ultEstaSemana.data + 'T00:00:00')) / 86400000);
+          }
+        }
+
+        if (entra) {
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
           nEitosArea++;
-          const diasNaSex = Math.round((sexProx - new Date(ult.data + 'T00:00:00')) / 86400000);
-          if (diasNaSex > maxDiasArea) maxDiasArea = diasNaSex;
+          if (diasRef > maxDiasArea) maxDiasArea = diasRef;
         }
       }
       if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
@@ -275,25 +297,35 @@ function renderProjecao() {
     return { total: totalGeral, porArea };
   }
 
-  // Card 3 — Próximos 21 dias: todos que vencem em até 21 dias (inclui vencidos + acumulados)
+  // Card 3 — Próximos 21 dias: todos que vencem em até 21 dias a partir de hoje (inclui acumulados)
   function calc21() {
     let totalGeral = 0;
     const porArea = {};
     const limite = new Date(hoje); limite.setDate(hoje.getDate() + 21);
+    const limiteISO = toISO(limite);
+    const segISO = toISO(segEsta);
+    const sexISO = toISO(sexEsta);
     for (const [area, eitos] of Object.entries(DB)) {
       let totalArea = 0, maxDiasArea = 0, nEitosArea = 0;
       for (const e of eitos) {
+        const hist = e.historico || [];
+        // Encontrar a colheita de referência: a mais recente (pode ser desta semana)
         const ult = getUltima(e);
         if (!ult) continue;
+
+        const proxColheita = new Date(ult.data + 'T00:00:00');
+        proxColheita.setDate(proxColheita.getDate() + 21);
         const d = diasDesde(ult.data);
-        const dataProxima = new Date(ult.data + 'T00:00:00');
-        dataProxima.setDate(dataProxima.getDate() + 21);
-        if (d >= 21 || dataProxima <= limite) {
+
+        if (d >= 21 || proxColheita <= limite) {
           const m = mediaEito(e);
           totalArea += m;
           totalGeral += m;
           nEitosArea++;
-          if (d > maxDiasArea) maxDiasArea = d;
+
+          // Para "dias", mostrar quantos dias terá na data limite (ou dias desde última)
+          const diasNoLimite = Math.round((limite - new Date(ult.data + 'T00:00:00')) / 86400000);
+          if (diasNoLimite > maxDiasArea) maxDiasArea = diasNoLimite;
         }
       }
       if (totalArea > 0) porArea[area] = { cocos: totalArea, maxDias: maxDiasArea, nEitos: nEitosArea };
@@ -305,7 +337,104 @@ function renderProjecao() {
   const r2 = calcProxima();
   const r3 = calc21();
 
-  // Breakdown de áreas (usado em todos os cards)
+  // ── Card 1 — Esta Semana (Urgente + Esta Semana com drill-down) ──
+  const areasEsta = Object.entries(r1.porArea).sort((a,b) => b[1].maxDias - a[1].maxDias);
+
+  function buildAreaRow(area, info, areaKey) {
+    const nome = nomes[area] || area;
+    const safeKey = areaKey.replace(/[^a-zA-Z0-9]/g, '_');
+    const totalCocos = info.cocosUrg + info.cocosSem;
+    const diasCor = info.maxDias >= 21 ? 'var(--vermelho)' : info.maxDias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
+    const bordaCor = info.nUrg > 0 ? 'rgba(220,53,69,0.15)' : 'rgba(224,168,0,0.15)';
+    const badges = (info.nUrg > 0 ? `<span style="font-size:9px;font-weight:800;background:var(--vermelho);color:#fff;padding:1px 6px;border-radius:4px">URG ${info.nUrg}</span> ` : '')
+                 + (info.nSem > 0 ? `<span style="font-size:9px;font-weight:800;background:var(--amarelo);color:#fff;padding:1px 6px;border-radius:4px">SEM ${info.nSem}</span>` : '');
+
+    // Tabela de eitos expandível
+    const eitoRows = info.eitos.map(ei => {
+      const tipoCor = ei.tipo === 'urg' ? 'var(--vermelho)' : 'var(--amarelo)';
+      const tipoLabel = ei.tipo === 'urg' ? 'URGENTE' : 'SEMANA';
+      const diasEitoCor = ei.dias >= 21 ? 'var(--vermelho)' : ei.dias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
+      return `<tr>
+        <td style="font-family:var(--font-mono);font-weight:700;color:var(--forest);font-size:12px;padding:4px 6px">${ei.id}</td>
+        <td style="font-family:var(--font-mono);font-weight:800;color:${diasEitoCor};font-size:12px;padding:4px 6px;text-align:center">${ei.dias}d</td>
+        <td style="padding:4px 6px;text-align:center"><span style="font-size:9px;font-weight:800;background:${tipoCor};color:#fff;padding:1px 5px;border-radius:3px">${tipoLabel}</span></td>
+        <td style="font-family:var(--font-mono);font-weight:700;color:var(--forest);font-size:12px;padding:4px 6px;text-align:right">${fmtNum(ei.cocos)}</td>
+      </tr>`;
+    }).join('');
+
+    const totalUrgArea = fmtNum(info.cocosUrg);
+    const totalSemArea = fmtNum(info.cocosSem);
+
+    return `
+      <div class="proj-area-group" style="border:1px solid ${bordaCor};border-radius:8px;overflow:hidden;margin-bottom:6px">
+        <div class="proj-area-header" onclick="toggleProjArea('${safeKey}')" style="display:grid;grid-template-columns:1fr auto auto 50px 24px;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:var(--surface2);transition:background 0.15s">
+          <div>
+            <div style="font-size:13px;font-weight:800;color:var(--forest)">${nome}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:1px">${info.nUrg > 0 ? info.nUrg + ' urg' : ''}${info.nUrg > 0 && info.nSem > 0 ? ' · ' : ''}${info.nSem > 0 ? info.nSem + ' sem' : ''} · ${fmtNum(totalCocos)} cocos est.</div>
+          </div>
+          <div style="display:flex;gap:4px">${badges}</div>
+          <div style="font-size:14px;font-weight:800;font-family:var(--font-mono);color:var(--forest);text-align:right">${fmtNum(totalCocos)}</div>
+          <div style="font-size:13px;font-weight:800;font-family:var(--font-mono);color:${diasCor};text-align:center">${info.maxDias}d</div>
+          <div id="proj-chev-${safeKey}" style="font-size:12px;color:var(--muted);transition:transform 0.2s;text-align:center">▾</div>
+        </div>
+        <div id="proj-detail-${safeKey}" style="display:none;padding:0 8px 8px">
+          <table style="width:100%;border-collapse:collapse;margin-top:4px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:left;padding:4px 6px">Eito</th>
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:center;padding:4px 6px">Dias</th>
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:center;padding:4px 6px">Status</th>
+                <th style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);text-align:right;padding:4px 6px">Cocos est.</th>
+              </tr>
+            </thead>
+            <tbody>${eitoRows}</tbody>
+            <tfoot>
+              <tr style="border-top:2px solid var(--border)">
+                <td colspan="3" style="font-size:11px;font-weight:700;color:var(--text);padding:6px">Total estimado</td>
+                <td style="font-size:13px;font-weight:800;font-family:var(--font-mono);color:var(--forest);text-align:right;padding:6px">${fmtNum(totalCocos)}</td>
+              </tr>
+              <tr>
+                <td colspan="4" style="font-size:10px;color:var(--muted);padding:2px 6px 4px">
+                  ${info.cocosUrg > 0 ? `<span style="color:var(--vermelho);font-weight:700">${totalUrgArea} urg</span>` : ''}
+                  ${info.cocosUrg > 0 && info.cocosSem > 0 ? ' + ' : ''}
+                  ${info.cocosSem > 0 ? `<span style="color:var(--amarelo);font-weight:700">${totalSemArea} sem</span>` : ''}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  const areasHtml = areasEsta.map(([area, info]) => buildAreaRow(area, info, area)).join('');
+
+  const cardEsta = `
+    <div class="proj-card" style="border:2px solid var(--accent);grid-column:1/-1">
+      <div class="proj-card-label">📅 Esta semana</div>
+      <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:12px">${fmtSemana(segEsta, sexEsta)}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div style="text-align:center;padding:10px 8px;background:rgba(220,53,69,0.06);border-radius:8px;border:1px solid rgba(220,53,69,0.15)">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Urgente</div>
+          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho);margin:4px 0">${fmtNum(r1.totalUrg)}</div>
+          <div style="font-size:10px;color:var(--muted)">${r1.nUrg} eito${r1.nUrg!==1?'s':''} · +21d</div>
+        </div>
+        <div style="text-align:center;padding:10px 8px;background:rgba(224,168,0,0.06);border-radius:8px;border:1px solid rgba(224,168,0,0.15)">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amarelo)">🟡 Esta semana</div>
+          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--amarelo);margin:4px 0">${fmtNum(r1.totalSem)}</div>
+          <div style="font-size:10px;color:var(--muted)">${r1.nSem} eito${r1.nSem!==1?'s':''} · até sex</div>
+        </div>
+        <div style="text-align:center;padding:10px 8px;background:rgba(26,122,110,0.06);border-radius:8px;border:1px solid rgba(26,122,110,0.15)">
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--forest)">📦 Total</div>
+          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--forest);margin:4px 0">${fmtNum(r1.total)}</div>
+          <div style="font-size:10px;color:var(--muted)">${r1.nTotal} eito${r1.nTotal!==1?'s':''} · estimado</div>
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px">Mapa por área</div>
+      ${areasHtml || '<div style="font-size:11px;color:var(--muted);padding:8px">Nenhum eito previsto</div>'}
+      <button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>
+    </div>`;
+
+  // Breakdown de áreas (usado nos cards genéricos 2 e 3)
   function buildBreakdown(porArea) {
     return Object.entries(porArea)
       .sort((a,b) => b[1].maxDias - a[1].maxDias)
@@ -324,37 +453,6 @@ function renderProjecao() {
       <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:right">Projeção</span>
     </div>`;
   }
-
-  // Card "Esta semana" com colhido / a colher
-  const totalEitosEsta = Object.values(r1.porArea).reduce((s,v) => s + v.nEitos, 0);
-  const aColher = Math.max(0, r1.total - r1.colhido);
-  const pctColhido = r1.total > 0 ? Math.round(r1.colhido / r1.total * 100) : 0;
-  const pctAColher = r1.total > 0 ? 100 - pctColhido : 0;
-  const breakdownEsta = buildBreakdown(r1.porArea);
-  const cardEsta = `
-    <div class="proj-card" style="border:2px solid var(--accent);">
-      <div class="proj-card-label">📅 Esta semana</div>
-      <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${fmtSemana(segEsta, sexEsta)}</div>
-      <div class="proj-card-val">${fmtNum(r1.total)}</div>
-      <div class="proj-card-sub">${totalEitosEsta} eito${totalEitosEsta!==1?'s':''} prontos</div>
-      <div style="display:flex;gap:12px;margin-top:8px;padding:8px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
-        <div style="flex:1;text-align:center">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--verde)">✅ Colhido</div>
-          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--verde)">${fmtNum(r1.colhido)}</div>
-          <div style="font-size:10px;color:var(--muted)">${pctColhido}%</div>
-        </div>
-        <div style="width:1px;background:var(--border)"></div>
-        <div style="flex:1;text-align:center">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 A colher</div>
-          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho)">${fmtNum(aColher)}</div>
-          <div style="font-size:10px;color:var(--muted)">${pctAColher}%</div>
-        </div>
-      </div>
-      <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.4">Média histórica dos eitos vencidos ou a vencer no período</div>
-      ${buildHeader()}
-      <div class="proj-breakdown">${breakdownEsta || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
-      <button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>
-    </div>`;
 
   // Cards genéricos (próxima semana, 21 dias)
   function buildCardGenerico(r, icon, label, sublabel) {
@@ -381,6 +479,16 @@ function renderProjecao() {
         ${buildCardGenerico(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo')}
       </div>
     </div>`;
+}
+
+// ─────────── TOGGLE PROJEÇÃO ÁREA ───────────
+function toggleProjArea(key) {
+  const detail = document.getElementById('proj-detail-' + key);
+  const chev = document.getElementById('proj-chev-' + key);
+  if (!detail) return;
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
 }
 
 // ─────────── COMPARATIVO SEMANAL ───────────
