@@ -364,6 +364,7 @@
   .vtable td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
   .vtable tr:hover td{background:var(--surface2)}
   .vtable tr.pendente td{background:rgba(234,179,8,0.04)}
+  .vtable tfoot td{padding:10px;border-bottom:none}
   .badge-pago{background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
   .badge-pendente{background:var(--amarelo-bg);color:#854d0e;border:1px solid var(--amarelo-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
   .vform{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:700px}

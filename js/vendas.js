@@ -499,7 +499,27 @@ function renderVendasLista(){
   const cnt=document.getElementById('vl-count');
   if(cnt){const tFrC=lista.reduce((s,v)=>s+(v.frete||0),0);const pmC=tC>0?'R$ '+((tR-tFrC)/tC).toFixed(2):'';cnt.textContent=lista.length+' venda'+(lista.length!==1?'s':'')+' · '+fmtNum(tC)+' cocos'+(pmC?' · '+pmC+'/coco':'');}
   const rod=document.getElementById('vl-rodape');
-  if(rod&&lista.length){const tFr=lista.reduce((s,v)=>s+(v.frete||0),0);const pm=tC>0?'R$ '+((tR-tFr)/tC).toFixed(2):'—';rod.textContent='Total: '+fmtNum(tC)+' cocos · Receita: '+fmtR(tR)+' · Recebido: '+fmtR(tRec)+' · R$/coco: '+pm;}
+  if(rod){
+    rod.innerHTML='';
+    if(lista.length){
+      const tFr=lista.reduce((s,v)=>s+(v.frete||0),0);
+      const pm=tC>0?'R$ '+((tR-tFr)/tC).toFixed(2):'—';
+      const tr=document.createElement('tr');
+      tr.style.cssText='font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--forest);border-top:2px solid var(--border)';
+      tr.innerHTML=
+        '<td></td>'  // DATA
+       +'<td></td>'  // CLIENTE
+       +'<td></td>'  // NF
+       +'<td>'+fmtNum(tC)+'</td>'  // COCOS
+       +'<td>'+fmtR(tR)+'</td>'  // TOTAL
+       +'<td>'+fmtR(tFr)+'</td>'  // FRETE
+       +'<td>'+fmtR(tRec)+'</td>'  // RECEBIDO
+       +'<td>R$ '+pm+'</td>'  // R$/COCO
+       +'<td></td>'  // STATUS
+       +'<td></td>';  // AÇÕES
+      rod.appendChild(tr);
+    }
+  }
 }
 
 function renderVendasPendentes(){
