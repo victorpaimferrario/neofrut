@@ -409,7 +409,7 @@ function renderProjecao() {
   const areasHtml = areasEsta.map(([area, info]) => buildAreaRow(area, info, area)).join('');
 
   const cardEsta = `
-    <div class="proj-card" style="border:2px solid var(--accent);grid-column:1/-1">
+    <div class="proj-card" style="border:2px solid var(--accent);">
       <div class="proj-card-label">📅 Esta semana</div>
       <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:12px">${fmtSemana(segEsta, sexEsta)}</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
