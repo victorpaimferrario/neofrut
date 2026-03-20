@@ -96,7 +96,7 @@ function renderLancamento() {
   let rows = '';
   for (const area of areas) {
     const eitos = DB[area];
-    rows += `<tr class="area-sep"><td colspan="8">${area} — ${eitos.length} eitos</td></tr>`;
+    rows += `<tr class="area-sep"><td colspan="10">${area} — ${eitos.length} eitos</td></tr>`;
     for (const e of eitos) {
       const ult = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;

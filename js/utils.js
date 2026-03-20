@@ -1,4 +1,9 @@
 // ─────────── UTILS ───────────
+/** Extrai primeiro número de um id de eito (ex: "05/06" → 5, "131" → 131) */
+function eitoNum(id) { return parseInt(id.replace(/\D.*/, '')) || 0; }
+/** Ordena array de eitos numericamente pelo id */
+function sortEitosNum(eitos) { return eitos.sort((a, b) => eitoNum(a.id) - eitoNum(b.id)); }
+
 function today() { return new Date().toISOString().split('T')[0]; }
 
 function diasDesde(data) {

@@ -35,6 +35,8 @@ async function loadDataSupabase() {
     if(db['MDC']) { db['MAMÃO DE CIMA'] = db['MDC']; delete db['MDC']; }
     if(db['MDB']) { db['MAMÃO DE BAIXO'] = db['MDB']; delete db['MDB']; }
     if(db['AREA B']) delete db['AREA B'];
+    // Ordenar eitos numericamente
+    for(const area of Object.keys(db)) sortEitosNum(db[area]);
     localStorage.setItem(SK, JSON.stringify(db));
     console.log('Colheitas carregadas do Supabase:', Object.keys(db).length, 'áreas');
     return db;
@@ -53,6 +55,8 @@ function loadDataLocal() {
     if (d['MDC']) { d['MAMÃO DE CIMA'] = d['MDC']; delete d['MDC']; }
     if (d['MDB']) { d['MAMÃO DE BAIXO'] = d['MDB']; delete d['MDB']; }
     if (d['AREA B']) delete d['AREA B'];
+    // Ordenar eitos numericamente
+    for(const area of Object.keys(d)) if(Array.isArray(d[area])) sortEitosNum(d[area]);
     localStorage.setItem(SK, JSON.stringify(d));
     return d;
   }
