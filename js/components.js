@@ -422,7 +422,7 @@ function openClientePanel(cliente){
   const tCocos=vendas.reduce((s,v)=>s+(v.qtde||0),0);
   const tReceita=vendas.reduce((s,v)=>s+(v.total||0),0);
   const tFrete=vendas.reduce((s,v)=>s+(v.frete||0),0);
-  const preco=tCocos>0?(tReceita/tCocos).toFixed(2):0;
+  const preco=tCocos>0?((tReceita-tFrete)/tCocos).toFixed(2):0;
   const ult=vendas[vendas.length-1];
   document.getElementById('cli-title').textContent=cliente;
   document.getElementById('cli-sub').textContent=vendas.length+' compra'+(vendas.length!==1?'s':'')+' registrada'+(vendas.length!==1?'s':'');
@@ -470,7 +470,7 @@ function openClientePanel(cliente){
   // Histórico
   document.getElementById('cli-hist').innerHTML=[...vendas].reverse().map((v,i)=>{
     const [y,m,d]=v.data.split('-');
-    const pc=v.qtde>0&&v.total>0?'R$ '+(v.total/v.qtde).toFixed(2):null;
+    const pc=v.qtde>0&&v.total>0?'R$ '+((v.total-(v.frete||0))/v.qtde).toFixed(2):null;
     const areasKeys=v.areas?Object.keys(v.areas).filter(a=>v.areas[a]>0):[];
     const areasTag=areasKeys.length>0
       ?'<span style="display:inline-flex;gap:3px;margin-top:3px">'+areasKeys.map(a=>'<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border)">'+a+'</span>').join('')+'</span>'
@@ -514,9 +514,10 @@ function renderTodosClientes(){
   // agregar por cliente
   const pc={};
   sel.forEach(v=>{
-    if(!pc[v.cliente])pc[v.cliente]={c:0,r:0,ult:null};
+    if(!pc[v.cliente])pc[v.cliente]={c:0,r:0,f:0,ult:null};
     pc[v.cliente].c+=v.qtde||0;
     pc[v.cliente].r+=v.total||0;
+    pc[v.cliente].f+=v.frete||0;
     if(!pc[v.cliente].ult||v.data>pc[v.cliente].ult)pc[v.cliente].ult=v.data;
   });
 
@@ -526,7 +527,8 @@ function renderTodosClientes(){
   const maxC=rank[0]?.[1].c||1;
   const _totalCocos=rank.reduce((s,[,d])=>s+d.c,0);
   const _totalReceita=rank.reduce((s,[,d])=>s+d.r,0);
-  const _precoMedio=_totalCocos>0?(_totalReceita/_totalCocos).toFixed(2):null;
+  const _totalFrete=rank.reduce((s,[,d])=>s+d.f,0);
+  const _precoMedio=_totalCocos>0?((_totalReceita-_totalFrete)/_totalCocos).toFixed(2):null;
   const _periodoLabel=(ano==='todos'?'todos os anos':ano)+(mes==='todos'?'':' · '+['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][parseInt(mes)]);
   const sub=document.getElementById('todos-clientes-sub');
   if(sub) sub.innerHTML=
@@ -538,7 +540,7 @@ function renderTodosClientes(){
   if(!lista)return;
   lista.innerHTML='';
   rank.forEach(([n,d],i)=>{
-    const precoCli=d.c>0?(d.r/d.c).toFixed(2):null;
+    const precoCli=d.c>0?((d.r-d.f)/d.c).toFixed(2):null;
     const w=Math.round(d.c/maxC*180);
     const div=document.createElement('div');
     div.className='vrank-row';

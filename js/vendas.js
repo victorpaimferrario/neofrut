@@ -113,7 +113,7 @@ function renderVendasPainel(){
   const tRecebido=sel.reduce((s,v)=>s+(v.valorRecebido||0),0);
   const tFrete=sel.reduce((s,v)=>s+(v.frete||0),0);
   const tPend=sel.filter(v=>v.status==='PENDENTE').reduce((s,v)=>s+(v.valorRecebido||v.total||0),0);
-  const preco=tCocos>0?(tReceita/tCocos).toFixed(2):0;
+  const preco=tCocos>0?((tReceita-tFrete)/tCocos).toFixed(2):0;
   const kpi=document.getElementById('v-kpi-grid');
   if(kpi){
     const _nPend = sel.filter(v=>v.status==='PENDENTE').length;
@@ -135,7 +135,7 @@ function renderVendasPainel(){
   }
   // ranking
   const pc={};
-  sel.forEach(v=>{if(!pc[v.cliente])pc[v.cliente]={c:0,r:0};pc[v.cliente].c+=v.qtde||0;pc[v.cliente].r+=v.total||0;});
+  sel.forEach(v=>{if(!pc[v.cliente])pc[v.cliente]={c:0,r:0,f:0};pc[v.cliente].c+=v.qtde||0;pc[v.cliente].r+=v.total||0;pc[v.cliente].f+=v.frete||0;});
   const rank=Object.entries(pc).sort((a,b)=>b[1].c-a[1].c).slice(0,8);
   const maxC=rank[0]?.[1].c||1;
   const rankEl=document.getElementById('v-ranking');
@@ -146,7 +146,7 @@ function renderVendasPainel(){
       rankEl.innerHTML='';
       const totalCocosPeriodo=rank.reduce((s,[,d])=>s+d.c,0)||1;
       rank.forEach(([n,d],i)=>{
-        const precoCli=d.c>0?(d.r/d.c).toFixed(2):null;
+        const precoCli=d.c>0?((d.r-d.f)/d.c).toFixed(2):null;
         const w=Math.round(d.c/maxC*100);
         const pct=Math.round(d.c/totalCocosPeriodo*100);
         const div=document.createElement('div');
@@ -185,7 +185,8 @@ function renderGraficoPreco(db,ano){
       const s=db.filter(v=>new Date(v.data+'T00:00:00').getFullYear()===a&&v.qtde>0&&v.total>0);
       const tQ=s.reduce((x,v)=>x+(v.qtde||0),0);
       const tR=s.reduce((x,v)=>x+(v.total||0),0);
-      return tQ>0?parseFloat((tR/tQ).toFixed(2)):0;
+      const tF=s.reduce((x,v)=>x+(v.frete||0),0);
+      return tQ>0?parseFloat(((tR-tF)/tQ).toFixed(2)):0;
     });
   }else{
     labels=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -193,7 +194,8 @@ function renderGraficoPreco(db,ano){
       const s=db.filter(v=>{const d=new Date(v.data+'T00:00:00');return d.getFullYear()===parseInt(ano)&&d.getMonth()+1===m&&v.qtde>0&&v.total>0;});
       const tQ=s.reduce((x,v)=>x+(v.qtde||0),0);
       const tR=s.reduce((x,v)=>x+(v.total||0),0);
-      return tQ>0?parseFloat((tR/tQ).toFixed(2)):0;
+      const tF=s.reduce((x,v)=>x+(v.frete||0),0);
+      return tQ>0?parseFloat(((tR-tF)/tQ).toFixed(2)):0;
     });
   }
   if(vals.every(v=>v===0)){canvas.style.display='none';return;}
@@ -244,7 +246,8 @@ function renderComparativoAnual(){
     const s=db.filter(v=>{const d=new Date(v.data+'T00:00:00');return d.getFullYear()===a&&d.getMonth()+1===mes;});
     const cocos=s.reduce((x,v)=>x+(v.qtde||0),0);
     const receita=s.reduce((x,v)=>x+(v.total||0),0);
-    const preco=cocos>0?(receita/cocos).toFixed(2):null;
+    const frete=s.reduce((x,v)=>x+(v.frete||0),0);
+    const preco=cocos>0?((receita-frete)/cocos).toFixed(2):null;
     return{ano:a,cocos,receita,preco};
   });
   const DPR=window.devicePixelRatio||1;
@@ -339,7 +342,8 @@ function calcVenda(){
   const q=parseInt(document.getElementById('va-total')?.value)||0;
   const t=parseFloat(document.getElementById('v-total')?.value)||0;
   document.getElementById('vc-cocos').textContent=q>0?fmtNum(q):'—';
-  document.getElementById('vc-preco').textContent=q>0&&t>0?'R$ '+(t/q).toFixed(2):'—';
+  const f=parseFloat(document.getElementById('v-frete')?.value)||0;
+  document.getElementById('vc-preco').textContent=q>0&&t>0?'R$ '+((t-f)/q).toFixed(2):'—';
   calcVendaRecebido();
 }
 function onModoLitro(){
@@ -457,7 +461,7 @@ function renderVendasLista(){
   tbody.innerHTML='';
   lista.forEach(v=>{
     const [y,m,d]=v.data.split('-');
-    const pc=v.qtde>0&&v.total>0?(v.total/v.qtde).toFixed(2):'—';
+    const pc=v.qtde>0&&v.total>0?((v.total-(v.frete||0))/v.qtde).toFixed(2):'—';
     const badge=v.status==='PAGO'
       ?'<span class="badge-pago">PAGO</span>'
       :'<span class="badge-pendente">PENDENTE</span>';
@@ -658,9 +662,8 @@ function calcEditVenda(){
   const el1=document.getElementById('ev-calc-cocos');
   const el2=document.getElementById('ev-calc-preco');
   if(el1)el1.textContent=q>0?fmtNum(q):'—';
-  if(el2)el2.textContent=q>0&&t>0?'R$ '+(t/q).toFixed(2):'—';
-  // auto calc recebido
   const f=parseFloat(document.getElementById('ev-frete')?.value)||0;
+  if(el2)el2.textContent=q>0&&t>0?'R$ '+((t-f)/q).toFixed(2):'—';
   const r=document.getElementById('ev-recebido');
   if(r&&t>0)r.value=(t-f).toFixed(2);
 }
@@ -900,7 +903,7 @@ function exportarVendasCSV(){
   lista.sort((a,b)=>b.data.localeCompare(a.data));
   const linhas=[['DATA','CLIENTE','NF','COCOS','TOTAL','FRETE','RECEBIDO','R$/COCO','STATUS']];
   lista.forEach(v=>{
-    const pc=v.qtde>0&&v.total>0?(v.total/v.qtde).toFixed(2):'';
+    const pc=v.qtde>0&&v.total>0?((v.total-(v.frete||0))/v.qtde).toFixed(2):'';
     linhas.push([v.data,v.cliente,v.nf,v.qtde,v.total,v.frete||0,v.valorRecebido||0,pc,v.status]);
   });
   const csv='\uFEFF'+linhas.map(r=>r.join(';')).join('\n');
