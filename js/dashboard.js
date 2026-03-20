@@ -486,27 +486,27 @@ function renderProjecao() {
   const cardEsta = `
     <div class="proj-card" style="border:2px solid var(--accent);">
       <div class="proj-card-label">📅 Esta semana</div>
-      <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:12px">${fmtSemana(segEsta, sexEsta)}</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-        <div style="text-align:center;padding:10px 8px;background:rgba(220,53,69,0.06);border-radius:8px;border:1px solid rgba(220,53,69,0.15)">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Urgente</div>
-          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho);margin:4px 0">${fmtNum(r1.totalUrg)}</div>
-          <div style="font-size:10px;color:var(--muted)">${r1.nUrg} eito${r1.nUrg!==1?'s':''} · +21d</div>
+      <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:8px">${fmtSemana(segEsta, sexEsta)}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+        <div style="text-align:center;padding:6px 4px;background:rgba(220,53,69,0.06);border-radius:6px;border:1px solid rgba(220,53,69,0.15)">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Urgente</div>
+          <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho);margin:2px 0">${fmtNum(r1.totalUrg)}</div>
+          <div style="font-size:8px;color:var(--muted)">${r1.nUrg} eito${r1.nUrg!==1?'s':''} · +21d</div>
         </div>
-        <div style="text-align:center;padding:10px 8px;background:rgba(224,168,0,0.06);border-radius:8px;border:1px solid rgba(224,168,0,0.15)">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amarelo)">🟡 Esta semana</div>
-          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--amarelo);margin:4px 0">${fmtNum(r1.totalSem)}</div>
-          <div style="font-size:10px;color:var(--muted)">${r1.nSem} eito${r1.nSem!==1?'s':''} · até sex</div>
+        <div style="text-align:center;padding:6px 4px;background:rgba(224,168,0,0.06);border-radius:6px;border:1px solid rgba(224,168,0,0.15)">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amarelo)">🟡 Semana</div>
+          <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--amarelo);margin:2px 0">${fmtNum(r1.totalSem)}</div>
+          <div style="font-size:8px;color:var(--muted)">${r1.nSem} eito${r1.nSem!==1?'s':''} · até sex</div>
         </div>
-        <div style="text-align:center;padding:10px 8px;background:rgba(26,122,110,0.06);border-radius:8px;border:1px solid rgba(26,122,110,0.15)">
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--forest)">📦 Total</div>
-          <div style="font-size:22px;font-weight:800;font-family:var(--font-mono);color:var(--forest);margin:4px 0">${fmtNum(r1.total)}</div>
-          <div style="font-size:10px;color:var(--muted)">${r1.nTotal} eito${r1.nTotal!==1?'s':''} · estimado</div>
+        <div style="text-align:center;padding:6px 4px;background:rgba(26,122,110,0.06);border-radius:6px;border:1px solid rgba(26,122,110,0.15)">
+          <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--forest)">📦 Total</div>
+          <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--forest);margin:2px 0">${fmtNum(r1.total)}</div>
+          <div style="font-size:8px;color:var(--muted)">${r1.nTotal} eito${r1.nTotal!==1?'s':''}</div>
         </div>
       </div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px">Mapa por área</div>
-      ${areasHtml || '<div style="font-size:11px;color:var(--muted);padding:8px">Nenhum eito previsto</div>'}
-      <button onclick="showPage('lancamento')" style="width:100%;margin-top:10px;padding:8px;background:var(--forest);color:#fff;border:none;border-radius:7px;font-family:var(--font-main);font-size:12px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:4px">Mapa por área</div>
+      ${areasHtml || '<div style="font-size:10px;color:var(--muted);padding:4px">Nenhum eito previsto</div>'}
+      <button onclick="showPage('lancamento')" style="width:100%;margin-top:6px;padding:6px;background:var(--forest);color:#fff;border:none;border-radius:6px;font-family:var(--font-main);font-size:11px;font-weight:700;cursor:pointer">⚡ Lançar Colheita</button>
     </div>`;
 
   // Breakdown de áreas (usado nos cards genéricos 2 e 3)
@@ -659,31 +659,31 @@ function renderProjecao() {
   const cardColhido = `
     <div class="proj-card" style="display:flex;flex-direction:column;">
       <div class="proj-card-label">📋 Colhido Esta Semana</div>
-      <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:5px 12px;border-radius:20px;margin-bottom:12px;width:fit-content">${badgeSemana}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">🌴 Colhido</div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${totalColhidoSemana > 0 ? fmtK(totalColhidoSemana) : '—'}</div>
-          <div style="font-size:9px;color:var(--muted)">cocos esta semana</div>
+      <div style="display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:3px 10px;border-radius:20px;margin-bottom:8px;width:fit-content">${badgeSemana}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center">
+          <div style="font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">🌴 Colhido</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:1px">${totalColhidoSemana > 0 ? fmtK(totalColhidoSemana) : '—'}</div>
+          <div style="font-size:8px;color:var(--muted)">cocos</div>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">📋 Eitos</div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${totalEitosSemana > 0 ? totalEitosSemana : '—'}</div>
-          <div style="font-size:9px;color:var(--muted)">eitos colhidos</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center">
+          <div style="font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">📋 Eitos</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:1px">${totalEitosSemana > 0 ? totalEitosSemana : '—'}</div>
+          <div style="font-size:8px;color:var(--muted)">colhidos</div>
         </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">👥 Clientes</div>
-          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${clientesSemana.size > 0 ? clientesSemana.size : '—'}</div>
-          <div style="font-size:9px;color:var(--muted)">atendidos</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center">
+          <div style="font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">👥 Clientes</div>
+          <div style="font-size:16px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:1px">${clientesSemana.size > 0 ? clientesSemana.size : '—'}</div>
+          <div style="font-size:8px;color:var(--muted)">atendidos</div>
         </div>
       </div>
-      <div style="flex:1">${lancHtml}</div>
-      <div style="padding:10px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-        <span style="font-size:11px;font-weight:700;color:var(--muted)">Total da semana</span>
-        <span style="font-family:var(--font-mono);font-size:15px;font-weight:800;color:var(--forest)">${totalColhidoSemana > 0 ? fmtNum(totalColhidoSemana) + ' cocos' : '0 cocos'}</span>
+      <div style="flex:1;max-height:150px;overflow-y:auto">${lancHtml}</div>
+      <div style="padding:6px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span style="font-size:10px;font-weight:700;color:var(--muted)">Total da semana</span>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${totalColhidoSemana > 0 ? fmtNum(totalColhidoSemana) + ' cocos' : '0 cocos'}</span>
       </div>
-      <div style="text-align:center;margin-top:8px">
-        <button onclick="abrirVincularClientes()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-sans)">✏️ Vincular Clientes a Colheitas</button>
+      <div style="text-align:center;margin-top:4px">
+        <button onclick="abrirVincularClientes()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-sans)">✏️ Vincular Clientes</button>
       </div>
     </div>`;
 
