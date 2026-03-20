@@ -633,9 +633,9 @@ function renderProjecao() {
             </div>
             <div>
               <div style="font-size:13px;font-weight:800;color:var(--forest)">${clienteStr}</div>
-              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${areasStr}</div>
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${l.eitos.length} eitos</div>
             </div>
-            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${l.eitos.length} eitos</span>
+            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${areasStr}</span>
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
