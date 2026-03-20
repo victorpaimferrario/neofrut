@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260320e">
+<link rel="stylesheet" href="styles.css?v=20260320f">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <body>
 
@@ -171,26 +171,7 @@
     <div class="area-btn-group" id="lanc-area-btns"></div>
   </div>
 
-  <div class="planilha-wrap">
-    <table class="planilha-table">
-      <thead>
-        <tr>
-          <th>EITO</th>
-          <th style="text-align:center">ST</th>
-          <th style="text-align:center">DIAS</th>
-          <th style="text-align:center">PL</th>
-          <th class="num" style="color:var(--muted)">ÚLT.</th>
-          <th class="num" style="color:var(--muted)">MÉD.3</th>
-          <th class="num">MESA</th>
-          <th class="num">FÁBRICA</th>
-          <th class="num">TOTAL</th>
-          <th class="num">% MESA</th>
-        </tr>
-      </thead>
-      <tbody id="planilha-tbody"></tbody>
-      <tfoot id="planilha-tfoot"></tfoot>
-    </table>
-  </div>
+  <div class="planilha-wrap" id="planilha-container"></div>
 
   <div class="lancamento-sticky">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -633,7 +614,7 @@
 <script src="js/storage.js?v=1774166400"></script>
 <script src="js/components.js?v=1774080000"></script>
 <script src="js/dashboard.js?v=1774080016"></script>
-<script src="js/lancamento.js?v=1774166400"></script>
+<script src="js/lancamento.js?v=1774166401"></script>
 <script src="js/analise.js?v=1773885000"></script>
 <script src="js/vendas.js?v=1774080003"></script>
 <script src="js/gestao.js?v=1773813587"></script>

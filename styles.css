@@ -192,7 +192,10 @@
   .planilha-table th { padding: 10px 14px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--forest); border-bottom: 2px solid var(--border); text-align: left; }
   .planilha-table th.num { text-align: right; }
   .planilha-table td { padding: 3px 6px; border-bottom: 1px solid rgba(42,47,62,0.35); vertical-align: middle; }
-  .planilha-table tr.area-sep td { background: linear-gradient(90deg, #d4edd4, #e8f3e4); padding: 7px 14px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--forest); border-bottom: 1px solid var(--border); border-left: 3px solid var(--teal); }
+  .area-sep-title { background: linear-gradient(90deg, #d4edd4, #e8f3e4); padding: 8px 14px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--forest); border-bottom: 1px solid var(--border); border-left: 3px solid var(--teal); margin-top: 12px; }
+  .area-sep-title:first-child { margin-top: 0; }
+  .planilha-table th[onclick] { cursor: pointer; user-select: none; transition: background 0.15s; }
+  .planilha-table th[onclick]:hover { background: rgba(42,157,143,0.12); }
   .planilha-table tr:hover td { background: rgba(255,255,255,0.02); }
   .planilha-table tr.row-filled td { background: rgba(34,197,94,0.04); }
   .p-eito { font-family: var(--font-mono); font-size: 13px; font-weight: 500; padding-left: 14px; white-space: nowrap; }

@@ -81,6 +81,41 @@ function selecionarAreaLanc(area) {
   renderLancamento();
 }
 
+// ── SORT ──
+let _lancSort = { col: 'eito', asc: true };
+
+function sortLancEitos(eitos, col, asc) {
+  const arr = eitos.map(e => {
+    const ult = getUltima(e);
+    const dias = ult ? diasDesde(ult.data) : 9999;
+    const st = statusDias(dias === 9999 ? null : dias);
+    const stOrder = st === 'vermelho' ? 0 : st === 'amarelo' ? 1 : st === 'verde' ? 2 : 3;
+    return { e, dias, stOrder };
+  });
+  arr.sort((a, b) => {
+    let cmp = 0;
+    if (col === 'eito') cmp = eitoNum(a.e.id) - eitoNum(b.e.id);
+    else if (col === 'dias') cmp = a.dias - b.dias;
+    else if (col === 'status') cmp = a.stOrder - b.stOrder || a.dias - b.dias;
+    else if (col === 'plantas') cmp = (a.e.plantas || 0) - (b.e.plantas || 0);
+    return asc ? cmp : -cmp;
+  });
+  return arr.map(x => x.e);
+}
+
+function setLancSort(col) {
+  if (_lancSort.col === col) _lancSort.asc = !_lancSort.asc;
+  else { _lancSort.col = col; _lancSort.asc = col === 'dias' || col === 'status' ? false : true; }
+  renderLancamento();
+}
+
+function thSortable(col, label, align) {
+  const arrow = _lancSort.col === col ? (_lancSort.asc ? ' ▲' : ' ▼') : '';
+  const style = align === 'center' ? 'text-align:center' : align === 'right' ? 'text-align:right' : '';
+  const cls = align === 'right' ? ' class="num"' : '';
+  return `<th${cls} style="${style};cursor:pointer;user-select:none" onclick="setLancSort('${col}')">${label}${arrow}</th>`;
+}
+
 function renderLancamento() {
   const filtroArea = window._lancAreaAtiva || 'todas';
   let areas;
@@ -90,25 +125,39 @@ function renderLancamento() {
   } else {
     areas = [filtroArea];
   }
-  const tbody = document.getElementById('planilha-tbody');
+  const container = document.getElementById('planilha-container');
   _allInputs = [];
 
-  let rows = '';
+  let html = '';
   for (const area of areas) {
-    const eitos = DB[area];
-    rows += `<tr class="area-sep"><td colspan="10">${area} — ${eitos.length} eitos</td></tr>`;
+    const eitosRaw = DB[area];
+    const eitos = sortLancEitos(eitosRaw, _lancSort.col, _lancSort.asc);
+
+    // Título da área ACIMA do cabeçalho
+    html += `<div class="area-sep-title">${area} — ${eitosRaw.length} eitos</div>`;
+    html += `<table class="planilha-table"><thead><tr>`;
+    html += thSortable('eito', 'EITO', '');
+    html += thSortable('status', 'ST', 'center');
+    html += thSortable('dias', 'DIAS', 'center');
+    html += thSortable('plantas', 'PL', 'center');
+    html += `<th class="num" style="color:var(--muted)">ÚLT.</th>`;
+    html += `<th class="num" style="color:var(--muted)">MÉD.3</th>`;
+    html += `<th class="num">MESA</th>`;
+    html += `<th class="num">FÁBRICA</th>`;
+    html += `<th class="num">TOTAL</th>`;
+    html += `<th class="num">% MESA</th>`;
+    html += `</tr></thead><tbody>`;
+
     for (const e of eitos) {
       const ult = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
       const st = statusDias(dias);
-      const stColor = st==='vermelho'?'var(--vermelho)':st==='amarelo'?'var(--amarelo)':st==='verde'?'var(--verde)':'var(--muted)';
       const mesaId = `lanc-${area}-${e.id}-mesa`;
       const fabId  = `lanc-${area}-${e.id}-fabrica`;
       const totalId = `lanc-${area}-${e.id}-total`;
       const pctId   = `lanc-${area}-${e.id}-pct`;
       _allInputs.push({area, eitoId: e.id, campo:'mesa', id: mesaId});
       _allInputs.push({area, eitoId: e.id, campo:'fabrica', id: fabId});
-      // calcular ÚLT. e MÉD.3 para referência
       const hist = e.historico || [];
       const ultVal = hist.length > 0 ? hist[hist.length-1].total : null;
       const med3 = hist.length > 0
@@ -117,7 +166,7 @@ function renderLancamento() {
       const ultFmt = ultVal !== null ? fmtNum(ultVal) : '—';
       const med3Fmt = med3 !== null ? fmtNum(med3) : '—';
 
-      rows += `<tr id="row-${area}-${e.id}">
+      html += `<tr id="row-${area}-${e.id}">
         <td class="p-eito" style="cursor:pointer;color:var(--forest);text-decoration:underline dotted" onclick="openSidePanel('${area}','${e.id}')" title="Ver histórico do eito">${e.id}</td>
         <td class="p-status"><span class="status-dot sd-${st}" style="margin:0 auto;display:block;width:8px;height:8px"></span></td>
         <td class="p-dias">${dias!==null?dias+'d':'—'}</td>
@@ -137,17 +186,25 @@ function renderLancamento() {
         <td class="p-pct" id="${pctId}">—</td>
       </tr>`;
     }
+    html += `</tbody><tfoot><tr style="border-top:2px solid var(--border);background:var(--surface2)">
+      <td colspan="6" style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">TOTAL ${NOMES_CURTOS[area]||area}</td>
+      <td class="tot-mesa-area" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
+      <td class="tot-fab-area"  style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
+      <td class="tot-total-area" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--verde)">—</td>
+      <td class="tot-pct-area" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--muted)">—</td>
+    </tr></tfoot></table>`;
   }
 
-  tbody.innerHTML = rows;
-  document.getElementById('planilha-tfoot').innerHTML = `
-    <tr style="border-top:2px solid var(--border);background:var(--surface2)">
-      <td colspan="6" style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">TOTAL</td>
-      <td id="tot-mesa" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
-      <td id="tot-fab"  style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
-      <td id="tot-total" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--verde)">—</td>
-      <td id="tot-pct" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--muted)">—</td>
-    </tr>`;
+  // Rodapé geral
+  html += `<table class="planilha-table"><tfoot id="planilha-tfoot"><tr style="border-top:2px solid var(--border);background:var(--surface2)">
+    <td colspan="6" style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)">TOTAL GERAL</td>
+    <td id="tot-mesa" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
+    <td id="tot-fab"  style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
+    <td id="tot-total" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--verde)">—</td>
+    <td id="tot-pct" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--muted)">—</td>
+  </tr></tfoot></table>`;
+
+  container.innerHTML = html;
   atualizarContador();
   salvarRascunho();
 }
