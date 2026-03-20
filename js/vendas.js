@@ -496,7 +496,7 @@ function renderVendasLista(){
   const cnt=document.getElementById('vl-count');
   if(cnt)cnt.textContent=lista.length+' venda'+(lista.length!==1?'s':'')+' · '+fmtNum(tC)+' cocos';
   const rod=document.getElementById('vl-rodape');
-  if(rod&&lista.length)rod.textContent='Total: '+fmtNum(tC)+' cocos · Receita: '+fmtR(tR)+' · Recebido: '+fmtR(tRec);
+  if(rod&&lista.length){const tFr=lista.reduce((s,v)=>s+(v.frete||0),0);const pm=tC>0?'R$ '+((tR-tFr)/tC).toFixed(2):'—';rod.textContent='Total: '+fmtNum(tC)+' cocos · Receita: '+fmtR(tR)+' · Recebido: '+fmtR(tRec)+' · R$/coco: '+pm;}
 }
 
 function renderVendasPendentes(){
