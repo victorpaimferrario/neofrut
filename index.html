@@ -218,9 +218,8 @@
     </div>
     <div style="margin-bottom:14px">
       <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);display:block;margin-bottom:6px">Cliente de destino</label>
-      <select id="revisao-cliente" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-main);font-size:13px;color:var(--text);background:var(--surface2);outline:none;cursor:pointer">
-        <option value="">Selecionar cliente...</option>
-      </select>
+      <input id="revisao-cliente" list="revisao-cliente-list" autocomplete="off" placeholder="🔍 Digite para buscar cliente..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-main);font-size:13px;color:var(--text);background:var(--surface2);outline:none;box-sizing:border-box">
+      <datalist id="revisao-cliente-list"></datalist>
       <div id="revisao-cliente-erro" style="display:none;font-size:11px;color:var(--vermelho);margin-top:4px">⚠ Selecione o cliente antes de confirmar</div>
     </div>
     <div class="modal-actions" id="revisao-actions">
@@ -633,8 +632,8 @@
 <script src="js/utils.js?v=1773813587"></script>
 <script src="js/storage.js?v=1774080004"></script>
 <script src="js/components.js?v=1774080000"></script>
-<script src="js/dashboard.js?v=1774080007"></script>
-<script src="js/lancamento.js?v=1774080004"></script>
+<script src="js/dashboard.js?v=1774080008"></script>
+<script src="js/lancamento.js?v=1774080005"></script>
 <script src="js/analise.js?v=1773885000"></script>
 <script src="js/vendas.js?v=1774080003"></script>
 <script src="js/gestao.js?v=1773813587"></script>

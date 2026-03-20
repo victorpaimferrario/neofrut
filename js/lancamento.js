@@ -383,14 +383,15 @@ function abrirRevisao() {
     <td style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmtNum(totTotal)}</td>
   </tr>`;
 
-  // Popular dropdown de clientes
+  // Popular datalist de clientes
   const sel = document.getElementById('revisao-cliente');
-  sel.innerHTML = '<option value="">Selecionar cliente...</option>';
+  const dl = document.getElementById('revisao-cliente-list');
+  dl.innerHTML = '';
   const clientes = Object.keys(MAPA_CLIENTES).sort();
   clientes.forEach(c => {
     const opt = document.createElement('option');
-    opt.value = c; opt.textContent = c;
-    sel.appendChild(opt);
+    opt.value = c;
+    dl.appendChild(opt);
   });
   sel.value = '';
   document.getElementById('revisao-cliente-erro').style.display = 'none';
