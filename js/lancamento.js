@@ -398,37 +398,47 @@ function abrirRevisao() {
   document.getElementById('modal-revisao').classList.add('open');
 }
 
+let _confirmandoLanc = false;
 async function confirmarLancamento() {
-  const data = document.getElementById('lanc-data').value;
-  const cliente = document.getElementById('revisao-cliente').value;
-  if (!cliente) {
-    document.getElementById('revisao-cliente-erro').style.display = 'block';
-    document.getElementById('revisao-cliente').focus();
-    return;
+  if (_confirmandoLanc) return;
+  _confirmandoLanc = true;
+  const btn = document.querySelector('#modal-revisao .btn-green');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  try {
+    const data = document.getElementById('lanc-data').value;
+    const cliente = document.getElementById('revisao-cliente').value;
+    if (!cliente) {
+      document.getElementById('revisao-cliente-erro').style.display = 'block';
+      document.getElementById('revisao-cliente').focus();
+      return;
+    }
+    const lotes = getLancamentos();
+    const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+    let count = 0;
+    for (const l of lotes) {
+      const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
+      if (!eito) continue;
+      if (!eito.historico) eito.historico = [];
+      eito.historico.push({ data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId });
+      count++;
+    }
+    await saveData();
+    // salvar colheitas em lote no Supabase
+    for(const l of lotes) {
+      await salvarColheitaSupabase(l.area, l.eitoId, {
+        data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId
+      });
+    }
+    limparRascunho();
+    limparLancamento();
+    renderDashboard();
+    setTimeout(renderMapa, 80);
+    showToast(`✓ ${count} eito${count!==1?'s':''} registrado${count!==1?'s':''} — ${fmtData(data)} · ${cliente}`);
+    mostrarResumo(data, lotes, cliente);
+  } finally {
+    _confirmandoLanc = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Confirmar Lançamento'; }
   }
-  const lotes = getLancamentos();
-  const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
-  let count = 0;
-  for (const l of lotes) {
-    const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
-    if (!eito) continue;
-    if (!eito.historico) eito.historico = [];
-    eito.historico.push({ data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId });
-    count++;
-  }
-  await saveData();
-  // salvar colheitas em lote no Supabase
-  for(const l of lotes) {
-    await salvarColheitaSupabase(l.area, l.eitoId, {
-      data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId
-    });
-  }
-  limparRascunho();
-  limparLancamento();
-  renderDashboard();
-  setTimeout(renderMapa, 80);
-  showToast(`✓ ${count} eito${count!==1?'s':''} registrado${count!==1?'s':''} — ${fmtData(data)} · ${cliente}`);
-  mostrarResumo(data, lotes, cliente);
 }
 
 // ── RESUMO WHATSAPP ──

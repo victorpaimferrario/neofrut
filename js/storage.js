@@ -88,6 +88,17 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
       { area, eito_id: eitoId, plantas: DB[area]?.find(e=>e.id===eitoId)?.plantas || 0 },
       { onConflict: 'area,eito_id' }
     );
+    // Verificar se já existe colheita para este eito/data (evitar duplicata)
+    const { data: existing } = await _SB.from('colheitas')
+      .select('id')
+      .eq('area', area)
+      .eq('eito_id', eitoId)
+      .eq('data', colheita.data)
+      .limit(1);
+    if (existing && existing.length > 0) {
+      console.warn('Colheita já existe:', area, eitoId, colheita.data, '— ignorando duplicata');
+      return;
+    }
     const row = {
       area, eito_id: eitoId,
       data: colheita.data,
