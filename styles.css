@@ -186,13 +186,13 @@
 
 
   /* LANÇAMENTO EM LOTE — MODO PLANILHA */
-  .planilha-wrap { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 12px; overflow: clip; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .planilha-wrap { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
   .planilha-table { width: 100%; border-collapse: collapse; }
-  .planilha-table thead tr { background: linear-gradient(135deg, #e0eed8, #d4e8cc); position: sticky; top: 60px; z-index: 20; }
+  .planilha-table thead tr { background: linear-gradient(135deg, #e0eed8, #d4e8cc); position: sticky; top: 56px; z-index: 20; }
   .planilha-table th { padding: 10px 14px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--forest); border-bottom: 2px solid var(--border); text-align: left; }
   .planilha-table th.num { text-align: right; }
   .planilha-table td { padding: 3px 6px; border-bottom: 1px solid rgba(42,47,62,0.35); vertical-align: middle; }
-  .planilha-table tr.area-sep { position: sticky; top: 95px; z-index: 19; }
+  .planilha-table tr.area-sep { position: sticky; top: 90px; z-index: 19; }
   .planilha-table tr.area-sep td { background: linear-gradient(90deg, #d4edd4, #e8f3e4); padding: 7px 14px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--forest); border-bottom: 1px solid var(--border); border-left: 3px solid var(--teal); }
   .planilha-table tr:hover td { background: rgba(255,255,255,0.02); }
   .planilha-table tr.row-filled td { background: rgba(34,197,94,0.04); }
