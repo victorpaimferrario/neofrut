@@ -160,7 +160,6 @@ function renderDashboard() {
 }
 
 function abrirColhidosPeriodo(periodo) {
-  // periodo: 'mes' ou 'ano'
   const hoje = new Date();
   const anoStr = String(hoje.getFullYear());
   const mesAtual = anoStr+'-'+String(hoje.getMonth()+1).padStart(2,'0');
@@ -170,48 +169,54 @@ function abrirColhidosPeriodo(periodo) {
     ? '🥥 Colhidos '+nomesMes[hoje.getMonth()+1]+' '+anoStr
     : '🌴 Colhidos '+anoStr;
 
-  const linhas = [];
+  // Agrupar por área
+  const porArea = {};
+  let totalCocos = 0;
   for(const [area, eitos] of Object.entries(DB)) {
     for(const e of eitos) {
       for(const h of (e.historico||[])) {
         if(h.data && h.data.startsWith(prefixo)) {
-          linhas.push({area, e, h});
+          porArea[area] = (porArea[area]||0) + (h.total||0);
+          totalCocos += h.total||0;
         }
       }
     }
   }
-  linhas.sort((a,b) => b.h.data.localeCompare(a.h.data) || a.area.localeCompare(b.area));
-  const totalCocos = linhas.reduce((s,l) => s+(l.h.total||0), 0);
-  const areasSet = new Set(linhas.map(l=>l.area));
+  const areas = Object.entries(porArea).sort((a,b) => b[1]-a[1]);
+  const maxV = areas[0]?.[1] || 1;
 
-  document.getElementById('modal-todos-eitos-title').textContent = titulo;
-  document.getElementById('modal-todos-eitos-sub').textContent =
-    fmtNum(totalCocos)+' cocos · '+linhas.length+' colheita'+(linhas.length!==1?'s':'')+' · '+areasSet.size+' área'+(areasSet.size!==1?'s':'');
+  // Usar modal dinâmico (fecha ao clicar fora)
+  const old = document.getElementById('modal-colhidos-periodo');
+  if(old) old.remove();
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'modal-colhidos-periodo';
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
 
-  const nomesCurtos = {'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'};
-  const tbody = document.getElementById('modal-todos-eitos-tbody');
-  tbody.innerHTML = '';
-  linhas.forEach(({area, e, h}) => {
-    const tr = document.createElement('tr');
-    tr.style.cursor = 'pointer';
-    tr.title = 'Ver histórico de '+area+' · Eito '+e.id;
-    tr.innerHTML =
-      '<td style="font-size:12px;color:var(--muted)">'+(nomesCurtos[area]||area)+'</td>'
-     +'<td style="font-family:var(--font-mono);font-weight:700;color:var(--forest)">'+e.id+'</td>'
-     +'<td><span style="font-size:11px;font-weight:700;color:var(--teal)">'+fmtData(h.data)+'</span></td>'
-     +'<td><span class="dias-badge dias-verde">'+diasDesde(h.data)+'d</span></td>'
-     +'<td style="font-family:var(--font-mono);font-size:12px">'+fmtData(h.data)+'</td>'
-     +'<td style="font-family:var(--font-mono)">'+fmtNum(h.total)+'</td>'
-     +'<td style="font-family:var(--font-mono);color:var(--muted)">'+fmtNum(e.plantas)+'</td>';
-    tr.addEventListener('click', () => {
-      closeModal('modal-todos-eitos');
-      openArea(area);
-      setTimeout(() => openDrawerEito(area, e.id), 300);
-    });
-    tbody.appendChild(tr);
-  });
-  document.getElementById('modal-todos-eitos').classList.add('open');
+  const linhasHtml = areas.map(([area, cocos]) => {
+    const pct = Math.round(cocos / totalCocos * 100);
+    const w = Math.round(cocos / maxV * 100);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="document.getElementById('modal-colhidos-periodo').remove();openArea('${area}')">
+      <span style="font-size:12px;font-weight:700;min-width:120px">${area}</span>
+      <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px"><div style="width:${w}%;height:100%;background:var(--forest);border-radius:4px"></div></div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;min-width:70px;text-align:right">${fmtNum(cocos)}</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:35px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  modal.innerHTML = `<div class="modal" style="max-width:560px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h3 style="margin:0">${titulo}</h3>
+      <button onclick="document.getElementById('modal-colhidos-periodo').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <div class="modal-sub">${areas.length} área${areas.length!==1?'s':''}</div>
+    <div style="margin:16px 0">${linhasHtml}</div>
+    <div style="padding:12px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700;color:var(--muted)">Total</span>
+      <span style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--forest)">${fmtNum(totalCocos)} cocos</span>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
 }
 
 function abrirColhidosAno() { abrirColhidosPeriodo('ano'); }
