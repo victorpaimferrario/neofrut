@@ -389,8 +389,8 @@
       📥 Importar Planilha
       <input type="file" id="v-import-file" accept=".xlsx,.xls" style="display:none" onchange="importarPlanilhaVendas(this)">
     </label>
+    <button class="btn btn-outline" style="font-size:12px" onclick="exportarVendasCSV()" title="Exportar lista filtrada como CSV">📤 Exportar CSV</button>
     <span id="v-import-status" style="font-size:12px;color:var(--muted);font-family:var(--font-mono)"></span>
-
   </div>
   <div class="vd-tabs">
     <button class="vd-tab active" onclick="showVendasTab('painel')">📊 Painel</button>
@@ -515,7 +515,6 @@
         <option value="todos">Todos</option><option value="PAGO">Pago</option><option value="PENDENTE">Pendente</option>
       </select>
       <span id="vl-count" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
-      <button class="btn btn-outline" style="font-size:12px;margin-left:auto" onclick="exportarVendasCSV()" title="Exportar lista filtrada como CSV">📤 Exportar CSV</button>
     </div>
     <div style="overflow-x:auto">
       <table class="vtable">
