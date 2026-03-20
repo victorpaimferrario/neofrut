@@ -506,7 +506,7 @@ function renderProjecao() {
   }
 
   // Ordenar por data decrescente
-  const lancList = Object.values(lancamentos).sort((a,b) => b.data.localeCompare(a.data));
+  const lancList = Object.values(lancamentos).sort((a,b) => a.data.localeCompare(b.data));
 
   // Badge: Seg DD/MM – Hoje
   const segFmt = `${String(segEsta.getDate()).padStart(2,'0')}/${String(segEsta.getMonth()+1).padStart(2,'0')}`;
