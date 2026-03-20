@@ -39,6 +39,8 @@ async function initVendas(forcarReload=false){
   renderVendasPainel();
   renderVendasLista();
   renderVendasPendentes();
+  const subTab=localStorage.getItem('neofrut_vendas_tab')||'painel';
+  showVendasTab(subTab);
 }
 
 function renderAnosBtns(anos){
@@ -87,6 +89,7 @@ function showVendasTab(tab){
   const idx={'painel':0,'nova':1,'lista':2,'pendentes':3}[tab];
   document.querySelectorAll('.vd-tab')[idx]?.classList.add('active');
   document.getElementById('vsec-'+tab)?.classList.add('active');
+  localStorage.setItem('neofrut_vendas_tab', tab);
   if(tab==='lista')renderVendasLista();
   if(tab==='pendentes')renderVendasPendentes();
 }
@@ -494,7 +497,7 @@ function renderVendasLista(){
     tbody.appendChild(tr);
   }
   const cnt=document.getElementById('vl-count');
-  if(cnt)cnt.textContent=lista.length+' venda'+(lista.length!==1?'s':'')+' · '+fmtNum(tC)+' cocos';
+  if(cnt){const tFrC=lista.reduce((s,v)=>s+(v.frete||0),0);const pmC=tC>0?'R$ '+((tR-tFrC)/tC).toFixed(2):'';cnt.textContent=lista.length+' venda'+(lista.length!==1?'s':'')+' · '+fmtNum(tC)+' cocos'+(pmC?' · '+pmC+'/coco':'');}
   const rod=document.getElementById('vl-rodape');
   if(rod&&lista.length){const tFr=lista.reduce((s,v)=>s+(v.frete||0),0);const pm=tC>0?'R$ '+((tR-tFr)/tC).toFixed(2):'—';rod.textContent='Total: '+fmtNum(tC)+' cocos · Receita: '+fmtR(tR)+' · Recebido: '+fmtR(tRec)+' · R$/coco: '+pm;}
 }
