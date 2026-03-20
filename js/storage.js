@@ -23,13 +23,12 @@ async function loadDataSupabase() {
     for(const c of (colheitas||[])) {
       if(!db[c.area]) continue;
       const eito = db[c.area].find(e => e.id === c.eito_id);
-      if(eito) eito.historico.push({
-        _id: c.id,
-        data: c.data.substring(0,10),
-        total: c.total,
-        mesa: c.mesa,
-        fabrica: c.fabrica
-      });
+      if(eito) {
+        const h = { _id: c.id, data: c.data.substring(0,10), total: c.total, mesa: c.mesa, fabrica: c.fabrica };
+        if(c.cliente) h.cliente = c.cliente;
+        if(c.lancamento_id) h.lancamento_id = c.lancamento_id;
+        eito.historico.push(h);
+      }
     }
     // migrações de nomenclatura
     if(db['MARACA'] && !db['MARACUJÁ']) { db['MARACUJÁ'] = db['MARACA']; delete db['MARACA']; }
@@ -89,13 +88,16 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
       { area, eito_id: eitoId, plantas: DB[area]?.find(e=>e.id===eitoId)?.plantas || 0 },
       { onConflict: 'area,eito_id' }
     );
-    await _SB.from('colheitas').insert({
+    const row = {
       area, eito_id: eitoId,
       data: colheita.data,
       total: colheita.total,
       mesa: colheita.mesa,
       fabrica: colheita.fabrica
-    });
+    };
+    if (colheita.cliente) row.cliente = colheita.cliente;
+    if (colheita.lancamento_id) row.lancamento_id = colheita.lancamento_id;
+    await _SB.from('colheitas').insert(row);
   } catch(err) { console.error('Erro ao salvar colheita:', err); }
 }
 

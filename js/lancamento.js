@@ -383,37 +383,56 @@ function abrirRevisao() {
     <td style="font-weight:700;font-family:var(--font-mono);color:var(--verde)">${fmtNum(totTotal)}</td>
   </tr>`;
 
+  // Popular dropdown de clientes
+  const sel = document.getElementById('revisao-cliente');
+  sel.innerHTML = '<option value="">Selecionar cliente...</option>';
+  const clientes = Object.keys(MAPA_CLIENTES).sort();
+  clientes.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  });
+  sel.value = '';
+  document.getElementById('revisao-cliente-erro').style.display = 'none';
+
   document.getElementById('modal-revisao').classList.add('open');
 }
 
 async function confirmarLancamento() {
   const data = document.getElementById('lanc-data').value;
+  const cliente = document.getElementById('revisao-cliente').value;
+  if (!cliente) {
+    document.getElementById('revisao-cliente-erro').style.display = 'block';
+    document.getElementById('revisao-cliente').focus();
+    return;
+  }
   const lotes = getLancamentos();
+  const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
   let count = 0;
   for (const l of lotes) {
     const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
     if (!eito) continue;
     if (!eito.historico) eito.historico = [];
-    eito.historico.push({ data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica });
+    eito.historico.push({ data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId });
     count++;
   }
   await saveData();
   // salvar colheitas em lote no Supabase
   for(const l of lotes) {
     await salvarColheitaSupabase(l.area, l.eitoId, {
-      data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica
+      data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId
     });
   }
   limparRascunho();
   limparLancamento();
   renderDashboard();
   setTimeout(renderMapa, 80);
-  showToast(`✓ ${count} eito${count!==1?'s':''} registrado${count!==1?'s':''} — ${fmtData(data)}`);
-  mostrarResumo(data, lotes);
+  showToast(`✓ ${count} eito${count!==1?'s':''} registrado${count!==1?'s':''} — ${fmtData(data)} · ${cliente}`);
+  mostrarResumo(data, lotes, cliente);
 }
 
 // ── RESUMO WHATSAPP ──
-function gerarTextoResumo(data, lotes) {
+function gerarTextoResumo(data, lotes, cliente) {
   const totMesa  = lotes.reduce((s,l) => s+l.mesa, 0);
   const totFab   = lotes.reduce((s,l) => s+l.fabrica, 0);
   const totGeral = totMesa + totFab;
@@ -439,6 +458,7 @@ function gerarTextoResumo(data, lotes) {
         : `  • ${nm}: ${fmtNum(tot)}`;
     }).join('\n');
   return `🥥 *COLHEITA NEOFRUT — ${dia}/${mes}/${ano}*\n\n` +
+    (cliente ? `👤 *Cliente:* ${cliente}\n` : '') +
     `📦 *Total:* ${fmtNum(totGeral)} cocos\n` +
     `🟢 *Mesa:* ${fmtNum(totMesa)} (${pctMesa}%)\n` +
     `🏭 *Fábrica:* ${fmtNum(totFab)} (${100-pctMesa}%)\n` +
@@ -446,8 +466,8 @@ function gerarTextoResumo(data, lotes) {
     `*Por área:*\n${linhas}`;
 }
 
-function mostrarResumo(data, lotes) {
-  document.getElementById('resumo-texto').textContent = gerarTextoResumo(data, lotes);
+function mostrarResumo(data, lotes, cliente) {
+  document.getElementById('resumo-texto').textContent = gerarTextoResumo(data, lotes, cliente);
   // esconder tabela e botões, mostrar resumo
   document.querySelector('#modal-revisao .revisao-table').closest('div').style.display = 'none';
   document.getElementById('revisao-sub').style.display    = 'none';

@@ -470,11 +470,147 @@ function renderProjecao() {
       </div>`;
   }
 
+  // ── Card 2 — Colhido Esta Semana ──
+  const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hojeISO = toISO(hoje);
+  const segISO_c2 = toISO(segEsta);
+  // Coletar todas as colheitas desta semana agrupadas por lancamento_id (ou data+area)
+  const lancamentos = {};
+  let totalColhidoSemana = 0, totalEitosSemana = 0;
+  const clientesSemana = new Set();
+  for (const [area, eitos] of Object.entries(DB)) {
+    for (const e of eitos) {
+      for (const h of (e.historico || [])) {
+        if (h.data >= segISO_c2 && h.data <= hojeISO) {
+          const key = h.lancamento_id || (h.data + '|' + area + '|' + (h.cliente || ''));
+          if (!lancamentos[key]) {
+            lancamentos[key] = {
+              data: h.data,
+              cliente: h.cliente || null,
+              areas: {},
+              total: 0,
+              eitos: []
+            };
+          }
+          const l = lancamentos[key];
+          if (!l.areas[area]) l.areas[area] = 0;
+          l.areas[area] += h.total;
+          l.total += h.total;
+          l.eitos.push({ id: e.id, area, qtd: h.total });
+          totalColhidoSemana += h.total;
+          totalEitosSemana++;
+          if (h.cliente) clientesSemana.add(h.cliente);
+        }
+      }
+    }
+  }
+
+  // Ordenar por data decrescente
+  const lancList = Object.values(lancamentos).sort((a,b) => b.data.localeCompare(a.data));
+
+  // Badge: Seg DD/MM – Hoje
+  const segFmt = `${String(segEsta.getDate()).padStart(2,'0')}/${String(segEsta.getMonth()+1).padStart(2,'0')}`;
+  const badgeSemana = `📅 Seg ${segFmt} – hoje`;
+
+  // Formatar valor abreviado para KPI
+  function fmtK(v) {
+    if (v >= 1000) return (v/1000).toFixed(1).replace('.0','') + 'k';
+    return String(v);
+  }
+
+  // Build lançamentos HTML
+  let lancHtml = '';
+  if (lancList.length === 0) {
+    lancHtml = `<div style="text-align:center;padding:24px 0;color:var(--muted);font-size:12px"><div style="font-size:28px;margin-bottom:8px">🌴</div>Nenhuma colheita registrada esta semana ainda.</div>`;
+  } else {
+    lancList.forEach((l, idx) => {
+      const dt = new Date(l.data + 'T00:00:00');
+      const diaSem = DIAS_PT[dt.getDay()];
+      const dataFmt = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+      const areasNomes = Object.keys(l.areas).map(a => nomes[a] || a);
+      const areasStr = areasNomes.join(' · ');
+      const clienteStr = l.cliente || '<span style="color:var(--muted);font-style:italic">sem cliente</span>';
+      const safeIdx = 'lanc_' + idx;
+
+      const eitoRows = l.eitos.map(ei => `
+        <div style="display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:8px;padding:4px 6px;border-radius:5px">
+          <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--forest)">${ei.id}</span>
+          <span style="font-size:10px;color:var(--muted)">${nomes[ei.area] || ei.area}</span>
+          <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text);text-align:right">${fmtNum(ei.qtd)}</span>
+        </div>`).join('');
+
+      lancHtml += `
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:6px">
+          <div onclick="toggleLanc('${safeIdx}')" style="display:grid;grid-template-columns:52px 1fr auto auto auto;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background 0.12s;user-select:none" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+            <div>
+              <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${diaSem}</div>
+              <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${dataFmt}</div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:800;color:var(--forest)">${clienteStr}</div>
+              <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${areasStr}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
+              <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
+            </div>
+            <span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${l.eitos.length} eitos</span>
+            <span id="lanc-chev-${safeIdx}" style="font-size:10px;color:var(--muted);transition:transform 0.2s;text-align:center">▾</span>
+          </div>
+          <div id="lanc-detail-${safeIdx}" style="display:none;border-top:1px solid var(--border);padding:10px 14px 12px;background:#fafcf8">
+            <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center">
+              Eitos colhidos
+              ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)">${a}</span>`).join('')}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px">${eitoRows}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 6px 0;border-top:1px solid var(--border);margin-top:6px">
+              <span style="font-size:10px;font-weight:700;color:var(--muted)">Total do lançamento</span>
+              <span style="font-family:var(--font-mono);font-size:12px;font-weight:800;color:var(--forest)">${fmtNum(l.total)} cocos</span>
+            </div>
+            <div style="margin-top:8px">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;font-family:var(--font-mono);padding:2px 7px;border-radius:4px;background:#e8f5e0;color:var(--forest);border:1px solid var(--border)">🔍 ${l.eitos.length} eitos · ${areasStr} · ${dataFmt}</span>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+
+  const cardColhido = `
+    <div class="proj-card" style="display:flex;flex-direction:column;">
+      <div class="proj-card-label">📋 Colhido Esta Semana</div>
+      <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:5px 12px;border-radius:20px;margin-bottom:12px;width:fit-content">${badgeSemana}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">🌴 Colhido</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${totalColhidoSemana > 0 ? fmtK(totalColhidoSemana) : '—'}</div>
+          <div style="font-size:9px;color:var(--muted)">cocos esta semana</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">📋 Eitos</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${totalEitosSemana > 0 ? totalEitosSemana : '—'}</div>
+          <div style="font-size:9px;color:var(--muted)">eitos colhidos</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">👥 Clientes</div>
+          <div style="font-size:20px;font-weight:800;font-family:var(--font-mono);color:var(--forest);line-height:1;margin-bottom:2px">${clientesSemana.size > 0 ? clientesSemana.size : '—'}</div>
+          <div style="font-size:9px;color:var(--muted)">atendidos</div>
+        </div>
+      </div>
+      <div style="flex:1">${lancHtml}</div>
+      <div style="padding:10px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span style="font-size:11px;font-weight:700;color:var(--muted)">Total da semana</span>
+        <span style="font-family:var(--font-mono);font-size:15px;font-weight:800;color:var(--forest)">${totalColhidoSemana > 0 ? fmtNum(totalColhidoSemana) + ' cocos' : '0 cocos'}</span>
+      </div>
+    </div>`;
+
   wrap.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
-      <div class="proj-cards">
+      <div class="proj-cards" style="grid-template-columns:repeat(2,1fr)">
         ${cardEsta}
+        ${cardColhido}
+      </div>
+      <div class="proj-cards" style="margin-top:14px">
         ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
         ${buildCardGenerico(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo')}
       </div>
@@ -485,6 +621,16 @@ function renderProjecao() {
 function toggleProjArea(key) {
   const detail = document.getElementById('proj-detail-' + key);
   const chev = document.getElementById('proj-chev-' + key);
+  if (!detail) return;
+  const open = detail.style.display !== 'none';
+  detail.style.display = open ? 'none' : 'block';
+  if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// ─────────── TOGGLE LANÇAMENTO CARD 2 ───────────
+function toggleLanc(key) {
+  const detail = document.getElementById('lanc-detail-' + key);
+  const chev = document.getElementById('lanc-chev-' + key);
   if (!detail) return;
   const open = detail.style.display !== 'none';
   detail.style.display = open ? 'none' : 'block';
