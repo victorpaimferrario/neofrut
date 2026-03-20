@@ -47,7 +47,8 @@ async function loadDataSupabase() {
 function loadDataLocal() {
   const saved = localStorage.getItem(SK);
   if (saved) {
-    const d = JSON.parse(saved);
+    let d;
+    try { d = JSON.parse(saved); } catch(e) { console.error('Erro ao parsear colheitas locais:', e); d = {}; }
     if (d['MARACA'] && !d['MARACUJÁ']) { d['MARACUJÁ'] = d['MARACA']; delete d['MARACA']; }
     if (d['MDC']) { d['MAMÃO DE CIMA'] = d['MDC']; delete d['MDC']; }
     if (d['MDB']) { d['MAMÃO DE BAIXO'] = d['MDB']; delete d['MDB']; }
@@ -79,7 +80,7 @@ async function saveData() {
     if(eitosRows.length > 0) {
       await _SB.from('eitos').upsert(eitosRows, { onConflict: 'area,eito_id' });
     }
-  } catch(err) { console.error('Erro ao salvar eitos:', err); }
+  } catch(err) { console.error('Erro ao salvar eitos:', err); showToast('⚠ Erro ao salvar — tente novamente'); }
 }
 
 async function salvarColheitaSupabase(area, eitoId, colheita) {
@@ -109,7 +110,7 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
     if (colheita.cliente) row.cliente = colheita.cliente;
     if (colheita.lancamento_id) row.lancamento_id = colheita.lancamento_id;
     await _SB.from('colheitas').insert(row);
-  } catch(err) { console.error('Erro ao salvar colheita:', err); }
+  } catch(err) { console.error('Erro ao salvar colheita:', err); showToast('⚠ Erro ao salvar — tente novamente'); }
 }
 
 async function loadDBFromSupabase() {
@@ -128,7 +129,8 @@ let _vendasCache = null;
 
 function loadVendas() {
   if (_vendasCache && _vendasCache.length > 0) return _vendasCache;
-  const local = JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');
+  let local;
+  try { local = JSON.parse(localStorage.getItem(SK_VENDAS)||'[]'); } catch(e) { console.error('Erro ao parsear vendas locais:', e); local = []; }
   if (local.length > 0) {
     _vendasCache = local;
   }
@@ -181,7 +183,9 @@ async function loadVendasSupabase() {
     return _vendasCache;
   } catch(e) {
     console.error('Erro ao carregar vendas:', e);
-    return JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');
+    let fallback;
+    try { fallback = JSON.parse(localStorage.getItem(SK_VENDAS)||'[]'); } catch(e2) { console.error('Erro ao parsear vendas locais (fallback):', e2); fallback = []; }
+    return fallback;
   }
 }
 
@@ -211,10 +215,10 @@ async function salvarVendaSupabase(v) {
     cidade_destino: v.cidadeDestino||null
   };
   const { error } = await _SB.from('vendas').upsert(row);
-  if(error) console.error('Erro ao salvar venda:', error);
+  if(error) { console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
 }
 
 async function excluirVendaSupabase(id) {
   const { error } = await _SB.from('vendas').delete().eq('id', id);
-  if(error) console.error('Erro ao excluir venda:', error);
+  if(error) { console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
 }

@@ -14,7 +14,8 @@ async function initApp() {
   }
   // Garantir que vendas tem dados do localStorage
   if (!_vendasCache || _vendasCache.length === 0) {
-    const localVendas = JSON.parse(localStorage.getItem(SK_VENDAS) || '[]');
+    let localVendas;
+    try { localVendas = JSON.parse(localStorage.getItem(SK_VENDAS) || '[]'); } catch(e) { console.error('Erro ao parsear vendas locais:', e); localVendas = []; }
     if (localVendas.length > 0) _vendasCache = localVendas;
   }
 

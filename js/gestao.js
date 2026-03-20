@@ -18,13 +18,9 @@ function showGestaoTab(tab) {
 function renderAreaBtnsGestao(areaAtiva) {
   const wrap = document.getElementById('gestao-area-btns');
   if (!wrap) return;
-  const nomesCurtos = {
-    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
-  };
   window._gestaoAreaAtiva = areaAtiva;
   wrap.innerHTML = Object.keys(DB).map(a =>
-    `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaGestao('${a}')">${nomesCurtos[a]||a}</button>`
+    `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaGestao('${a}')">${NOMES_CURTOS[a]||a}</button>`
   ).join('');
 }
 

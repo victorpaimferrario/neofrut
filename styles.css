@@ -48,7 +48,7 @@
   nav { background: linear-gradient(135deg, #1a3a1a 0%, #1e4a20 50%, #163020 100%); border-bottom: 1px solid #2a5020; padding: 0 24px; display: flex; align-items: center; gap: 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 20px rgba(0,0,0,0.2); }
   .nav-brand { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: 0.05em; padding: 12px 0; margin-right: 32px; white-space: nowrap; }
   .nav-brand span { color: var(--muted); font-weight: 400; }
-  .nav-tabs { display: flex; gap: 0; flex: 1; overflow-x: auto; }
+  .nav-tabs { display: flex; gap: 0; flex: 1; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .nav-tab { padding: 18px 18px; font-size: 13px; font-weight: 600; font-family: var(--font-main); color: rgba(255,255,255,0.55); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.15s; letter-spacing: 0.03em; background: none; border-top: none; border-left: none; border-right: none; }
   .nav-tab:hover { color: rgba(255,255,255,0.9); }
   .nav-tab.active { color: #ffffff; border-bottom-color: #6edcb8; text-shadow: 0 0 12px rgba(110,220,184,0.5); }
@@ -60,6 +60,8 @@
   .btn-outline:hover { color: var(--text); border-color: var(--forest); background: var(--surface2); }
   .btn-green { background: linear-gradient(135deg, #0f2d18, #1a4025); color: var(--verde); border: 1px solid var(--verde-border); box-shadow: 0 2px 8px rgba(74,222,128,0.15); }
   .btn-green:hover { background: linear-gradient(135deg, #14532d, #1f5030); }
+  .btn:active { opacity: 0.7; }
+  .nav-tab:active { opacity: 0.7; }
 
   /* PAGES */
   .page { display: none; padding: 24px; max-width: 1400px; margin: 0 auto; }
@@ -227,7 +229,7 @@
   .mapa-table td.clicavel:hover { filter: brightness(0.9); }
   .mapa-table th.clicavel-header { cursor: pointer; transition: background 0.12s; }
   .mapa-table th.clicavel-header:hover { background: #ddeedd; }
-  .mapa-table-wrap { overflow-x: auto; }
+  .mapa-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .mapa-table { width: 100%; border-collapse: collapse; min-width: 700px; }
   .mapa-table th { padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; text-align: center; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); color: var(--forest); background: #f0f9ec; }
   .mapa-table th:first-child { text-align: left; width: 110px; background: #e8f5e0; }
@@ -281,6 +283,7 @@
   .area-btn:hover { border-color: var(--accent); color: var(--text); background: var(--surface2); }
   .area-btn.ativo { background: var(--forest); color: #fff; border-color: var(--forest); box-shadow: 0 2px 8px rgba(26,92,26,0.25); }
   .area-btn.todas.ativo { background: var(--accent); border-color: var(--accent); }
+  .area-btn:active { opacity: 0.7; }
 
 
   /* PROJEÇÃO DE COLHEITA */
@@ -438,7 +441,8 @@
   /* ── RESPONSIVE: SMALL MOBILE (max 400px) ── */
   @media (max-width: 400px) {
     .areas-venda { grid-template-columns: repeat(2, 1fr); }
-    .clima-grid { grid-template-columns: 1fr 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .clima-grid { grid-template-columns: repeat(2, 1fr); }
     .modal-dias-grid { grid-template-columns: repeat(3, 1fr); }
     .vkpi-grid { gap: 8px; }
     .vkpi { padding: 10px 12px; }
@@ -484,7 +488,7 @@
 .filtros-grupo{display:flex;gap:4px;flex-wrap:wrap;}
 .rank-table{width:100%;border-collapse:collapse;}
 .rank-table th{padding:8px 8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
-.saz-wrap{overflow-x:auto;}
+.saz-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .saz-table{border-collapse:collapse;width:100%;}
 .saz-table th,.saz-table td{white-space:nowrap;}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;display:none;align-items:center;justify-content:center;}

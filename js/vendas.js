@@ -790,7 +790,7 @@ function importarPlanilhaVendas(input){
         }
       }
       if(!vendas.length){st.textContent='✗ Nenhuma venda encontrada';return;}
-      let ex=[];try{ex=JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');}catch(e){}
+      let ex=[];try{ex=JSON.parse(localStorage.getItem(SK_VENDAS)||'[]');}catch(e){ console.error('Erro:', e); }
       const chaves=new Set(ex.map(v=>v.data+'|'+v.cliente+'|'+v.nf));
       const novos=vendas.filter(v=>!chaves.has(v.data+'|'+v.cliente+'|'+v.nf));
       saveVendas(ex.concat(novos));

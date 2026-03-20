@@ -11,13 +11,9 @@ function initAnalise() {
 function renderAreaBtnsAnalise(areaAtiva) {
   const wrap = document.getElementById('analise-area-btns');
   if (!wrap) return;
-  const nomesCurtos = {
-    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
-  };
   const areas = ORDEM_AREAS.filter(a => DB[a]);
   wrap.innerHTML = areas.map(a =>
-    `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaAnalise('${a}')">${nomesCurtos[a]||a}</button>`
+    `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaAnalise('${a}')">${NOMES_CURTOS[a]||a}</button>`
   ).join('');
 }
 

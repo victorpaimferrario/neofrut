@@ -70,12 +70,8 @@ function renderAreaBtns(areaAtiva) {
   if (!wrap) return;
   const areas = ORDEM_AREAS.filter(a => DB[a]);
   Object.keys(DB).forEach(a => { if (!areas.includes(a)) areas.push(a); });
-  const nomesCurtos = {
-    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
-  };
   wrap.innerHTML = `<button class="area-btn todas ${areaAtiva==='todas'?'ativo':''}" onclick="selecionarAreaLanc('todas')">Todas</button>` +
-    areas.map(a => `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaLanc('${a}')">${nomesCurtos[a]||a}</button>`).join('');
+    areas.map(a => `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaLanc('${a}')">${NOMES_CURTOS[a]||a}</button>`).join('');
 }
 
 function selecionarAreaLanc(area) {
@@ -502,7 +498,7 @@ function copiarResumo() {
     const el = document.createElement('textarea');
     el.value = txt; el.style.cssText = 'position:fixed;opacity:0';
     document.body.appendChild(el); el.select();
-    try { document.execCommand('copy'); } catch(e) {}
+    try { document.execCommand('copy'); } catch(e) { console.warn('Clipboard não disponível:', e); }
     document.body.removeChild(el);
   };
   navigator.clipboard?.writeText(texto).catch(() => fallback(texto)) || fallback(texto);
@@ -541,11 +537,6 @@ function renderVincularClientes() {
   const somenteSem = document.getElementById('vincular-somente-sem').checked;
   if (!mesSel) return;
 
-  const nomesCurtos = {
-    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
-  };
-
   // Agrupar por data+area
   const grupos = {};
   for (const [area, eitos] of Object.entries(DB)) {
@@ -580,7 +571,7 @@ function renderVincularClientes() {
   tbody.innerHTML = lista.map((g, i) => {
     const [a, m, d] = g.data.split('-');
     const dataFmt = `${d}/${m}`;
-    const nome = nomesCurtos[g.area] || g.area;
+    const nome = NOMES_CURTOS[g.area] || g.area;
     return `<tr style="border-bottom:1px solid var(--border)">
       <td style="font-family:var(--font-mono);font-size:12px;color:var(--muted);padding:8px">${dataFmt}</td>
       <td style="font-size:12px;font-weight:700;color:var(--forest);padding:8px">${nome}</td>

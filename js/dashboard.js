@@ -884,13 +884,9 @@ function renderMapa() {
   }
 
   // ── TABELA ──
-  const nomesCurtos = {
-    'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
-  };
   const fmt = n => n > 0 ? n.toLocaleString('pt-BR') : '0';
 
-  const headers = areas.map(a => `<th class="clicavel-header" onclick="openArea('${a}')" title="Abrir ${a}">${nomesCurtos[a]||a}</th>`).join('');
+  const headers = areas.map(a => `<th class="clicavel-header" onclick="openArea('${a}')" title="Abrir ${a}">${NOMES_CURTOS[a]||a}</th>`).join('');
   const rowFrutos   = areas.map(a => `<td class="clicavel" onclick="openArea('${a}')" title="Abrir ${a}">${fmt(stats[a].frutos)}</td>`).join('');
   const rowVerde    = areas.map(a => `<td class="clicavel" onclick="openAreaFiltrada('${a}','verde')" title="Ver eitos verdes de ${a}">${fmt(stats[a].verde)}</td>`).join('');
   const rowAmarelo  = areas.map(a => `<td class="clicavel" onclick="openAreaFiltrada('${a}','amarelo')" title="Ver eitos amarelos de ${a}">${fmt(stats[a].amarelo)}</td>`).join('');
@@ -979,7 +975,7 @@ function renderMapa() {
     ctx.fillStyle = '#1a3a1a';
     ctx.font = `bold 11px Syne, sans-serif`;
     ctx.textAlign = 'center';
-    const nome = nomesCurtos[area] || area;
+    const nome = NOMES_CURTOS[area] || area;
     ctx.fillText(nome, x + barW/2, H - pad.b + 16);
     // total acima da barra
     if (s.frutos > 0) {
@@ -1027,15 +1023,12 @@ function abrirTodasFiltrado(filtro) {
 
   const tbody = document.getElementById('modal-todos-eitos-tbody');
   tbody.innerHTML = '';
-  const nomesCurtos = {'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
-    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'};
-
   linhas.forEach(({area, e, ult, dias, st}) => {
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.title = 'Ver histórico de ' + area + ' · Eito ' + e.id;
     tr.innerHTML =
-      '<td style="font-size:12px;color:var(--muted)">' + (nomesCurtos[area]||area) + '</td>'
+      '<td style="font-size:12px;color:var(--muted)">' + (NOMES_CURTOS[area]||area) + '</td>'
      +'<td style="font-family:var(--font-mono);font-weight:700;color:var(--forest)">' + e.id + '</td>'
      +'<td><span style="font-size:11px;font-weight:700;color:'+cores[st]+'">' + (st==='vermelho'?'VENCIDO':st==='amarelo'?'ATENÇÃO':'VERDE') + '</span></td>'
      +'<td><span class="dias-badge dias-'+st+'">' + (dias!==null?dias+'d':'—') + '</span></td>'

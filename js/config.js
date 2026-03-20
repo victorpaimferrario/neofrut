@@ -13,6 +13,11 @@ const DADOS_INICIAIS = {"AREA A1": [{"id": "01/02", "plantas": 14, "ultimaColhei
 
 const ORDEM_AREAS = ['AREA A1','AREA A2','AREA C','AREA D','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
 
+const NOMES_CURTOS = {
+  'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
+  'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
+};
+
 // ─────────── STORAGE KEYS ───────────
 const SK = 'fazenda_paim_v1';
 const SK_RASCUNHO = 'fazenda_paim_rascunho';
