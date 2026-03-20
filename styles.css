@@ -397,6 +397,9 @@
     .painel-grid { grid-template-columns: 1fr; }
     .modal-dias-grid { grid-template-columns: repeat(5, 1fr); }
     .areas-venda { grid-template-columns: repeat(4, 1fr); }
+    /* Lançamento — ocultar MÉD.3 e % MESA no tablet */
+    .planilha-table th:nth-child(6), .planilha-table td:nth-child(6),
+    .planilha-table th:nth-child(10), .planilha-table td:nth-child(10) { display: none; }
   }
 
   /* ── RESPONSIVE: MOBILE (max 600px) ── */
@@ -433,9 +436,42 @@
     .modal-clima-wide { max-width: 95vw; }
     /* Lançamento sticky */
     .lancamento-sticky { padding: 10px 12px; margin: 0 -12px; flex-wrap: wrap; gap: 8px; }
+    .lancamento-sticky .btn-primary { width: 100%; text-align: center; }
     .search-input { width: 100%; }
     /* Comparativo */
     .comp-body { padding: 12px; }
+    /* Lançamento — ocultar colunas secundárias no mobile */
+    .planilha-table th:nth-child(4), .planilha-table td:nth-child(4),
+    .planilha-table th:nth-child(5), .planilha-table td:nth-child(5),
+    .planilha-table th:nth-child(6), .planilha-table td:nth-child(6),
+    .planilha-table th:nth-child(10), .planilha-table td:nth-child(10) { display: none; }
+    .planilha-table { min-width: 0 !important; }
+    .planilha-table th { padding: 8px 6px; font-size: 9px; letter-spacing: 0.06em; }
+    .planilha-table td { padding: 3px 4px; }
+    .p-eito { font-size: 12px; padding-left: 6px; }
+    .p-input { min-width: 60px; padding: 8px 6px; font-size: 14px; }
+    .p-total { font-size: 12px; padding-right: 6px; }
+    .p-dias { font-size: 10px; }
+    /* Lançamento — botões de ação */
+    .area-btn { padding: 7px 10px; font-size: 11px; }
+    /* Lançamento header */
+    .dash-header h1 { font-size: 18px; }
+    .dash-header p { font-size: 11px; }
+    /* Revisão table mobile */
+    .revisao-table th { font-size: 9px; padding: 6px 8px; }
+    .revisao-table td { font-size: 12px; padding: 6px 8px; }
+    /* Ranking/vendas table mobile */
+    .vtable { font-size: 11px; }
+    .vtable th { font-size: 9px; padding: 6px 8px; }
+    .vtable td { padding: 7px 8px; }
+    /* Ranking clients */
+    .vrank-row { padding: 6px 10px; }
+    .vrank-nome { font-size: 12px; }
+    /* Modal actions stack on mobile */
+    .modal-actions { flex-direction: column; }
+    .modal-actions .btn { width: 100%; text-align: center; }
+    /* KPI cards touch-friendly */
+    .kpi { padding: 12px 10px; min-height: 44px; }
   }
 
   /* ── RESPONSIVE: SMALL MOBILE (max 400px) ── */
@@ -448,6 +484,13 @@
     .vkpi { padding: 10px 12px; }
     .vkpi-val { font-size: 16px; }
     body { padding: 12px; }
+    /* Lançamento — extra compacto */
+    .planilha-table th:nth-child(3), .planilha-table td:nth-child(3) { display: none; }
+    .p-input { min-width: 50px; font-size: 14px; }
+    .p-eito { font-size: 11px; }
+    .area-btn { padding: 6px 8px; font-size: 10px; }
+    .lancamento-sticky { padding: 8px 10px; }
+    .contador-badge { font-size: 11px; padding: 3px 10px; }
   }
 
 /* ── MERCADOS ── */
