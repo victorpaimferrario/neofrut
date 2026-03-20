@@ -485,8 +485,10 @@ function renderProjecao() {
 
   const cardEsta = `
     <div class="proj-card" style="border:2px solid var(--accent);">
-      <div class="proj-card-label">📅 Esta semana</div>
-      <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:8px">${fmtSemana(segEsta, sexEsta)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div class="proj-card-label" style="margin-bottom:0">📅 Esta semana</div>
+        <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${fmtSemana(segEsta, sexEsta)}</div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
         <div style="text-align:center;padding:6px 4px;background:rgba(220,53,69,0.06);border-radius:6px;border:1px solid rgba(220,53,69,0.15)">
           <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Urgente</div>
@@ -537,8 +539,10 @@ function renderProjecao() {
     const cardId = 'proj-gen-' + (++_projCardIdx);
     return `
       <div class="proj-card">
-        <div class="proj-card-label">${icon} ${label}</div>
-        <div style="font-size:10px;color:var(--accent2);font-family:var(--font-mono);margin-bottom:6px">${sublabel}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div class="proj-card-label" style="margin-bottom:0">${icon} ${label}</div>
+          <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${sublabel}</div>
+        </div>
         <div class="proj-card-val">${fmtNum(r.total)}</div>
         <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
         <div style="margin-top:8px;text-align:center">
@@ -658,8 +662,10 @@ function renderProjecao() {
 
   const cardColhido = `
     <div class="proj-card" style="display:flex;flex-direction:column;">
-      <div class="proj-card-label">📋 Colhido Esta Semana</div>
-      <div style="display:inline-flex;align-items:center;gap:4px;font-size:9px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:3px 10px;border-radius:20px;margin-bottom:8px;width:fit-content">${badgeSemana}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <div class="proj-card-label" style="margin-bottom:0">📋 Colhido Esta Semana</div>
+        <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${fmtSemana(segEsta, sexEsta)}</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center">
           <div style="font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">🌴 Colhido</div>
