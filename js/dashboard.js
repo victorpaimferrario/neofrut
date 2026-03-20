@@ -81,7 +81,7 @@ function renderDashboard() {
     <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias</div></div>
     <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias</div></div>
     <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias</div></div>
-    <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="showPage('vendas');showVendasTab('lista')" title="Ver vendas do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
+    <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="abrirColhidosMes()" title="Ver colhidos do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--forest)" onclick="abrirColhidosAno()" title="Ver colhidos por área no ano"><div class="kpi-label">🌴 Colhidos ${anoStr}</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(colhidosAno)}</div><div class="kpi-sub">todas as áreas</div></div>
     <div class="kpi" style="text-align:center"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
     <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Fr/Pl/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300</div></div>
@@ -159,48 +159,63 @@ function renderDashboard() {
   }
 }
 
-function abrirColhidosAno() {
-  const anoStr = String(new Date().getFullYear());
-  const porArea = {};
-  let total = 0;
-  for (const [area, eitos] of Object.entries(DB)) {
-    let areaTotal = 0;
-    for (const e of eitos) {
-      for (const h of (e.historico || [])) {
-        if (h.data && h.data.startsWith(anoStr)) areaTotal += h.total || 0;
+function abrirColhidosPeriodo(periodo) {
+  // periodo: 'mes' ou 'ano'
+  const hoje = new Date();
+  const anoStr = String(hoje.getFullYear());
+  const mesAtual = anoStr+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const prefixo = periodo === 'mes' ? mesAtual : anoStr;
+  const titulo = periodo === 'mes'
+    ? '🥥 Colhidos '+nomesMes[hoje.getMonth()+1]+' '+anoStr
+    : '🌴 Colhidos '+anoStr;
+
+  const linhas = [];
+  for(const [area, eitos] of Object.entries(DB)) {
+    for(const e of eitos) {
+      for(const h of (e.historico||[])) {
+        if(h.data && h.data.startsWith(prefixo)) {
+          linhas.push({area, e, h});
+        }
       }
     }
-    if (areaTotal > 0) porArea[area] = areaTotal;
-    total += areaTotal;
   }
-  const areas = Object.entries(porArea).sort((a, b) => b[1] - a[1]);
-  const maxV = areas[0]?.[1] || 1;
-  const linhas = areas.map(([a, v]) => {
-    const pct = Math.round(v / total * 100);
-    const w = Math.round(v / maxV * 100);
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:12px;font-weight:700;min-width:120px">${a}</span>
-      <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px"><div style="width:${w}%;height:100%;background:var(--forest);border-radius:4px"></div></div>
-      <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;min-width:70px;text-align:right">${fmtNum(v)}</span>
-      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:35px;text-align:right">${pct}%</span>
-    </div>`;
-  }).join('');
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay open';
-  modal.id = 'modal-colhidos-ano';
-  modal.onclick = e => { if (e.target === modal) modal.remove(); };
-  modal.innerHTML = `<div class="modal" style="max-width:560px">
-    <h3>🌴 Frutos Colhidos em ${anoStr}</h3>
-    <div class="modal-sub">Total: ${fmtNum(total)} cocos · ${areas.length} áreas</div>
-    <div style="margin:16px 0">${linhas}</div>
-    <div style="padding:12px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:13px;font-weight:700;color:var(--muted)">Total</span>
-      <span style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--forest)">${fmtNum(total)} cocos</span>
-    </div>
-    <div class="modal-actions"><button class="btn btn-outline" onclick="document.getElementById('modal-colhidos-ano').remove()">Fechar</button></div>
-  </div>`;
-  document.body.appendChild(modal);
+  linhas.sort((a,b) => b.h.data.localeCompare(a.h.data) || a.area.localeCompare(b.area));
+  const totalCocos = linhas.reduce((s,l) => s+(l.h.total||0), 0);
+  const areasSet = new Set(linhas.map(l=>l.area));
+
+  document.getElementById('modal-todos-eitos-title').textContent = titulo;
+  document.getElementById('modal-todos-eitos-sub').textContent =
+    fmtNum(totalCocos)+' cocos · '+linhas.length+' colheita'+(linhas.length!==1?'s':'')+' · '+areasSet.size+' área'+(areasSet.size!==1?'s':'');
+
+  const nomesCurtos = {'AREA A1':'A1','AREA A2':'A2','AREA C':'C','AREA D':'D',
+    'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'};
+  const tbody = document.getElementById('modal-todos-eitos-tbody');
+  tbody.innerHTML = '';
+  linhas.forEach(({area, e, h}) => {
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.title = 'Ver histórico de '+area+' · Eito '+e.id;
+    tr.innerHTML =
+      '<td style="font-size:12px;color:var(--muted)">'+(nomesCurtos[area]||area)+'</td>'
+     +'<td style="font-family:var(--font-mono);font-weight:700;color:var(--forest)">'+e.id+'</td>'
+     +'<td><span style="font-size:11px;font-weight:700;color:var(--teal)">'+fmtData(h.data)+'</span></td>'
+     +'<td><span class="dias-badge dias-verde">'+diasDesde(h.data)+'d</span></td>'
+     +'<td style="font-family:var(--font-mono);font-size:12px">'+fmtData(h.data)+'</td>'
+     +'<td style="font-family:var(--font-mono)">'+fmtNum(h.total)+'</td>'
+     +'<td style="font-family:var(--font-mono);color:var(--muted)">'+fmtNum(e.plantas)+'</td>';
+    tr.addEventListener('click', () => {
+      closeModal('modal-todos-eitos');
+      openArea(area);
+      setTimeout(() => openDrawerEito(area, e.id), 300);
+    });
+    tbody.appendChild(tr);
+  });
+  openModal('modal-todos-eitos');
 }
+
+function abrirColhidosAno() { abrirColhidosPeriodo('ano'); }
+function abrirColhidosMes() { abrirColhidosPeriodo('mes'); }
 
 // ─────────── PROJEÇÃO DE COLHEITA ───────────
 function renderProjecao() {
@@ -664,11 +679,9 @@ function renderProjecao() {
   wrap.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
-      <div class="proj-cards" style="grid-template-columns:repeat(2,1fr)">
+      <div class="proj-cards" style="grid-template-columns:repeat(4,1fr)">
         ${cardEsta}
         ${cardColhido}
-      </div>
-      <div class="proj-cards" style="margin-top:14px">
         ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
         ${buildCardGenerico(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo')}
       </div>

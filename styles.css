@@ -389,7 +389,7 @@
 
   /* ── RESPONSIVE: TABLET (max 900px) ── */
   @media (max-width: 900px) {
-    .proj-cards { grid-template-columns: 1fr 1fr; }
+    .proj-cards { grid-template-columns: 1fr 1fr !important; }
     .clima-grid { grid-template-columns: repeat(3, 1fr); }
     .painel-grid { grid-template-columns: 1fr; }
     .modal-dias-grid { grid-template-columns: repeat(5, 1fr); }
@@ -410,7 +410,7 @@
     .eitos-table th:nth-child(4), .eitos-table td:nth-child(4),
     .eitos-table th:nth-child(5), .eitos-table td:nth-child(5) { display: none; }
     /* Projeção */
-    .proj-cards { grid-template-columns: 1fr; }
+    .proj-cards { grid-template-columns: 1fr !important; }
     /* Vendas */
     .vform { padding: 16px; max-width: 100%; }
     .areas-venda { grid-template-columns: repeat(4, 1fr); gap: 6px; }
