@@ -690,11 +690,10 @@ function renderProjecao() {
   wrap.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
-      <div class="proj-cards" style="grid-template-columns:repeat(4,1fr)">
+      <div class="proj-cards" style="grid-template-columns:repeat(3,1fr)">
         ${cardEsta}
         ${cardColhido}
         ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
-        ${buildCardGenerico(r3, '🗓️', 'Próximos 21 dias', 'ciclo completo')}
       </div>
     </div>`;
 }
