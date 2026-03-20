@@ -33,9 +33,15 @@ function showPage(id) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-// Close modals on overlay click
-document.querySelectorAll('.modal-overlay').forEach(m => {
-  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
+// Close modals on overlay click (delegation — works for static and dynamic modals)
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) {
+    if (e.target.id) {
+      e.target.classList.remove('open');
+    } else {
+      e.target.remove();
+    }
+  }
 });
 
 function showToast(msg) {
