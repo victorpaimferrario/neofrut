@@ -677,7 +677,7 @@ function renderProjecao() {
           <div style="font-size:8px;color:var(--muted)">atendidos</div>
         </div>
       </div>
-      <div style="flex:1;max-height:150px;overflow-y:auto">${lancHtml}</div>
+      <div>${lancHtml}</div>
       <div style="padding:6px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center;margin-top:6px">
         <span style="font-size:10px;font-weight:700;color:var(--muted)">Total da semana</span>
         <span style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${totalColhidoSemana > 0 ? fmtNum(totalColhidoSemana) + ' cocos' : '0 cocos'}</span>
