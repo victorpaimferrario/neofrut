@@ -15,9 +15,12 @@ function renderDashboard() {
 
   // frutos/planta/ano por área — soma colheitas do ano calendário ÷ plantas da área
   const fppArea = {};
+  const colhidosAnoArea = {};
   let totalEitos=0, totalVerdes=0, totalAmareloDash=0, totalVermelho=0, totalCocos=0;
   let totalPlantas=0, ultimaDataGlobal=null;
   let fppFazendaCocos=0, fppFazendaPlantas=0;
+  let colhidosMes=0, colhidosAno=0;
+  const mesAtual = String(anoAtual)+'-'+String(hoje.getMonth()+1).padStart(2,'0');
 
   for (const [area, eitos] of Object.entries(DB)) {
     let cocosAnoArea=0, plantasArea=0;
@@ -35,13 +38,18 @@ function renderDashboard() {
       if (ult) totalCocos += ult.total;
       // somar colheitas do ano calendário
       for (const h of (e.historico || [])) {
-        if (h.data && h.data.startsWith(anoStr)) cocosAnoArea += h.total || 0;
+        if (h.data && h.data.startsWith(anoStr)) {
+          cocosAnoArea += h.total || 0;
+          if (h.data.startsWith(mesAtual)) colhidosMes += h.total || 0;
+        }
       }
     }
     fppArea[area] = plantasArea > 0 ? cocosAnoArea / plantasArea : null;
+    colhidosAnoArea[area] = cocosAnoArea;
     fppFazendaCocos  += cocosAnoArea;
     fppFazendaPlantas += plantasArea;
   }
+  colhidosAno = fppFazendaCocos;
 
   const fppFazenda  = fppFazendaPlantas > 0 ? (fppFazendaCocos / fppFazendaPlantas).toFixed(0) : '—';
   const diasUltima  = ultimaDataGlobal ? diasDesde(ultimaDataGlobal) : null;
@@ -67,12 +75,16 @@ function renderDashboard() {
     }
   }
 
+  const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const mesNome = nomesMes[hoje.getMonth()+1];
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias · clique para ver</div></div>
-    <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias · clique para ver</div></div>
-    <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias · clique para ver</div></div>
+    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias</div></div>
+    <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias</div></div>
+    <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias</div></div>
+    <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="showPage('vendas');showVendasTab('lista')" title="Ver vendas do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
+    <div class="kpi clicavel" style="text-align:center;border-left-color:var(--forest)" onclick="abrirColhidosAno()" title="Ver colhidos por área no ano"><div class="kpi-label">🌴 Colhidos ${anoStr}</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(colhidosAno)}</div><div class="kpi-sub">todas as áreas</div></div>
     <div class="kpi" style="text-align:center"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
-    <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Frutos/Planta/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300 · fazenda inteira</div></div>
+    <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Fr/Pl/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300</div></div>
   `;
 
   const grid = document.getElementById('areas-grid');
@@ -141,11 +153,54 @@ function renderDashboard() {
           <div class="area-stat"><div class="area-stat-val" style="color:var(--vermelho)">${r}</div><div class="area-stat-label">Vencido</div></div>
           <div class="area-stat"><div class="area-stat-val" style="color:var(--accent2)">${fmtNum(cocos)}</div><div class="area-stat-label">Ult. Colheita</div></div>
           <div class="area-stat" title="Frutos por planta no ano ${anoStr} — meta: 300"><div class="area-stat-val" style="color:${corFpp(fppArea[area])}">${fppArea[area]!==null?Math.round(fppArea[area]):'—'}</div><div class="area-stat-label">Fr/Pl/${anoStr}</div></div>
+          <div class="area-stat" title="Total de frutos colhidos nesta área em ${anoStr}"><div class="area-stat-val" style="color:var(--teal)">${fmtNum(colhidosAnoArea[area]||0)}</div><div class="area-stat-label">Colhidos ${anoStr}</div></div>
         </div>
       </div>`;
   }
 }
 
+function abrirColhidosAno() {
+  const anoStr = String(new Date().getFullYear());
+  const porArea = {};
+  let total = 0;
+  for (const [area, eitos] of Object.entries(DB)) {
+    let areaTotal = 0;
+    for (const e of eitos) {
+      for (const h of (e.historico || [])) {
+        if (h.data && h.data.startsWith(anoStr)) areaTotal += h.total || 0;
+      }
+    }
+    if (areaTotal > 0) porArea[area] = areaTotal;
+    total += areaTotal;
+  }
+  const areas = Object.entries(porArea).sort((a, b) => b[1] - a[1]);
+  const maxV = areas[0]?.[1] || 1;
+  const linhas = areas.map(([a, v]) => {
+    const pct = Math.round(v / total * 100);
+    const w = Math.round(v / maxV * 100);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px;font-weight:700;min-width:120px">${a}</span>
+      <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px"><div style="width:${w}%;height:100%;background:var(--forest);border-radius:4px"></div></div>
+      <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;min-width:70px;text-align:right">${fmtNum(v)}</span>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:35px;text-align:right">${pct}%</span>
+    </div>`;
+  }).join('');
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay open';
+  modal.id = 'modal-colhidos-ano';
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  modal.innerHTML = `<div class="modal" style="max-width:560px">
+    <h3>🌴 Frutos Colhidos em ${anoStr}</h3>
+    <div class="modal-sub">Total: ${fmtNum(total)} cocos · ${areas.length} áreas</div>
+    <div style="margin:16px 0">${linhas}</div>
+    <div style="padding:12px 0 0;border-top:2px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700;color:var(--muted)">Total</span>
+      <span style="font-family:var(--font-mono);font-size:18px;font-weight:800;color:var(--forest)">${fmtNum(total)} cocos</span>
+    </div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="document.getElementById('modal-colhidos-ano').remove()">Fechar</button></div>
+  </div>`;
+  document.body.appendChild(modal);
+}
 
 // ─────────── PROJEÇÃO DE COLHEITA ───────────
 function renderProjecao() {
