@@ -343,8 +343,9 @@ function onAreaVenda(){
 }
 function calcVenda(){
   const q=parseInt(document.getElementById('va-total')?.value)||0;
+  const qb=parseInt(document.getElementById('va-quebra')?.value)||0;
   const t=parseFloat(document.getElementById('v-total')?.value)||0;
-  document.getElementById('vc-cocos').textContent=q>0?fmtNum(q):'—';
+  document.getElementById('vc-cocos').textContent=q>0?fmtNum(q)+(qb>0?' (+'+fmtNum(qb)+' quebra)':''):'—';
   const f=parseFloat(document.getElementById('v-frete')?.value)||0;
   document.getElementById('vc-preco').textContent=q>0&&t>0?'R$ '+((t-f)/q).toFixed(2):'—';
   calcVendaRecebido();
@@ -418,8 +419,9 @@ async function salvarVenda(){
   erro.style.display='none';
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const v=parseInt(document.getElementById('va-'+a)?.value)||0;if(v>0)areas[a]=v;});
+  const quebra=parseInt(document.getElementById('va-quebra')?.value)||0;
   const db=loadVendas();
-  db.push({id:Date.now(),data,cliente,nf,areas,qtde,total,frete,valorRecebido:recebido,status,dataDeposito:dep,
+  db.push({id:Date.now(),data,cliente,nf,areas,qtde,total,frete,quebra,valorRecebido:recebido,status,dataDeposito:dep,
     ufDestino:ufDestino,cidadeDestino:cidadeDestino,
     tipoVenda:litro?'litro':'coco',
     pesoKg:litro?(parseFloat(document.getElementById('v-peso')?.value)||0):null,
@@ -438,6 +440,7 @@ function limparFormVenda(){
   const ufSel=document.getElementById('v-uf-destino');if(ufSel)ufSel.value='';
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const el=document.getElementById('va-'+a);if(el){el.value='';el.classList.remove('filled');}});
   const t=document.getElementById('va-total');if(t){t.value='';t.classList.remove('filled');}
+  const qb=document.getElementById('va-quebra');if(qb){qb.value='';qb.classList.remove('filled');}
   document.getElementById('v-data').value=today();
   document.getElementById('v-status').value='PAGO';
   document.getElementById('v-modo-litro').checked=false;
@@ -681,10 +684,12 @@ function editarVenda(id){
   const AREAS=['A1','A2','C','D','MA','MDC','MDB'];
   const grid=document.getElementById('ev-areas-grid');
   if(grid){
+    const quebraVal=v.quebra||'';
     grid.innerHTML=AREAS.map(a=>{
       const val=(v.areas&&v.areas[a])||'';
       return '<div class="av-wrap"><div class="av-label">'+a+'</div><input type="number" id="eva-'+a+'" class="av-inp'+(val?' filled':'')+'" value="'+val+'" min="0" oninput="onEditAreaVenda()"></div>';
-    }).join('')+'<div class="av-wrap"><div class="av-label">TOTAL</div><input type="number" id="eva-total" class="av-inp filled" value="'+(v.qtde||'')+'" readonly style="font-weight:700"></div>';
+    }).join('')+'<div class="av-wrap"><div class="av-label">TOTAL</div><input type="number" id="eva-total" class="av-inp filled" value="'+(v.qtde||'')+'" readonly style="font-weight:700"></div>'
+    +'<div class="av-wrap"><div class="av-label" style="color:var(--amarelo)">QUEBRA</div><input type="number" id="eva-quebra" class="av-inp'+(quebraVal?' filled':'')+'" value="'+quebraVal+'" min="0" style="font-weight:700;color:var(--amarelo)" oninput="calcEditVenda()"></div>';
   }
   // sub
   const [y,m,d]=(v.data||'').split('-');
@@ -732,10 +737,11 @@ function onEditAreaVenda(){
 
 function calcEditVenda(){
   const q=parseInt(document.getElementById('eva-total')?.value)||0;
+  const qb=parseInt(document.getElementById('eva-quebra')?.value)||0;
   const t=parseFloat(document.getElementById('ev-total')?.value)||0;
   const el1=document.getElementById('ev-calc-cocos');
   const el2=document.getElementById('ev-calc-preco');
-  if(el1)el1.textContent=q>0?fmtNum(q):'—';
+  if(el1)el1.textContent=q>0?fmtNum(q)+(qb>0?' (+'+fmtNum(qb)+' quebra)':''):'—';
   const f=parseFloat(document.getElementById('ev-frete')?.value)||0;
   if(el2)el2.textContent=q>0&&t>0?'R$ '+((t-f)/q).toFixed(2):'—';
   const r=document.getElementById('ev-recebido');
@@ -769,6 +775,7 @@ async function salvarEditVenda(){
   v.valorRecebido=parseFloat(document.getElementById('ev-recebido')?.value)||0;
   v.dataDeposito=document.getElementById('ev-deposito')?.value||null;
   v.qtde=qtde;
+  v.quebra=parseInt(document.getElementById('eva-quebra')?.value)||0;
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const val=parseInt(document.getElementById('eva-'+a)?.value)||0;if(val>0)areas[a]=val;});
   v.areas=areas;

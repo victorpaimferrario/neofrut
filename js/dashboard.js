@@ -596,11 +596,12 @@ function renderProjecao() {
       restante[area] = { total: info.total, eitos: [...info.eitos] };
     }
 
-    // Para cada venda do dia, alocar áreas
+    // Para cada venda do dia, alocar áreas + quebra
     for (const v of vendasDia) {
       if (!v.areas || Object.keys(v.areas).length === 0) continue;
       clientesSemana.add(v.cliente);
-      const entry = { data: dia, cliente: v.cliente, areas: {}, total: 0, eitos: [] };
+      const quebra = v.quebra || 0;
+      const entry = { data: dia, cliente: v.cliente, areas: {}, total: 0, quebra, eitos: [] };
       for (const [aCurto, qtdVenda] of Object.entries(v.areas)) {
         const aLongo = AREA_CURTO_LONGO[aCurto] || aCurto;
         if (!restante[aLongo]) continue;
@@ -610,6 +611,18 @@ function renderProjecao() {
         entry.eitos.push(...restante[aLongo].eitos);
         restante[aLongo].total -= qtdVenda;
         if (restante[aLongo].total <= 0) delete restante[aLongo];
+      }
+      // Descontar quebra do restante (distribui proporcionalmente na primeira área com saldo)
+      let quebraRestante = quebra;
+      if (quebraRestante > 0) {
+        for (const [area, info] of Object.entries(restante)) {
+          if (quebraRestante <= 0) break;
+          const desc = Math.min(quebraRestante, info.total);
+          info.total -= desc;
+          quebraRestante -= desc;
+          if (info.total <= 0) delete restante[area];
+        }
+        entry.total += quebra;
       }
       if (entry.total > 0) lancList.push(entry);
     }
@@ -660,6 +673,7 @@ function renderProjecao() {
       const areasNomes = Object.keys(l.areas).map(a => nomes[a] || a);
       const areasStr = areasNomes.length > 0 ? areasNomes.join(' · ') : '—';
       const clienteStr = l.cliente || '<span style="color:var(--muted);font-style:italic">sem cliente</span>';
+      const quebraBadge = l.quebra > 0 ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:#fef3cd;color:#856404;border:1px solid #ffc107;white-space:nowrap">+${fmtNum(l.quebra)} quebra</span>` : '';
       const safeIdx = 'lanc_' + idx;
 
       // R$/coco: se tem cliente, pegar da venda específica; senão, média do dia
@@ -697,6 +711,7 @@ function renderProjecao() {
             </div>
             ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${a}</span>`).join('')}
             ${precoBadge}
+            ${quebraBadge}
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
