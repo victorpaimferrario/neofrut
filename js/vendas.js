@@ -446,6 +446,20 @@ function limparFormVenda(){
   ['vc-cocos','vc-preco','vc-litro','vc-ml'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
 }
 
+// Estado de ordenação da lista de vendas
+let _vlSortCol = 'data';
+let _vlSortDir = 'desc'; // 'asc' ou 'desc'
+
+function sortVendasLista(col) {
+  if (_vlSortCol === col) {
+    _vlSortDir = _vlSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _vlSortCol = col;
+    _vlSortDir = (col === 'cliente') ? 'asc' : 'desc';
+  }
+  renderVendasLista();
+}
+
 function renderVendasLista(){
   const db=loadVendas();
   const busca=(document.getElementById('vl-busca')?.value||'').trim().toLowerCase();
@@ -455,7 +469,44 @@ function renderVendasLista(){
   let lista=filtrarVendas(db,ano,mes);
   if(busca)lista=lista.filter(v=>v.cliente.toLowerCase().includes(busca));
   if(st!=='todos')lista=lista.filter(v=>v.status===st);
-  lista.sort((a,b)=>b.data.localeCompare(a.data));
+
+  // Ordenação dinâmica
+  const dir = _vlSortDir === 'asc' ? 1 : -1;
+  lista.sort((a, b) => {
+    switch (_vlSortCol) {
+      case 'data': return dir * a.data.localeCompare(b.data);
+      case 'cliente': return dir * a.cliente.localeCompare(b.cliente);
+      case 'nf': return dir * (String(a.nf||'')).localeCompare(String(b.nf||''));
+      case 'qtde': return dir * ((a.qtde||0) - (b.qtde||0));
+      case 'total': return dir * ((a.total||0) - (b.total||0));
+      case 'frete': return dir * ((a.frete||0) - (b.frete||0));
+      case 'recebido': return dir * ((a.valorRecebido||0) - (b.valorRecebido||0));
+      case 'preco': {
+        const pa = a.qtde>0&&a.total>0 ? (a.total-(a.frete||0))/a.qtde : 0;
+        const pb = b.qtde>0&&b.total>0 ? (b.total-(b.frete||0))/b.qtde : 0;
+        return dir * (pa - pb);
+      }
+      case 'status': return dir * (a.status||'').localeCompare(b.status||'');
+      default: return dir * a.data.localeCompare(b.data);
+    }
+  });
+
+  // Atualizar setas nos headers
+  const thead = document.getElementById('vl-thead');
+  if (thead) {
+    thead.querySelectorAll('th[data-sort]').forEach(th => {
+      const col = th.dataset.sort;
+      const label = th.textContent.replace(/ [▲▼]/g, '').trim();
+      if (col === _vlSortCol) {
+        th.textContent = label + (_vlSortDir === 'asc' ? ' ▲' : ' ▼');
+        th.style.color = 'var(--forest)';
+      } else {
+        th.textContent = label;
+        th.style.color = '';
+      }
+      th.onclick = () => sortVendasLista(col);
+    });
+  }
   const tC=lista.reduce((s,v)=>s+(v.qtde||0),0);
   const tR=lista.reduce((s,v)=>s+(v.total||0),0);
   const tRec=lista.reduce((s,v)=>s+(v.valorRecebido||0),0);
