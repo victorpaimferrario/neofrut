@@ -638,6 +638,16 @@ function renderProjecao() {
     return String(v);
   }
 
+  // Calcular R$/coco médio por dia (todas as vendas do dia)
+  const precoDia = {};
+  for (const v of vendasSemana) {
+    if (!v.qtde || v.qtde <= 0 || !v.total) continue;
+    if (!precoDia[v.data]) precoDia[v.data] = { receita: 0, frete: 0, cocos: 0 };
+    precoDia[v.data].receita += v.total;
+    precoDia[v.data].frete += v.frete || 0;
+    precoDia[v.data].cocos += v.qtde;
+  }
+
   // Build lançamentos HTML
   let lancHtml = '';
   if (lancList.length === 0) {
@@ -652,6 +662,21 @@ function renderProjecao() {
       const clienteStr = l.cliente || '<span style="color:var(--muted);font-style:italic">sem cliente</span>';
       const safeIdx = 'lanc_' + idx;
 
+      // R$/coco: se tem cliente, pegar da venda específica; senão, média do dia
+      let precoCoco = null;
+      if (l.cliente) {
+        const vendaCli = vendasSemana.find(v => v.data === l.data && v.cliente === l.cliente);
+        if (vendaCli && vendaCli.qtde > 0 && vendaCli.total > 0) {
+          precoCoco = ((vendaCli.total - (vendaCli.frete || 0)) / vendaCli.qtde).toFixed(2);
+        }
+      }
+      if (!precoCoco && precoDia[l.data] && precoDia[l.data].cocos > 0) {
+        precoCoco = ((precoDia[l.data].receita - precoDia[l.data].frete) / precoDia[l.data].cocos).toFixed(2);
+      }
+      const precoBadge = precoCoco
+        ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:#e8f4fd;color:#1a6fa0;border:1px solid #b8d9ef;white-space:nowrap">R$ ${precoCoco}</span>`
+        : '';
+
       const eitoRows = l.eitos.map(ei => `
         <div style="display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:8px;padding:4px 6px;border-radius:5px">
           <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--forest)">${ei.id}</span>
@@ -661,7 +686,7 @@ function renderProjecao() {
 
       lancHtml += `
         <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:6px">
-          <div onclick="toggleLanc('${safeIdx}')" style="display:grid;grid-template-columns:52px 1fr auto auto auto;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background 0.12s;user-select:none" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+          <div onclick="toggleLanc('${safeIdx}')" style="display:grid;grid-template-columns:52px 1fr auto auto auto auto;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background 0.12s;user-select:none" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
             <div>
               <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${diaSem}</div>
               <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${dataFmt}</div>
@@ -671,6 +696,7 @@ function renderProjecao() {
               <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${l.eitos.length > 0 ? l.eitos.length + ' eitos' : fmtNum(l.total) + ' cocos'}</div>
             </div>
             ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${a}</span>`).join('')}
+            ${precoBadge}
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
