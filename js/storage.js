@@ -27,6 +27,7 @@ async function loadDataSupabase() {
         const h = { _id: c.id, data: c.data.substring(0,10), total: c.total, mesa: c.mesa, fabrica: c.fabrica };
         if(c.cliente) h.cliente = c.cliente;
         if(c.lancamento_id) h.lancamento_id = c.lancamento_id;
+        if(c.parcial) h.parcial = true;
         eito.historico.push(h);
       }
     }
@@ -113,6 +114,7 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
     };
     if (colheita.cliente) row.cliente = colheita.cliente;
     if (colheita.lancamento_id) row.lancamento_id = colheita.lancamento_id;
+    if (colheita.parcial) row.parcial = true;
     await _SB.from('colheitas').insert(row);
   } catch(err) { console.error('Erro ao salvar colheita:', err); showToast('⚠ Erro ao salvar — tente novamente'); }
 }

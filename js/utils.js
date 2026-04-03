@@ -37,6 +37,20 @@ function addDias(dataStr, n) {
 }
 
 function getUltima(eito) { return eito.historico?.length ? eito.historico[eito.historico.length-1] : null; }
+/** Retorna última colheita COMPLETA (ignora parciais) — usada para semáforo e ciclo */
+function getUltimaCompleta(eito) {
+  if (!eito.historico?.length) return null;
+  for (let i = eito.historico.length - 1; i >= 0; i--) {
+    if (!eito.historico[i].parcial) return eito.historico[i];
+  }
+  return null;
+}
+/** Retorna a colheita parcial pendente, se houver */
+function getParcialPendente(eito) {
+  if (!eito.historico?.length) return null;
+  const ult = eito.historico[eito.historico.length - 1];
+  return ult.parcial ? ult : null;
+}
 
 function getISOWeek(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');

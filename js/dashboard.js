@@ -25,7 +25,8 @@ function renderDashboard() {
   for (const [area, eitos] of Object.entries(DB)) {
     let cocosAnoArea=0, plantasArea=0;
     for (const e of eitos) {
-      const ult  = getUltima(e);
+      // Usar última completa para semáforo (ignora parciais)
+      const ult  = getUltimaCompleta(e) || getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
       const st   = statusDias(dias);
       totalEitos++;
@@ -249,10 +250,10 @@ function renderProjecao() {
     'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
   };
 
-  // Média histórica do eito
+  // Média histórica do eito (exclui parciais)
   function mediaEito(e) {
-    const hist = e.historico || [];
-    const ult  = getUltima(e);
+    const hist = (e.historico || []).filter(h => !h.parcial);
+    const ult  = getUltimaCompleta(e);
     return hist.length > 0
       ? Math.round(hist.reduce((s,h) => s+h.total, 0) / hist.length)
       : (ult ? ult.total : 0);

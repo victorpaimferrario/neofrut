@@ -146,28 +146,35 @@ function renderLancamento() {
     html += `<th class="num">FÁBRICA</th>`;
     html += `<th class="num">TOTAL</th>`;
     html += `<th class="num">% MESA</th>`;
+    html += `<th style="text-align:center;font-size:9px;width:40px" title="Marcar como colheita parcial">✂️</th>`;
     html += `</tr></thead><tbody>`;
 
     for (const e of eitos) {
-      const ult = getUltima(e);
-      const dias = ult ? diasDesde(ult.data) : null;
+      // Usar última completa para semáforo (ignora parciais)
+      const parcialPend = getParcialPendente(e);
+      const ultRef = parcialPend ? getUltimaCompleta(e) : getUltima(e);
+      const dias = ultRef ? diasDesde(ultRef.data) : null;
       const st = statusDias(dias);
       const mesaId = `lanc-${area}-${e.id}-mesa`;
       const fabId  = `lanc-${area}-${e.id}-fabrica`;
       const totalId = `lanc-${area}-${e.id}-total`;
       const pctId   = `lanc-${area}-${e.id}-pct`;
+      const parcialId = `lanc-${area}-${e.id}-parcial`;
       _allInputs.push({area, eitoId: e.id, campo:'mesa', id: mesaId});
       _allInputs.push({area, eitoId: e.id, campo:'fabrica', id: fabId});
-      const hist = e.historico || [];
+      const hist = (e.historico || []).filter(h => !h.parcial);
       const ultVal = hist.length > 0 ? hist[hist.length-1].total : null;
       const med3 = hist.length > 0
         ? Math.round(hist.slice(-3).reduce((s,h)=>s+h.total,0) / Math.min(hist.length,3))
         : null;
       const ultFmt = ultVal !== null ? fmtNum(ultVal) : '—';
       const med3Fmt = med3 !== null ? fmtNum(med3) : '—';
+      const parcialBadge = parcialPend
+        ? `<span style="font-size:8px;font-weight:800;background:#ffc107;color:#856404;padding:1px 5px;border-radius:3px;margin-left:4px" title="Parcial pendente: ${fmtNum(parcialPend.total)} cocos de ${fmtData(parcialPend.data)}">PARCIAL ${fmtNum(parcialPend.total)}</span>`
+        : '';
 
-      html += `<tr id="row-${area}-${e.id}">
-        <td class="p-eito" style="cursor:pointer;color:var(--forest);text-decoration:underline dotted" onclick="openSidePanel('${area}','${e.id}')" title="Ver histórico do eito">${e.id}</td>
+      html += `<tr id="row-${area}-${e.id}" ${parcialPend?'style="background:#fffbeb"':''}>
+        <td class="p-eito" style="cursor:pointer;color:var(--forest);text-decoration:underline dotted" onclick="openSidePanel('${area}','${e.id}')" title="Ver histórico do eito">${e.id}${parcialBadge}</td>
         <td class="p-status"><span class="status-dot sd-${st}" style="margin:0 auto;display:block;width:8px;height:8px"></span></td>
         <td class="p-dias">${dias!==null?dias+'d':'—'}</td>
         <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center">${e.plantas}</td>
@@ -184,6 +191,7 @@ function renderLancamento() {
           onkeydown="navPInput(event,'${fabId}')"></td>
         <td class="p-total" id="${totalId}">—</td>
         <td class="p-pct" id="${pctId}">—</td>
+        <td style="text-align:center"><input type="checkbox" id="${parcialId}" title="Marcar como colheita parcial" style="cursor:pointer;width:14px;height:14px"></td>
       </tr>`;
     }
     html += `</tbody><tfoot><tr style="border-top:2px solid var(--border);background:var(--surface2)">
@@ -192,6 +200,7 @@ function renderLancamento() {
       <td class="tot-fab-area"  style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:6px">—</td>
       <td class="tot-total-area" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--verde)">—</td>
       <td class="tot-pct-area" style="font-family:var(--font-mono);font-weight:700;text-align:right;padding-right:14px;color:var(--muted)">—</td>
+      <td></td>
     </tr></tfoot></table>`;
   }
 
@@ -397,9 +406,14 @@ function getLancamentos() {
   const vistos = {};
   document.querySelectorAll('.p-input').forEach(inp => {
     const key = `${inp.dataset.area}||${inp.dataset.eito}`;
-    if (!vistos[key]) vistos[key] = {area:inp.dataset.area, eitoId:inp.dataset.eito, mesa:0, fabrica:0};
+    if (!vistos[key]) vistos[key] = {area:inp.dataset.area, eitoId:inp.dataset.eito, mesa:0, fabrica:0, parcial:false};
     vistos[key][inp.dataset.campo] = parseInt(inp.value)||0;
   });
+  // Checar checkbox parcial
+  for (const v of Object.values(vistos)) {
+    const cb = document.getElementById(`lanc-${v.area}-${v.eitoId}-parcial`);
+    if (cb) v.parcial = cb.checked;
+  }
   return Object.values(vistos).filter(v => v.mesa>0 || v.fabrica>0);
 }
 
@@ -419,10 +433,14 @@ function abrirRevisao() {
 
   tbody.innerHTML = lotes.map(l => {
     const total = l.mesa + l.fabrica;
+    const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
+    const pend = eito ? getParcialPendente(eito) : null;
     totMesa += l.mesa; totFab += l.fabrica; totTotal += total;
+    const parcialTag = l.parcial ? '<span style="font-size:8px;font-weight:800;background:#ffc107;color:#856404;padding:1px 5px;border-radius:3px;margin-left:4px">PARCIAL</span>' : '';
+    const mergeTag = pend && !l.parcial ? '<span style="font-size:8px;font-weight:800;background:var(--verde);color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">+'+fmtNum(pend.total)+' pendente = '+fmtNum(total+pend.total)+'</span>' : '';
     return `<tr>
       <td style="color:var(--accent2)">${l.area}</td>
-      <td style="font-weight:600">${l.eitoId}</td>
+      <td style="font-weight:600">${l.eitoId}${parcialTag}${mergeTag}</td>
       <td>${fmtNum(l.mesa)}</td>
       <td>${fmtNum(l.fabrica)}</td>
       <td style="font-weight:700;color:var(--verde)">${fmtNum(total)}</td>
@@ -469,18 +487,46 @@ async function confirmarLancamento() {
     const lotes = getLancamentos();
     const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
     let count = 0;
+    const parcialMerges = []; // {area, eitoId, oldId} para deletar do Supabase
     for (const l of lotes) {
       const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
       if (!eito) continue;
       if (!eito.historico) eito.historico = [];
-      eito.historico.push({ data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId });
+
+      // Verificar se há parcial pendente para merge
+      const pend = getParcialPendente(eito);
+      if (pend && !l.parcial) {
+        // Merge: somar parcial + novo lançamento
+        const mergedTotal = pend.total + l.mesa + l.fabrica;
+        const mergedMesa = (pend.mesa||0) + l.mesa;
+        const mergedFab = (pend.fabrica||0) + l.fabrica;
+        // Remover a entrada parcial do histórico
+        if (pend._id) parcialMerges.push({ area: l.area, eitoId: l.eitoId, oldId: pend._id, oldData: pend.data });
+        eito.historico = eito.historico.filter(h => h !== pend);
+        // Adicionar registro completo combinado
+        eito.historico.push({ data, total: mergedTotal, mesa: mergedMesa, fabrica: mergedFab, cliente, lancamento_id: lancId });
+      } else {
+        // Lançamento normal (ou nova parcial)
+        const entry = { data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId };
+        if (l.parcial) entry.parcial = true;
+        eito.historico.push(entry);
+      }
       count++;
     }
     await saveData();
-    // salvar colheitas em lote no Supabase
+    // Deletar parciais mergeadas do Supabase
+    for (const m of parcialMerges) {
+      try {
+        await _SB.from('colheitas').delete().eq('area', m.area).eq('eito_id', m.eitoId).eq('data', m.oldData);
+      } catch(e) { console.warn('Erro ao deletar parcial:', e); }
+    }
+    // Salvar colheitas em lote no Supabase
     for(const l of lotes) {
+      const eito = DB[l.area]?.find(e=>e.id===l.eitoId);
+      const ultH = eito?.historico?.[eito.historico.length-1];
       await salvarColheitaSupabase(l.area, l.eitoId, {
-        data, total: l.mesa+l.fabrica, mesa: l.mesa, fabrica: l.fabrica, cliente, lancamento_id: lancId
+        data, total: ultH?.total || (l.mesa+l.fabrica), mesa: ultH?.mesa || l.mesa, fabrica: ultH?.fabrica || l.fabrica,
+        cliente, lancamento_id: lancId, parcial: l.parcial || false
       });
     }
     limparRascunho();
@@ -521,12 +567,16 @@ function gerarTextoResumo(data, lotes, cliente) {
         ? `  • ${nm}: ${fmtNum(tot)} (M:${fmtNum(v.mesa)} / F:${fmtNum(v.fabrica)})`
         : `  • ${nm}: ${fmtNum(tot)}`;
     }).join('\n');
+  const parciais = lotes.filter(l => l.parcial);
+  const parcialInfo = parciais.length > 0
+    ? `\n✂️ *Parciais:* ${parciais.map(l => `${(NOMES_CURTOS[l.area]||l.area)} ${l.eitoId}`).join(', ')}`
+    : '';
   return `🥥 *COLHEITA NEOFRUT — ${dia}/${mes}/${ano}*\n\n` +
     (cliente ? `👤 *Cliente:* ${cliente}\n` : '') +
     `📦 *Total:* ${fmtNum(totGeral)} cocos\n` +
     `🟢 *Mesa:* ${fmtNum(totMesa)} (${pctMesa}%)\n` +
     `🏭 *Fábrica:* ${fmtNum(totFab)} (${100-pctMesa}%)\n` +
-    `📋 *Eitos:* ${lotes.length}\n\n` +
+    `📋 *Eitos:* ${lotes.length}${parcialInfo}\n\n` +
     `*Por área:*\n${linhas}`;
 }
 

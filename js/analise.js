@@ -48,25 +48,27 @@ function renderAnalise() {
 
   // ranking de produtividade por eito
   let rows = eitos.map(e => {
-    const hist = e.historico || [];
+    const histFull = e.historico || [];
+    const hist = histFull.filter(h => !h.parcial); // excluir parciais da análise
     const ultimas = hist.slice(-3);
     const mediaAtual = ultimas.length ? Math.round(ultimas.reduce((s,h)=>s+h.total,0)/ultimas.length) : 0;
-    const ult = hist[hist.length-1];
+    const ult = getUltimaCompleta(e) || getUltima(e);
     const dias = ult ? diasDesde(ult.data) : null;
     const st = statusDias(dias);
     const nColheitas = hist.length;
     const fpp = fppEito(e);
-    // tendência: comparar última vs penúltima
+    const parcialPend = getParcialPendente(e);
+    // tendência: comparar última vs penúltima (apenas completas)
     let trend = 'flat';
     if (hist.length >= 2) {
       const diff = hist[hist.length-1].total - hist[hist.length-2].total;
       if (diff > 50) trend = 'up';
       else if (diff < -50) trend = 'down';
     }
-    // alerta de queda brusca: última < 70% da média histórica
+    // alerta de queda brusca: última < 70% da média histórica (ignorar parciais)
     const mediaHist = hist.length > 0 ? hist.reduce((s,h)=>s+h.total,0)/hist.length : 0;
-    const quedaBrusca = ult && mediaHist > 0 && (ult.total / mediaHist) < 0.70;
-    return { e, mediaAtual, st, dias, trend, hist, nColheitas, fpp, quedaBrusca };
+    const quedaBrusca = !parcialPend && ult && mediaHist > 0 && (ult.total / mediaHist) < 0.70;
+    return { e, mediaAtual, st, dias, trend, hist, nColheitas, fpp, quedaBrusca, parcialPend };
   }).sort((a,b) => {
     const urgA = (a.dias === null || a.dias >= 21) ? 0 : a.dias >= 15 ? 1 : 2;
     const urgB = (b.dias === null || b.dias >= 21) ? 0 : b.dias >= 15 ? 1 : 2;
@@ -102,9 +104,10 @@ function renderAnalise() {
           const tClass = r.trend==='up'?'trend-up':r.trend==='down'?'trend-down':'trend-flat';
           const fppFmt = r.fpp !== null ? Math.round(r.fpp) : '—';
           const alertaQueda = r.quedaBrusca ? '<span title="Queda brusca vs média histórica" style="color:var(--vermelho);font-size:13px;margin-left:4px">⚠️</span>' : '';
+          const parcialBadge = r.parcialPend ? '<span style="font-size:7px;font-weight:800;background:#ffc107;color:#856404;padding:1px 4px;border-radius:3px;margin-left:3px;vertical-align:middle" title="Colheita parcial pendente: '+fmtNum(r.parcialPend.total)+' cocos">PARCIAL</span>' : '';
           const colheitasCor = r.nColheitas === 0 ? 'var(--vermelho)' : r.nColheitas <= 2 ? 'var(--amarelo)' : 'var(--muted)';
           return `<tr style="cursor:pointer" onclick="selectEitoAnalise('${r.e.id}')">
-            <td style="font-family:var(--font-mono);font-weight:600">${r.e.id}${alertaQueda}</td>
+            <td style="font-family:var(--font-mono);font-weight:600">${r.e.id}${alertaQueda}${parcialBadge}</td>
             <td><span class="status-dot sd-${r.st}"></span><span style="font-size:11px;font-weight:600;color:${r.st==='verde'?'var(--verde)':r.st==='amarelo'?'var(--amarelo)':r.st==='vermelho'?'var(--vermelho)':'var(--muted)'}">${statusLabel(r.st)}</span></td>
             <td>${r.dias!==null?`<span class="dias-badge dias-${r.st}">${r.dias}d</span>`:'<span class="dias-badge dias-sem">—</span>'}</td>
             <td style="font-family:var(--font-mono);font-size:12px;color:${r.dias!==null&&r.dias>=21?'var(--vermelho)':r.dias!==null&&r.dias>=15?'var(--amarelo)':'var(--muted)'}">
