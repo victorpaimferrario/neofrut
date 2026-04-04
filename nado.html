@@ -79,7 +79,8 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 /* Botao de eito — grande e claro */
 .eito-btn{background:var(--bg);border:3px solid var(--borda);border-radius:12px;padding:12px 8px;cursor:pointer;transition:all .1s;-webkit-tap-highlight-color:transparent;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .eito-btn:active{transform:scale(.94);background:var(--verde-bg)}
-.eito-btn.concluido{border-color:var(--verde);background:var(--verde-bg)}
+.eito-btn.concluido{border-color:var(--verde);background:var(--verde-bg);position:relative}
+.eito-editar{font-size:9px;color:var(--verde);font-weight:800;opacity:.7;text-transform:uppercase;letter-spacing:.5px}
 .eito-btn.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
 .eito-id{font-size:17px;font-weight:900;color:var(--verde);line-height:1}
 .eito-check{font-size:16px;margin-top:2px}
@@ -122,6 +123,8 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .btn-grande{display:block;width:100%;padding:16px;background:var(--verde);color:#fff;border:none;border-radius:14px;font-size:20px;font-weight:900;cursor:pointer;text-align:center;transition:all .12s;letter-spacing:.5px}
 .btn-grande:active{background:var(--verde2);transform:scale(.97)}
 .btn-grande.sec{background:var(--branco);color:var(--verde);border:3px solid var(--verde);font-size:15px;padding:12px}
+.btn-grande.limpar{background:var(--branco);color:var(--vermelho);border:3px solid var(--vermelho);font-size:15px;padding:12px}
+.btn-grande.limpar:active{background:var(--vermelho-bg)}
 
 /* ════════ TELA RESUMO ════════ */
 #tela-resumo{display:none;padding:16px}
@@ -220,6 +223,7 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
     <span class="total-val" id="total-eito">0</span>
   </div>
   <button class="btn-grande" onclick="confirmarEito()">CONFIRMAR</button>
+  <button class="btn-grande limpar" id="btn-limpar" onclick="limparEito()" style="display:none;margin-top:8px">LIMPAR CONTAGEM</button>
   <button class="btn-grande sec" onclick="voltarInicio()" style="margin-top:8px">VOLTAR</button>
 </div>
 
@@ -558,7 +562,7 @@ function criarEitoBtn(area, eito, isProgramado) {
   div.innerHTML = `
     <span class="eito-id">${eito.id}</span>
     ${feito
-      ? `<span class="eito-check">✅</span><span class="eito-resultado">${fmtN(feito.total)}</span>`
+      ? `<span class="eito-check">✅</span><span class="eito-resultado">${fmtN(feito.mesa)}m ${fmtN(feito.fabrica)}f</span><span class="eito-editar">EDITAR</span>`
       : `<span class="eito-dias ${diasClass(dias)}">${diasTxt}</span>`
     }
   `;
@@ -595,6 +599,9 @@ function abrirContagem(area, eito) {
   document.getElementById('inp-mesa').value = existente ? existente.mesa : '';
   document.getElementById('inp-fabrica').value = existente ? existente.fabrica : '';
   atualizarTotal();
+
+  // Mostrar botão LIMPAR só se já tem contagem
+  document.getElementById('btn-limpar').style.display = existente ? 'block' : 'none';
 
   document.getElementById('tela-inicio').style.display = 'none';
   document.getElementById('tela-contagem').style.display = 'block';
@@ -646,6 +653,19 @@ function confirmarEito() {
   if (navigator.vibrate) navigator.vibrate(100);
 
   toast('Eito ' + eitoAtual.id + ' confirmado');
+  voltarInicio();
+}
+
+function limparEito() {
+  if (!confirm('Apagar contagem do Eito ' + eitoAtual.id + '?')) return;
+  const k = chaveEito(eitoAtual.area, eitoAtual.id);
+  delete resultados[k];
+  salvarResultados();
+  // Remover da fila de envio
+  filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
+  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+  toast('Contagem apagada');
   voltarInicio();
 }
 
