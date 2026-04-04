@@ -230,3 +230,41 @@ async function excluirVendaSupabase(id) {
   const { error } = await _SB.from('vendas').delete().eq('id', id);
   if(error) { console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
 }
+
+// ─── NADO CONTADOR ───
+
+async function salvarProgramacaoNado(data, eitos) {
+  // eitos = [{area, eito_id, plantas, sugerido, dias_desde}]
+  const rows = eitos.map(e => {
+    const row = { data, area: e.area, eito_id: e.eito_id, plantas: e.plantas || 0 };
+    if (e.sugerido != null) row.sugerido = e.sugerido;
+    if (e.dias_desde != null) row.dias_desde = e.dias_desde;
+    return row;
+  });
+  // Limpar programação anterior do dia
+  await _SB.from('nado_programacao').delete().eq('data', data);
+  // Inserir em lotes de 500 (pode haver 300+ eitos)
+  for (let i = 0; i < rows.length; i += 500) {
+    const batch = rows.slice(i, i + 500);
+    const { error } = await _SB.from('nado_programacao').insert(batch);
+    if (error) { console.error('Erro programação Nado:', error); showToast('⚠ Erro ao salvar programação'); return; }
+  }
+  showToast('✓ Programação salva');
+}
+
+async function loadProgramacaoNado(data) {
+  const { data: rows, error } = await _SB.from('nado_programacao').select('area,eito_id,plantas').eq('data', data);
+  if (error) { console.error('Erro ao carregar programação:', error); return []; }
+  return rows || [];
+}
+
+async function loadContagemsNado(status) {
+  const { data: rows, error } = await _SB.from('nado_contagens').select('*').eq('status', status || 'pendente').order('data', { ascending: false });
+  if (error) { console.error('Erro ao carregar contagens:', error); return []; }
+  return rows || [];
+}
+
+async function atualizarStatusNado(ids, status) {
+  const { error } = await _SB.from('nado_contagens').update({ status }).in('id', ids);
+  if (error) console.error('Erro ao atualizar status:', error);
+}

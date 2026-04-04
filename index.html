@@ -155,6 +155,20 @@
     <p>Digite apenas os eitos colhidos. Use <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px">Enter</kbd> ou <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px">Tab</kbd> para avançar.</p>
   </div>
 
+  <!-- CARD NADO CONTADOR -->
+  <div id="nado-card" style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DO NADO</div>
+      <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline" onclick="abrirPrepararDia()">Preparar dia</button>
+      <button class="btn btn-outline" id="nado-btn-pendentes" onclick="toggleValidacaoNado()" style="display:none">Ver pendentes</button>
+    </div>
+  </div>
+  <!-- VALIDACAO NADO (inline, expande abaixo do card) -->
+  <div id="nado-validacao" style="display:none;margin-bottom:20px"></div>
+
   <div style="display:flex;gap:16px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
     <div>
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Data da Colheita</div>
@@ -182,6 +196,33 @@
       <span style="font-size:11px;color:var(--verde);font-family:var(--font-mono)" id="lanc-rascunho-status"></span>
     </div>
     <button class="btn btn-primary" style="padding:10px 24px;font-size:14px" onclick="abrirRevisao()">Revisar e Confirmar →</button>
+  </div>
+</div>
+
+<!-- MODAL PREPARAR DIA NADO -->
+<div class="modal-overlay" id="modal-preparar-nado">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <h3>Preparar dia do Nado</h3>
+      <button class="modal-close" onclick="closeModal('modal-preparar-nado')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Data</div>
+          <input type="date" id="nado-prep-data" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:13px">
+        </div>
+        <button class="btn btn-outline" onclick="selecionarUrgentesNado()" style="font-size:12px">Selecionar urgentes (21+d)</button>
+        <button class="btn btn-outline" onclick="limparSelecaoNado()" style="font-size:12px">Limpar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px" id="nado-prep-count">Nenhum eito selecionado</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:12px;font-style:italic">Nado pode contar qualquer eito — esta lista e uma sugestao.</div>
+      <div id="nado-prep-lista" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-preparar-nado')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProgramacaoNadoUI()">Confirmar programacao</button>
+    </div>
   </div>
 </div>
 
