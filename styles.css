@@ -268,6 +268,21 @@
   .side-kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
   .side-kpi-value { font-size: 18px; font-weight: 800; font-family: var(--font-mono); }
 
+  /* TABS CARD NO SIDE PANEL CLIENTE */
+  .cli-tab-card {
+    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px 14px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:700;
+    background:var(--surface2); border:1.5px solid var(--border); color:var(--muted);
+    transition: all 0.2s ease;
+  }
+  .cli-tab-card:hover { background:var(--surface); color:var(--text); }
+  .cli-tab-card.active {
+    background:var(--verde-bg); border-color:var(--verde-border); color:var(--verde);
+    box-shadow:0 2px 8px rgba(26,122,110,0.12);
+  }
+  .cli-tab-content { display:none; }
+  .cli-tab-content.active { display:block; }
+
   /* DRAWER DE ÁREA */
   .area-drawer { position: fixed; top: 0; right: -72%; width: 70%; height: 100vh; background: var(--bg); border-left: 2px solid var(--accent); z-index: 148; transition: right 0.32s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; box-shadow: -8px 0 40px rgba(0,0,0,0.15); }
   .area-drawer.open { right: 0; }

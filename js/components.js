@@ -416,7 +416,58 @@ async function salvarInline(eitoId) {
 }
 
 // ── CLIENTE PANEL ──
-function openClientePanel(cliente){
+window._cliPanelNome = null; // nome do cliente aberto no painel
+
+function switchCliTab(tab){
+  document.querySelectorAll('.cli-tab-card').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.cli-tab-content').forEach(c=>{c.classList.remove('active');c.style.display='none';});
+  if(tab==='editar'){
+    document.getElementById('cli-tab-edit').classList.add('active');
+    const body=document.getElementById('cli-body-editar');
+    body.classList.add('active');body.style.display='block';
+    // Carregar dados do cliente no form
+    _loadClienteForm(window._cliPanelNome);
+  } else {
+    document.getElementById('cli-tab-hist').classList.add('active');
+    const body=document.getElementById('cli-body-historico');
+    body.classList.add('active');body.style.display='block';
+  }
+}
+
+function _loadClienteForm(nome){
+  // Limpar campos
+  ['cli-nome','cli-telefone','cli-email','cli-cpf-cnpj','cli-ie','cli-cidade','cli-endereco','cli-contato2'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('cli-obs').value='';
+  document.getElementById('cli-uf').value='';
+  document.getElementById('cli-tipo').value='mesa';
+  document.getElementById('cli-status').value='ativo';
+  document.getElementById('cli-edit-id').value='';
+  const erro=document.getElementById('cli-erro');
+  if(erro)erro.style.display='none';
+
+  if(!nome)return; // novo cliente
+  const clientes=loadClientesLocal();
+  const c=clientes.find(x=>x.nome===nome);
+  if(!c)return;
+  document.getElementById('cli-edit-id').value=c.id||'';
+  document.getElementById('cli-nome').value=c.nome||'';
+  document.getElementById('cli-telefone').value=c.telefone||'';
+  document.getElementById('cli-email').value=c.email||'';
+  document.getElementById('cli-cpf-cnpj').value=c.cpf_cnpj||'';
+  document.getElementById('cli-ie').value=c.ie||'';
+  document.getElementById('cli-uf').value=c.uf||'';
+  document.getElementById('cli-cidade').value=c.cidade||'';
+  document.getElementById('cli-endereco').value=c.endereco||'';
+  document.getElementById('cli-contato2').value=c.contato_secundario||'';
+  document.getElementById('cli-obs').value=c.observacoes||'';
+  document.getElementById('cli-tipo').value=c.tipo||'mesa';
+  document.getElementById('cli-status').value=c.status||'ativo';
+}
+
+function openClientePanel(cliente, tab){
+  window._cliPanelNome=cliente;
   const db=loadVendas();
   const vendas=db.filter(v=>v.cliente===cliente).sort((a,b)=>a.data.localeCompare(b.data));
   const tCocos=vendas.reduce((s,v)=>s+(v.qtde||0),0);
@@ -424,16 +475,28 @@ function openClientePanel(cliente){
   const tFrete=vendas.reduce((s,v)=>s+(v.frete||0),0);
   const preco=tCocos>0?((tReceita-tFrete)/tCocos).toFixed(2):0;
   const ult=vendas[vendas.length-1];
+  const pendentes=vendas.filter(v=>v.status==='PENDENTE');
+  const tPend=pendentes.reduce((s,v)=>s+(v.valorRecebido||v.total||0),0);
+
   document.getElementById('cli-title').textContent=cliente;
-  document.getElementById('cli-sub').textContent=vendas.length+' compra'+(vendas.length!==1?'s':'')+' registrada'+(vendas.length!==1?'s':'');
+  let subText=vendas.length+' compra'+(vendas.length!==1?'s':'')+' registrada'+(vendas.length!==1?'s':'');
+  if(pendentes.length>0) subText+=' · '+pendentes.length+' pendente'+(pendentes.length>1?'s':'');
+  document.getElementById('cli-sub').textContent=subText;
+
   // KPIs
-  document.getElementById('cli-kpis').innerHTML=
+  let kpiHtml=
     '<div class="side-kpi"><div class="side-kpi-label">Total cocos</div><div class="side-kpi-value">'+fmtNum(tCocos)+'</div></div>'
    +'<div class="side-kpi"><div class="side-kpi-label">Receita total</div><div class="side-kpi-value" style="color:var(--forest)">'+fmtR(tReceita)+'</div></div>'
    +'<div class="side-kpi"><div class="side-kpi-label">R$/coco médio</div><div class="side-kpi-value">R$ '+preco+'</div></div>'
-   +'<div class="side-kpi"><div class="side-kpi-label">Última compra</div><div class="side-kpi-value" style="font-size:14px">'+( ult?fmtData(ult.data):'—')+'</div></div>'
-   +'<div class="side-kpi"><div class="side-kpi-label">Frete total</div><div class="side-kpi-value">'+fmtR(tFrete)+'</div></div>'
-   +'<div class="side-kpi"><div class="side-kpi-label">Margem líquida</div><div class="side-kpi-value" style="color:var(--verde)">'+fmtR(tReceita-tFrete)+'</div></div>';
+   +'<div class="side-kpi"><div class="side-kpi-label">Última compra</div><div class="side-kpi-value" style="font-size:14px">'+(ult?fmtData(ult.data):'—')+'</div></div>'
+   +'<div class="side-kpi"><div class="side-kpi-label">Frete total</div><div class="side-kpi-value">'+fmtR(tFrete)+'</div></div>';
+  if(pendentes.length>0){
+    kpiHtml+='<div class="side-kpi" style="border-left-color:#854d0e;background:var(--amarelo-bg)"><div class="side-kpi-label" style="color:#854d0e">A receber</div><div class="side-kpi-value" style="color:#854d0e">'+fmtR(tPend)+'</div></div>';
+  } else {
+    kpiHtml+='<div class="side-kpi"><div class="side-kpi-label">Margem líquida</div><div class="side-kpi-value" style="color:var(--verde)">'+fmtR(tReceita-tFrete)+'</div></div>';
+  }
+  document.getElementById('cli-kpis').innerHTML=kpiHtml;
+
   // Gráfico volume mensal
   const porMes={};
   vendas.forEach(v=>{const m=v.data.substring(0,7);if(!porMes[m])porMes[m]={c:0,r:0};porMes[m].c+=v.qtde||0;porMes[m].r+=v.total||0;});
@@ -467,7 +530,8 @@ function openClientePanel(cliente){
       const parts=meses[i].split('-');ctx.fillText(parts[1]+'/'+parts[0].slice(2),xP(i),H-pad.b+12);
     });
   },60);
-  // Histórico
+
+  // Histórico com status PAGO/PENDENTE
   document.getElementById('cli-hist').innerHTML=[...vendas].reverse().map((v,i)=>{
     const [y,m,d]=v.data.split('-');
     const pc=v.qtde>0&&v.total>0?((v.total-(v.frete||0))/v.qtde).toFixed(2):null;
@@ -475,12 +539,21 @@ function openClientePanel(cliente){
     const areasTag=areasKeys.length>0
       ?'<span style="display:inline-flex;gap:3px;margin-top:4px">'+areasKeys.map(a=>'<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border)">'+a+'</span>').join('')+'</span>'
       :'<span style="font-size:9px;color:#db2777;margin-top:4px;display:block">sem área vinculada</span>';
-    const bgColor=i===0?'var(--verde-bg)':'var(--surface2)';
-    const bdColor=i===0?'var(--verde-border)':'var(--border)';
+    const isPend=v.status==='PENDENTE';
+    const bgColor=isPend?'var(--amarelo-bg)':(i===0?'var(--verde-bg)':'var(--surface2)');
+    const bdColor=isPend?'var(--amarelo-border)':(i===0?'var(--verde-border)':'var(--border)');
+    // Badge de status
+    const statusBadge=isPend
+      ?'<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--amarelo-bg);color:#854d0e;border:1px solid var(--amarelo-border)">PENDENTE</span>'
+      :'<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:8px;background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border)">PAGO</span>';
+    // Botão pago (só para pendentes)
+    const pagoBtn=isPend
+      ?'<button class="btn btn-primary" style="font-size:10px;padding:4px 10px;margin-top:6px" onclick="event.stopPropagation();marcarPagoPainel('+v.id+')">✓ Marcar Pago</button>'
+      :'';
     return '<div onclick="closeClientePanel();editarVenda('+v.id+')" style="cursor:pointer;padding:10px 12px;background:'+bgColor+';border:1px solid '+bdColor+';border-radius:8px;margin-bottom:6px;transition:opacity .15s" onmouseenter="this.style.opacity=0.8" onmouseleave="this.style.opacity=1">'
-      +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
         +'<div style="font-family:var(--font-mono);font-size:12px;font-weight:600">'+d+'/'+m+'/'+y+'</div>'
-        +'<div style="font-size:10px;color:var(--muted)">'+(v.nf&&v.nf!=='RECIBO'?'NF '+v.nf:'')+'  ✏️</div>'
+        +'<div style="display:flex;align-items:center;gap:6px">'+statusBadge+'<span style="font-size:10px;color:var(--muted)">'+(v.nf&&v.nf!=='RECIBO'?'NF '+v.nf:'')+'  ✏️</span></div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
         +'<div><div style="font-size:8px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Cocos</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text)">'+fmtNum(v.qtde)+'</div></div>'
@@ -488,10 +561,28 @@ function openClientePanel(cliente){
         +'<div style="text-align:right"><div style="font-size:8px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Total</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--forest)">'+fmtR(v.total)+'</div></div>'
       +'</div>'
       +areasTag
+      +pagoBtn
     +'</div>';
   }).join('');
+
+  // Abrir na tab correta
+  switchCliTab(tab||'historico');
   document.getElementById('cli-panel').classList.add('open');
   document.getElementById('cli-overlay').classList.add('open');
+}
+
+async function marcarPagoPainel(id){
+  const db=loadVendas();const v=db.find(x=>x.id===id);if(!v)return;
+  if(!confirm('Confirmar pagamento de '+v.cliente+'?\n'+fmtNum(v.qtde)+' cocos · '+fmtR(v.valorRecebido||v.total)))return;
+  v.status='PAGO';v.dataDeposito=v.dataDeposito||today();
+  saveVendas(db);
+  await salvarVendaSupabase(v);
+  if(typeof renderVendasPendentes==='function')renderVendasPendentes();
+  if(typeof renderVendasLista==='function')renderVendasLista();
+  if(typeof renderVendasPainel==='function')renderVendasPainel();
+  // Reabrir painel atualizado
+  openClientePanel(v.cliente);
+  showToast('✓ '+v.cliente+' — marcada como paga');
 }
 
 function closeClientePanel(){

@@ -606,96 +606,6 @@
 </div>
 
 <!-- MODAL CLIENTE -->
-<div class="modal-overlay" id="modal-cliente">
-  <div class="modal" style="max-width:560px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <h3 style="margin:0" id="modal-cli-titulo">Novo Cliente</h3>
-      <button onclick="closeModal('modal-cliente')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
-    </div>
-    <input type="hidden" id="cli-edit-id">
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Nome *</label>
-        <input class="form-input" type="text" id="cli-nome" placeholder="ex: LINCOLN - CAMPO GRANDE">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tipo</label>
-        <select class="form-input" id="cli-tipo">
-          <option value="mesa">Mesa</option>
-          <option value="fabrica">Fábrica</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Telefone / WhatsApp</label>
-        <input class="form-input" type="tel" id="cli-telefone" placeholder="(79) 99999-9999">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" type="email" id="cli-email" placeholder="cliente@email.com">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">CPF / CNPJ</label>
-        <input class="form-input" type="text" id="cli-cpf-cnpj" placeholder="000.000.000-00">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Inscrição Estadual</label>
-        <input class="form-input" type="text" id="cli-ie" placeholder="Opcional">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">UF</label>
-        <select class="form-input" id="cli-uf">
-          <option value="">—</option>
-          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
-          <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
-          <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-          <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-          <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
-          <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
-          <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
-          <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-          <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-          <option value="FÁBRICA">FÁBRICA</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Cidade</label>
-        <input class="form-input" type="text" id="cli-cidade" placeholder="ex: ARACAJU">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Endereço</label>
-      <input class="form-input" type="text" id="cli-endereco" placeholder="Rua, número, bairro, CEP">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Contato secundário</label>
-      <input class="form-input" type="text" id="cli-contato2" placeholder="Nome e telefone de quem recebe a carga">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Observações</label>
-      <textarea class="form-input" id="cli-obs" rows="2" placeholder="Preferências, horários, forma de pagamento..." style="resize:vertical"></textarea>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select class="form-input" id="cli-status">
-          <option value="ativo">Ativo</option>
-          <option value="inativo">Inativo</option>
-        </select>
-      </div>
-    </div>
-    <div id="cli-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-top:8px"></div>
-    <div class="modal-actions" style="margin-top:16px">
-      <button class="btn btn-primary" onclick="salvarCliente()">Salvar</button>
-      <button class="btn btn-outline" onclick="closeModal('modal-cliente')">Cancelar</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL A RECEBER -->
 <div class="modal-overlay" id="modal-a-receber" style="z-index:1100">
@@ -844,12 +754,105 @@
     </div>
     <button class="side-panel-close" onclick="closeClientePanel()">✕</button>
   </div>
-  <div class="side-panel-body">
+  <!-- Tabs card -->
+  <div style="display:flex;gap:8px;padding:0 20px 12px;border-bottom:1px solid var(--border)">
+    <div class="cli-tab-card active" id="cli-tab-hist" onclick="switchCliTab('historico')">
+      <span>📋</span><span>Histórico</span>
+    </div>
+    <div class="cli-tab-card" id="cli-tab-edit" onclick="switchCliTab('editar')">
+      <span>✏️</span><span>Editar</span>
+    </div>
+  </div>
+  <!-- Aba Histórico -->
+  <div class="side-panel-body cli-tab-content active" id="cli-body-historico">
     <div id="cli-kpis" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px"></div>
     <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">VOLUME MENSAL</div>
     <canvas id="cli-canvas" style="width:100%;border-radius:8px;display:block;margin-bottom:20px"></canvas>
     <div style="margin-bottom:8px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">HISTÓRICO DE COMPRAS</div>
     <div id="cli-hist"></div>
+  </div>
+  <!-- Aba Editar -->
+  <div class="side-panel-body cli-tab-content" id="cli-body-editar" style="display:none">
+    <input type="hidden" id="cli-edit-id">
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Nome *</label>
+      <input class="form-input" type="text" id="cli-nome" placeholder="ex: LINCOLN - CAMPO GRANDE">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-input" id="cli-tipo">
+          <option value="mesa">Mesa</option>
+          <option value="fabrica">Fábrica</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="cli-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label class="form-label">Telefone / WhatsApp</label>
+        <input class="form-input" type="tel" id="cli-telefone" placeholder="(79) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="cli-email" placeholder="cliente@email.com">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label class="form-label">CPF / CNPJ</label>
+        <input class="form-input" type="text" id="cli-cpf-cnpj" placeholder="000.000.000-00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Inscrição Estadual</label>
+        <input class="form-input" type="text" id="cli-ie" placeholder="Opcional">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label class="form-label">UF</label>
+        <select class="form-input" id="cli-uf">
+          <option value="">—</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+          <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+          <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+          <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+          <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+          <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+          <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+          <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+          <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+          <option value="FÁBRICA">FÁBRICA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cidade</label>
+        <input class="form-input" type="text" id="cli-cidade" placeholder="ex: ARACAJU">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Endereço</label>
+      <input class="form-input" type="text" id="cli-endereco" placeholder="Rua, número, bairro, CEP">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Contato secundário</label>
+      <input class="form-input" type="text" id="cli-contato2" placeholder="Nome e telefone de quem recebe a carga">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="cli-obs" rows="2" placeholder="Preferências, horários, forma de pagamento..." style="resize:vertical"></textarea>
+    </div>
+    <div id="cli-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn btn-primary" onclick="salvarCliente()">💾 Salvar</button>
+      <button class="btn btn-outline" onclick="switchCliTab('historico')">Cancelar</button>
+    </div>
   </div>
 </div>
 

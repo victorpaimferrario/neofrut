@@ -579,6 +579,17 @@ function renderVendasLista(){
   }
 }
 
+function filtrarVendasPendentesCliente(nome){
+  // Limpa filtros de ano/mês para mostrar todas as pendentes do cliente
+  window._vendaAnoAtivo='todos';
+  window._vendaMesAtivo='todos';
+  // Coloca nome no campo de busca da aba pendentes
+  showVendasTab('pendentes');
+  const buscaEl=document.getElementById('vp-busca');
+  if(buscaEl){buscaEl.value=nome;}
+  renderVendasPendentes();
+}
+
 function renderVendasPendentes(){
   const db=loadVendas();
   const ano=window._vendaAnoAtivo||'todos';
@@ -1032,13 +1043,13 @@ function renderListaClientes() {
   const vendas = loadVendas();
   const vendasPorCliente = {};
   vendas.forEach(v => {
-    if (!vendasPorCliente[v.cliente]) vendasPorCliente[v.cliente] = { cocos: 0, receita: 0, ultima: '', n: 0, pendente: false };
+    if (!vendasPorCliente[v.cliente]) vendasPorCliente[v.cliente] = { cocos: 0, receita: 0, ultima: '', n: 0, pendente: 0, pendCocos: 0, pendValor: 0 };
     const vc = vendasPorCliente[v.cliente];
     vc.cocos += v.qtde || 0;
     vc.receita += v.total || 0;
     vc.n++;
     if (!vc.ultima || v.data > vc.ultima) vc.ultima = v.data;
-    if (v.status === 'PENDENTE') vc.pendente = true;
+    if (v.status === 'PENDENTE') { vc.pendente++; vc.pendCocos += v.qtde || 0; vc.pendValor += (v.valorRecebido || v.total || 0); }
   });
 
   const wrap = document.getElementById('cli-lista-wrap');
@@ -1054,7 +1065,7 @@ function renderListaClientes() {
 
   let html = '<div style="display:grid;gap:10px">';
   lista.forEach(c => {
-    const vc = vendasPorCliente[c.nome] || { cocos: 0, receita: 0, ultima: '', n: 0, pendente: false };
+    const vc = vendasPorCliente[c.nome] || { cocos: 0, receita: 0, ultima: '', n: 0, pendente: 0, pendCocos: 0, pendValor: 0 };
     const diasSemCompra = vc.ultima ? diasDesde(vc.ultima) : null;
     const inativo = c.status === 'inativo';
 
@@ -1068,9 +1079,9 @@ function renderListaClientes() {
       ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--vermelho-bg);color:var(--vermelho)">INATIVO</span>'
       : '';
 
-    // Badge pendente
-    const pendBadge = vc.pendente
-      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--amarelo-bg);color:#854d0e">PENDENTE</span>'
+    // Badge pendente com dados reais
+    const pendBadge = vc.pendente > 0
+      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--amarelo-bg);color:#854d0e;cursor:pointer" onclick="event.stopPropagation();filtrarVendasPendentesCliente(\'' + c.nome.replace(/'/g, "\\'") + '\')" title="Clique para ver detalhes">⚠ ' + vc.pendente + ' pendente' + (vc.pendente > 1 ? 's' : '') + ' · ' + fmtNum(vc.pendCocos) + ' cocos · ' + fmtR(vc.pendValor) + '</span>'
       : '';
 
     // Dias sem compra
@@ -1084,7 +1095,7 @@ function renderListaClientes() {
     const loc = (c.cidade && c.uf) ? '<span style="font-size:11px;color:var(--muted)">' + c.cidade + '/' + c.uf + '</span>' : (c.uf ? '<span style="font-size:11px;color:var(--muted)">' + c.uf + '</span>' : '');
 
     html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;${inativo ? 'opacity:0.6;' : ''}cursor:pointer" onclick="abrirFormCliente('${c.id}')">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;${inativo ? 'opacity:0.6;' : ''}cursor:pointer" onclick="openClientePanel('${c.nome.replace(/'/g, "\\'")}')">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="font-size:14px;font-weight:800;color:var(--text)">${c.nome}</span>
@@ -1104,45 +1115,21 @@ function renderListaClientes() {
   wrap.innerHTML = html;
 }
 
-function abrirFormCliente(id) {
-  const modal = document.getElementById('modal-cliente');
-  const titulo = document.getElementById('modal-cli-titulo');
-  const erro = document.getElementById('cli-erro');
-  erro.style.display = 'none';
-
-  // Limpar campos
-  ['cli-nome', 'cli-telefone', 'cli-email', 'cli-cpf-cnpj', 'cli-ie', 'cli-cidade', 'cli-endereco', 'cli-contato2'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  document.getElementById('cli-obs').value = '';
-  document.getElementById('cli-uf').value = '';
-  document.getElementById('cli-tipo').value = 'mesa';
-  document.getElementById('cli-status').value = 'ativo';
-  document.getElementById('cli-edit-id').value = '';
-
-  if (id) {
-    // Editar
-    const clientes = loadClientesLocal();
-    const c = clientes.find(x => x.id === id);
-    if (!c) { showToast('Cliente não encontrado'); return; }
-    titulo.textContent = 'Editar Cliente';
-    document.getElementById('cli-edit-id').value = c.id;
-    document.getElementById('cli-nome').value = c.nome || '';
-    document.getElementById('cli-telefone').value = c.telefone || '';
-    document.getElementById('cli-email').value = c.email || '';
-    document.getElementById('cli-cpf-cnpj').value = c.cpf_cnpj || '';
-    document.getElementById('cli-ie').value = c.ie || '';
-    document.getElementById('cli-uf').value = c.uf || '';
-    document.getElementById('cli-cidade').value = c.cidade || '';
-    document.getElementById('cli-endereco').value = c.endereco || '';
-    document.getElementById('cli-contato2').value = c.contato_secundario || '';
-    document.getElementById('cli-obs').value = c.observacoes || '';
-    document.getElementById('cli-tipo').value = c.tipo || 'mesa';
-    document.getElementById('cli-status').value = c.status || 'ativo';
+function abrirFormCliente(nome) {
+  // Abre o side panel na aba Editar
+  if(nome){
+    openClientePanel(nome, 'editar');
   } else {
-    titulo.textContent = 'Novo Cliente';
+    // Novo cliente — abre painel vazio na aba editar
+    window._cliPanelNome = null;
+    document.getElementById('cli-title').textContent = 'Novo Cliente';
+    document.getElementById('cli-sub').textContent = '';
+    document.getElementById('cli-kpis').innerHTML = '';
+    document.getElementById('cli-hist').innerHTML = '';
+    switchCliTab('editar');
+    document.getElementById('cli-panel').classList.add('open');
+    document.getElementById('cli-overlay').classList.add('open');
   }
-  modal.classList.add('open');
 }
 
 async function salvarCliente() {
@@ -1189,7 +1176,7 @@ async function salvarCliente() {
       _telefonesCache[nome] = cliente.telefone;
       salvarTelefone(nome, cliente.telefone);
     }
-    closeModal('modal-cliente');
+    closeClientePanel();
     renderListaClientes();
     showToast('✓ Cliente salvo — ' + nome);
   }
