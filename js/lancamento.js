@@ -889,7 +889,7 @@ function renderValidacaoNado() {
   _nadoPendentes.forEach(p => { totalMesa += (p.mesa||0); totalFab += (p.fabrica||0); });
 
   let html = `<div style="background:var(--surface);border:2px solid var(--verde);border-radius:14px;padding:16px 20px">
-    <div style="font-size:14px;font-weight:800;color:var(--verde);margin-bottom:12px">Validar contagens do Nado</div>
+    <div style="font-size:14px;font-weight:800;color:var(--verde);margin-bottom:12px">Validar contagem do Campo</div>
     <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
       <div>
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Data</div>
