@@ -37,12 +37,11 @@
     <button class="nav-tab" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
     <button class="nav-tab" onclick="showPage('vendas')">💰 VENDAS</button>
     <button class="nav-tab" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
-    <button class="nav-tab" onclick="showPage('gestao')">⚙️ GESTÃO</button>
+    <button class="nav-tab" id="nav-gestao" onclick="showPage('gestao')" style="display:none">⚙️ GESTÃO</button>
   </div>
   <div class="nav-actions">
     <span id="user-email" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
     <button onclick="logout()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--muted);font-family:var(--font-main)">Sair</button>
-    <button class="btn btn-green" onclick="exportarExcel()">↓ EXPORTAR</button>
   </div>
 </nav>
 
@@ -349,6 +348,10 @@
     <div class="hoje-badge">GESTÃO DA FAZENDA</div>
     <h1>Cadastro e Configuração</h1>
     <p>Adicione novos eitos, áreas e gerencie a estrutura da fazenda.</p>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <button class="btn btn-green" onclick="exportarExcel()" style="font-size:13px">↓ Exportar Dados (Excel)</button>
   </div>
 
   <div class="gestao-tabs">

@@ -26,6 +26,10 @@ function showPage(id) {
       initMercados();
     }
   } else if (id === 'gestao') {
+    if (typeof isAdmin === 'function' && !isAdmin()) {
+      showPage('dashboard');
+      return;
+    }
     document.querySelectorAll('.nav-tab')[5].classList.add('active');
     initGestao();
   }
