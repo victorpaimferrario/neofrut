@@ -268,3 +268,71 @@ async function atualizarStatusNado(ids, status) {
   const { error } = await _SB.from('nado_contagens').update({ status }).in('id', ids);
   if (error) console.error('Erro ao atualizar status:', error);
 }
+
+// ─── CLIENTES ───
+let _clientesCache = null;
+
+async function loadClientesSupabase() {
+  try {
+    const { data, error } = await _SB.from('clientes').select('*').order('nome');
+    if (error) throw error;
+    _clientesCache = data || [];
+    localStorage.setItem('neofrut_clientes_v1', JSON.stringify(_clientesCache));
+    return _clientesCache;
+  } catch(e) {
+    console.error('Erro ao carregar clientes:', e);
+    try { _clientesCache = JSON.parse(localStorage.getItem('neofrut_clientes_v1') || '[]'); } catch(e2) { _clientesCache = []; }
+    return _clientesCache;
+  }
+}
+
+function loadClientesLocal() {
+  if (_clientesCache && _clientesCache.length > 0) return _clientesCache;
+  try { _clientesCache = JSON.parse(localStorage.getItem('neofrut_clientes_v1') || '[]'); } catch(e) { _clientesCache = []; }
+  return _clientesCache;
+}
+
+async function salvarClienteSupabase(c) {
+  const row = {
+    nome: c.nome,
+    telefone: c.telefone || null,
+    email: c.email || null,
+    cpf_cnpj: c.cpf_cnpj || null,
+    ie: c.ie || null,
+    uf: c.uf || null,
+    cidade: c.cidade || null,
+    endereco: c.endereco || null,
+    contato_secundario: c.contato_secundario || null,
+    observacoes: c.observacoes || null,
+    tipo: c.tipo || 'mesa',
+    status: c.status || 'ativo',
+    atualizado_em: new Date().toISOString()
+  };
+  if (c.id) row.id = c.id;
+  const { data, error } = await _SB.from('clientes').upsert(row, { onConflict: 'nome' }).select();
+  if (error) { console.error('Erro ao salvar cliente:', error); showToast('⚠ Erro ao salvar cliente'); return null; }
+  // Atualizar cache
+  await loadClientesSupabase();
+  return data && data[0];
+}
+
+async function excluirClienteSupabase(id) {
+  const { error } = await _SB.from('clientes').delete().eq('id', id);
+  if (error) { console.error('Erro ao excluir cliente:', error); showToast('⚠ Erro ao excluir cliente'); return false; }
+  await loadClientesSupabase();
+  return true;
+}
+
+function getMapaClientes() {
+  const clientes = loadClientesLocal();
+  if (clientes.length > 0) {
+    const mapa = {};
+    clientes.forEach(c => {
+      if (c.status === 'ativo') {
+        mapa[c.nome] = { uf: c.tipo === 'fabrica' ? 'FÁBRICA' : (c.uf || ''), cidade: c.tipo === 'fabrica' ? '—' : (c.cidade || ''), fabrica: c.tipo === 'fabrica' };
+      }
+    });
+    return mapa;
+  }
+  return MAPA_CLIENTES;
+}

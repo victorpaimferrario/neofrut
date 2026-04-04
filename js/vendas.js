@@ -19,8 +19,9 @@ async function initVendas(forcarReload=false){
   renderMesesBtns();
   const el=document.getElementById('v-data');
   if(el&&!el.value)el.value=today();
-  // popular lista de clientes para autocomplete
-  window._acClientesLista=[...new Set(db.map(v=>v.cliente))].sort();
+  // popular lista de clientes para autocomplete (vendas + cadastro)
+  const _nomesCadastro = Object.keys(getMapaClientes());
+  window._acClientesLista=[...new Set([...db.map(v=>v.cliente),..._nomesCadastro])].sort();
   // popular select de UFs (todos os estados do Brasil)
   const ufSel=document.getElementById('v-uf-destino');
   if(ufSel&&ufSel.options.length<=1){
@@ -86,12 +87,13 @@ function selMes(mes){
 function showVendasTab(tab){
   document.querySelectorAll('.vd-tab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.vd-sec').forEach(s=>s.classList.remove('active'));
-  const idx={'painel':0,'nova':1,'lista':2,'pendentes':3}[tab];
+  const idx={'painel':0,'nova':1,'lista':2,'pendentes':3,'clientes':4}[tab];
   document.querySelectorAll('.vd-tab')[idx]?.classList.add('active');
   document.getElementById('vsec-'+tab)?.classList.add('active');
   localStorage.setItem('neofrut_vendas_tab', tab);
   if(tab==='lista')renderVendasLista();
   if(tab==='pendentes')renderVendasPendentes();
+  if(tab==='clientes')renderListaClientes();
 }
 
 function filtrarVendas(db,ano,mes){
@@ -374,7 +376,8 @@ function calcVendaRecebido(){
 
 function onClienteChange(){
   const nome=(document.getElementById('v-cliente').value||'').trim().toUpperCase();
-  const info=MAPA_CLIENTES[nome];
+  const mapa=getMapaClientes();
+  const info=mapa[nome];
   if(info){
     const ufSel=document.getElementById('v-uf-destino');
     const cidadeInp=document.getElementById('v-cidade-destino');
@@ -869,12 +872,13 @@ function acCliente(){
   const q=(inp.value||'').trim().toUpperCase();
   if(q.length<1){list.classList.remove('open');return;}
   const all=window._acClientesLista||[];
-  const mapaNomes=Object.keys(MAPA_CLIENTES);
+  const mapa=getMapaClientes();
+  const mapaNomes=Object.keys(mapa);
   const merged=[...new Set([...all,...mapaNomes])].sort();
   const filtered=merged.filter(c=>c.toUpperCase().includes(q)).slice(0,12);
   if(!filtered.length){list.classList.remove('open');return;}
   list.innerHTML=filtered.map((c,i)=>{
-    const info=MAPA_CLIENTES[c];
+    const info=mapa[c];
     const sub=info?info.uf+(info.cidade&&info.cidade!=='—'?' · '+info.cidade:''):'';
     return `<div class="ac-item${i===0?' active':''}" data-val="${c.replace(/"/g,'&quot;')}" onmousedown="acSelCliente(this)">${c}${sub?'<div class="ac-sub">'+sub+'</div>':''}</div>`;
   }).join('');
@@ -994,5 +998,191 @@ function exportarVendasCSV(){
   a.href=url;a.download='vendas_'+today()+'.csv';a.click();
   URL.revokeObjectURL(url);
   showToast('✓ CSV exportado — '+lista.length+' vendas');
+}
+
+// ─────────── CLIENTES ───────────
+
+function renderListaClientes() {
+  const clientes = loadClientesLocal();
+  const busca = (document.getElementById('cli-busca')?.value || '').trim().toLowerCase();
+  const tipoFiltro = document.getElementById('cli-filtro-tipo')?.value || 'todos';
+  const statusFiltro = document.getElementById('cli-filtro-status')?.value || 'ativo';
+
+  let lista = clientes;
+  if (busca) lista = lista.filter(c =>
+    c.nome.toLowerCase().includes(busca) ||
+    (c.cidade || '').toLowerCase().includes(busca) ||
+    (c.uf || '').toLowerCase().includes(busca) ||
+    (c.telefone || '').includes(busca) ||
+    (c.cpf_cnpj || '').includes(busca)
+  );
+  if (tipoFiltro !== 'todos') lista = lista.filter(c => c.tipo === tipoFiltro);
+  if (statusFiltro !== 'todos') lista = lista.filter(c => c.status === statusFiltro);
+
+  // Cruzar com vendas para dados de histórico
+  const vendas = loadVendas();
+  const vendasPorCliente = {};
+  vendas.forEach(v => {
+    if (!vendasPorCliente[v.cliente]) vendasPorCliente[v.cliente] = { cocos: 0, receita: 0, ultima: '', n: 0, pendente: false };
+    const vc = vendasPorCliente[v.cliente];
+    vc.cocos += v.qtde || 0;
+    vc.receita += v.total || 0;
+    vc.n++;
+    if (!vc.ultima || v.data > vc.ultima) vc.ultima = v.data;
+    if (v.status === 'PENDENTE') vc.pendente = true;
+  });
+
+  const wrap = document.getElementById('cli-lista-wrap');
+  if (!wrap) return;
+
+  const cnt = document.getElementById('cli-count');
+  if (cnt) cnt.textContent = lista.length + ' cliente' + (lista.length !== 1 ? 's' : '');
+
+  if (!lista.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum cliente encontrado</div>';
+    return;
+  }
+
+  let html = '<div style="display:grid;gap:10px">';
+  lista.forEach(c => {
+    const vc = vendasPorCliente[c.nome] || { cocos: 0, receita: 0, ultima: '', n: 0, pendente: false };
+    const diasSemCompra = vc.ultima ? diasDesde(vc.ultima) : null;
+    const inativo = c.status === 'inativo';
+
+    // Badge de tipo
+    const tipoBadge = c.tipo === 'fabrica'
+      ? '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:#e3f2fd;color:#1565c0">FÁBRICA</span>'
+      : '<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--verde-bg);color:var(--verde)">MESA</span>';
+
+    // Badge de status
+    const statusBadge = inativo
+      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--vermelho-bg);color:var(--vermelho)">INATIVO</span>'
+      : '';
+
+    // Badge pendente
+    const pendBadge = vc.pendente
+      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--amarelo-bg);color:#854d0e">PENDENTE</span>'
+      : '';
+
+    // Dias sem compra
+    let diasBadge = '';
+    if (diasSemCompra !== null) {
+      if (diasSemCompra > 60) diasBadge = '<span style="font-size:9px;color:var(--vermelho);font-weight:700">' + diasSemCompra + 'd sem compra</span>';
+      else if (diasSemCompra > 30) diasBadge = '<span style="font-size:9px;color:#854d0e;font-weight:700">' + diasSemCompra + 'd sem compra</span>';
+    }
+
+    const tel = c.telefone ? '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">📱 ' + c.telefone + '</span>' : '';
+    const loc = (c.cidade && c.uf) ? '<span style="font-size:11px;color:var(--muted)">' + c.cidade + '/' + c.uf + '</span>' : (c.uf ? '<span style="font-size:11px;color:var(--muted)">' + c.uf + '</span>' : '');
+
+    html += `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;${inativo ? 'opacity:0.6;' : ''}cursor:pointer" onclick="abrirFormCliente('${c.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:14px;font-weight:800;color:var(--text)">${c.nome}</span>
+          ${tipoBadge}${statusBadge}${pendBadge}
+        </div>
+        ${diasBadge}
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        ${loc}${tel}
+        ${vc.n > 0 ? '<span style="font-size:11px;font-family:var(--font-mono);color:var(--forest)">' + fmtNum(vc.cocos) + ' cocos · ' + vc.n + ' vendas</span>' : '<span style="font-size:11px;color:var(--muted)">Sem vendas</span>'}
+        ${vc.ultima ? '<span style="font-size:10px;color:var(--muted)">Últ: ' + fmtData(vc.ultima) + '</span>' : ''}
+      </div>
+      ${c.observacoes ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">💬 ' + c.observacoes + '</div>' : ''}
+    </div>`;
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function abrirFormCliente(id) {
+  const modal = document.getElementById('modal-cliente');
+  const titulo = document.getElementById('modal-cli-titulo');
+  const erro = document.getElementById('cli-erro');
+  erro.style.display = 'none';
+
+  // Limpar campos
+  ['cli-nome', 'cli-telefone', 'cli-email', 'cli-cpf-cnpj', 'cli-ie', 'cli-cidade', 'cli-endereco', 'cli-contato2'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('cli-obs').value = '';
+  document.getElementById('cli-uf').value = '';
+  document.getElementById('cli-tipo').value = 'mesa';
+  document.getElementById('cli-status').value = 'ativo';
+  document.getElementById('cli-edit-id').value = '';
+
+  if (id) {
+    // Editar
+    const clientes = loadClientesLocal();
+    const c = clientes.find(x => x.id === id);
+    if (!c) { showToast('Cliente não encontrado'); return; }
+    titulo.textContent = 'Editar Cliente';
+    document.getElementById('cli-edit-id').value = c.id;
+    document.getElementById('cli-nome').value = c.nome || '';
+    document.getElementById('cli-telefone').value = c.telefone || '';
+    document.getElementById('cli-email').value = c.email || '';
+    document.getElementById('cli-cpf-cnpj').value = c.cpf_cnpj || '';
+    document.getElementById('cli-ie').value = c.ie || '';
+    document.getElementById('cli-uf').value = c.uf || '';
+    document.getElementById('cli-cidade').value = c.cidade || '';
+    document.getElementById('cli-endereco').value = c.endereco || '';
+    document.getElementById('cli-contato2').value = c.contato_secundario || '';
+    document.getElementById('cli-obs').value = c.observacoes || '';
+    document.getElementById('cli-tipo').value = c.tipo || 'mesa';
+    document.getElementById('cli-status').value = c.status || 'ativo';
+  } else {
+    titulo.textContent = 'Novo Cliente';
+  }
+  modal.classList.add('open');
+}
+
+async function salvarCliente() {
+  const nome = document.getElementById('cli-nome').value.trim().toUpperCase();
+  const erro = document.getElementById('cli-erro');
+
+  if (!nome) {
+    erro.textContent = 'Nome é obrigatório';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const id = document.getElementById('cli-edit-id').value || undefined;
+
+  // Verificar duplicata
+  const clientes = loadClientesLocal();
+  const dup = clientes.find(c => c.nome === nome && c.id !== id);
+  if (dup) {
+    erro.textContent = 'Já existe um cliente com esse nome';
+    erro.style.display = 'block';
+    return;
+  }
+
+  const cliente = {
+    id,
+    nome,
+    telefone: document.getElementById('cli-telefone').value.trim(),
+    email: document.getElementById('cli-email').value.trim(),
+    cpf_cnpj: document.getElementById('cli-cpf-cnpj').value.trim(),
+    ie: document.getElementById('cli-ie').value.trim(),
+    uf: document.getElementById('cli-uf').value,
+    cidade: document.getElementById('cli-cidade').value.trim().toUpperCase(),
+    endereco: document.getElementById('cli-endereco').value.trim(),
+    contato_secundario: document.getElementById('cli-contato2').value.trim(),
+    observacoes: document.getElementById('cli-obs').value.trim(),
+    tipo: document.getElementById('cli-tipo').value,
+    status: document.getElementById('cli-status').value
+  };
+
+  const saved = await salvarClienteSupabase(cliente);
+  if (saved) {
+    // Sincronizar telefone na tabela legada
+    if (cliente.telefone) {
+      _telefonesCache[nome] = cliente.telefone;
+      salvarTelefone(nome, cliente.telefone);
+    }
+    closeModal('modal-cliente');
+    renderListaClientes();
+    showToast('✓ Cliente salvo — ' + nome);
+  }
 }
 

@@ -459,7 +459,7 @@ function abrirRevisao() {
   const sel = document.getElementById('revisao-cliente');
   const dl = document.getElementById('revisao-cliente-list');
   dl.innerHTML = '';
-  const clientes = Object.keys(MAPA_CLIENTES).sort();
+  const clientes = Object.keys(getMapaClientes()).sort();
   clientes.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c;
@@ -665,7 +665,7 @@ function renderVincularClientes() {
   const lista = Object.values(grupos).sort((a, b) => a.data.localeCompare(b.data) || a.area.localeCompare(b.area));
 
   // Opções de clientes
-  const clientes = Object.keys(MAPA_CLIENTES).sort();
+  const clientes = Object.keys(getMapaClientes()).sort();
   const optionsHtml = '<option value="">— sem cliente —</option>' +
     clientes.map(c => `<option value="${c}">${c}</option>`).join('');
 
@@ -900,10 +900,8 @@ function renderValidacaoNado() {
         <input list="dl-clientes-nado" id="nado-val-cliente" placeholder="Selecione o cliente" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;width:100%">
         <datalist id="dl-clientes-nado">`;
 
-  // Popular clientes do MAPA_CLIENTES
-  if (typeof MAPA_CLIENTES !== 'undefined') {
-    Object.keys(MAPA_CLIENTES).forEach(c => { html += `<option value="${c}">`; });
-  }
+  // Popular clientes
+  Object.keys(getMapaClientes()).forEach(c => { html += `<option value="${c}">`; });
 
   html += `</datalist>
       </div>

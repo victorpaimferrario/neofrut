@@ -153,9 +153,10 @@ function abrirModalEstado(uf){
     +' entre '+todos.length+' estados · '
     +'<span style="font-weight:700">'+pct+'%</span> do total de cocos vendidos';
 
-  // Clientes — filtrar pelo MAPA_CLIENTES para mostrar apenas clientes do estado correto
+  // Clientes — filtrar pelo mapa de clientes para mostrar apenas clientes do estado correto
+  const _mapaCliRef = getMapaClientes();
   const clientes = Object.entries(d.clientes).filter(([cli]) => {
-    const mapa = MAPA_CLIENTES[cli];
+    const mapa = _mapaCliRef[cli];
     if (!mapa) return true; // cliente não mapeado, manter
     if (d.fabrica) return mapa.fabrica === true; // fábricas
     return mapa.uf === uf; // só clientes do estado correto

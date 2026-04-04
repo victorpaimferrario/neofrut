@@ -430,6 +430,7 @@
     <button class="vd-tab" onclick="showVendasTab('nova')">➕ Nova Venda</button>
     <button class="vd-tab" onclick="showVendasTab('lista')">📋 Vendas</button>
     <button class="vd-tab" onclick="showVendasTab('pendentes')">⏳ Pendentes</button>
+    <button class="vd-tab" onclick="showVendasTab('clientes')">👥 Clientes</button>
   </div>
 
   <!-- PAINEL -->
@@ -580,6 +581,119 @@
       <span id="vp-count" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
     </div>
     <div id="v-pendentes-wrap"></div>
+  </div>
+
+  <!-- CLIENTES -->
+  <div class="vd-sec" id="vsec-clientes">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+      <input type="text" id="cli-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaClientes()"
+        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1;max-width:280px">
+      <select id="cli-filtro-tipo" onchange="renderListaClientes()" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+        <option value="todos">Todos</option>
+        <option value="mesa">Mesa</option>
+        <option value="fabrica">Fábrica</option>
+      </select>
+      <select id="cli-filtro-status" onchange="renderListaClientes()" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+        <option value="ativo">Ativos</option>
+        <option value="inativo">Inativos</option>
+        <option value="todos">Todos</option>
+      </select>
+      <button class="btn btn-primary" onclick="abrirFormCliente()" style="font-size:12px">+ Novo Cliente</button>
+      <span id="cli-count" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
+    </div>
+    <div id="cli-lista-wrap"></div>
+  </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal" style="max-width:560px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0" id="modal-cli-titulo">Novo Cliente</h3>
+      <button onclick="closeModal('modal-cliente')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <input type="hidden" id="cli-edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" type="text" id="cli-nome" placeholder="ex: LINCOLN - CAMPO GRANDE">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-input" id="cli-tipo">
+          <option value="mesa">Mesa</option>
+          <option value="fabrica">Fábrica</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Telefone / WhatsApp</label>
+        <input class="form-input" type="tel" id="cli-telefone" placeholder="(79) 99999-9999">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="cli-email" placeholder="cliente@email.com">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">CPF / CNPJ</label>
+        <input class="form-input" type="text" id="cli-cpf-cnpj" placeholder="000.000.000-00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Inscrição Estadual</label>
+        <input class="form-input" type="text" id="cli-ie" placeholder="Opcional">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">UF</label>
+        <select class="form-input" id="cli-uf">
+          <option value="">—</option>
+          <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+          <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+          <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+          <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+          <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+          <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+          <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+          <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+          <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+          <option value="FÁBRICA">FÁBRICA</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cidade</label>
+        <input class="form-input" type="text" id="cli-cidade" placeholder="ex: ARACAJU">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Endereço</label>
+      <input class="form-input" type="text" id="cli-endereco" placeholder="Rua, número, bairro, CEP">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contato secundário</label>
+      <input class="form-input" type="text" id="cli-contato2" placeholder="Nome e telefone de quem recebe a carga">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="cli-obs" rows="2" placeholder="Preferências, horários, forma de pagamento..." style="resize:vertical"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="cli-status">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </div>
+    </div>
+    <div id="cli-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-top:8px"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="salvarCliente()">Salvar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-cliente')">Cancelar</button>
+    </div>
   </div>
 </div>
 

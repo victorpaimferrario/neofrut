@@ -29,7 +29,8 @@ async function initApp() {
       await Promise.all([
         loadDBFromSupabase(),
         loadVendasSupabase(),
-        carregarTelefones()
+        carregarTelefones(),
+        loadClientesSupabase()
       ]);
       // Re-renderizar a página atual com dados atualizados do Supabase
       const paginaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
