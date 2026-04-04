@@ -97,13 +97,21 @@ function renderDashboard() {
     let v=0,a=0,r=0,s=0,cocos=0,plantas=0;
     let maisAntiga = null, maisRecente = null;
     let somaMediaPl=0, eitosComColheita=0;
+    let projecaoVencidos=0; // soma da média histórica dos eitos vencidos
     for (const e of eitos) {
       const ult = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
       const st = statusDias(dias);
       if (st==='verde') v++;
       else if (st==='amarelo') a++;
-      else if (st==='vermelho') r++;
+      else if (st==='vermelho') {
+        r++;
+        // Calcular média histórica deste eito vencido
+        if (e.historico && e.historico.length > 0) {
+          const somaHist = e.historico.reduce((s,h)=>s+(h.total||0),0);
+          projecaoVencidos += Math.round(somaHist / e.historico.length);
+        }
+      }
       else s++;
       if (ult) {
         cocos += ult.total;
@@ -125,7 +133,7 @@ function renderDashboard() {
     const total = eitos.length;
     const pv = (v/total*100).toFixed(0), pa = (a/total*100).toFixed(0),
           pr = (r/total*100).toFixed(0), ps = (s/total*100).toFixed(0);
-    const urgente = r > 0 ? `<span class="urgente-tag">${r} VENCIDO${r>1?'S':''}</span>` : '';
+    const urgente = r > 0 ? `<span class="urgente-tag">${r} VENCIDO${r>1?'S':''}</span>${projecaoVencidos>0?'<span style="font-size:10px;font-family:var(--font-mono);color:var(--vermelho);font-weight:700">≈ '+fmtNum(projecaoVencidos)+' cocos</span>':''}` : '';
 
     grid.innerHTML += `
       <div class="area-card" onclick="openArea('${area}')">
