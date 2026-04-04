@@ -184,7 +184,21 @@ async function loadVendasSupabase() {
       litragem: v.litragem,
       vPorLitro: v.v_por_litro,
       ufDestino: v.uf_destino||null,
-      cidadeDestino: v.cidade_destino||null
+      cidadeDestino: v.cidade_destino||null,
+      // Campos fábrica
+      qtdeFabrica: v.qtde_fabrica||null,
+      fora: v.fora||0,
+      brix: v.brix||null,
+      placa: v.placa||null,
+      ticket: v.ticket||null,
+      nfComplementar: v.nf_complementar||null,
+      valorNfComplementar: parseFloat(v.valor_nf_complementar)||null,
+      modoVenda: v.modo_venda||null,
+      litrosContrato: v.litros_contrato||null,
+      litrosSpot: v.litros_spot||null,
+      valorLitroSpot: v.valor_litro_spot||null,
+      contratoId: v.contrato_id||null,
+      fretePorTon: v.frete_por_ton||null
     }));
     localStorage.setItem(SK_VENDAS, JSON.stringify(_vendasCache));
     return _vendasCache;
@@ -220,7 +234,21 @@ async function salvarVendaSupabase(v) {
     litragem: v.litragem||null,
     v_por_litro: v.vPorLitro||null,
     uf_destino: v.ufDestino||null,
-    cidade_destino: v.cidadeDestino||null
+    cidade_destino: v.cidadeDestino||null,
+    // Campos fábrica
+    qtde_fabrica: v.qtdeFabrica||null,
+    fora: v.fora||0,
+    brix: v.brix||null,
+    placa: v.placa||null,
+    ticket: v.ticket||null,
+    nf_complementar: v.nfComplementar||null,
+    valor_nf_complementar: v.valorNfComplementar||null,
+    modo_venda: v.modoVenda||null,
+    litros_contrato: v.litrosContrato||null,
+    litros_spot: v.litrosSpot||null,
+    valor_litro_spot: v.valorLitroSpot||null,
+    contrato_id: v.contratoId||null,
+    frete_por_ton: v.fretePorTon||null
   };
   const { error } = await _SB.from('vendas').upsert(row);
   if(error) { console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
@@ -306,6 +334,8 @@ async function salvarClienteSupabase(c) {
     observacoes: c.observacoes || null,
     tipo: c.tipo || 'mesa',
     status: c.status || 'ativo',
+    frete_por_ton: c.frete_por_ton || null,
+    distancia_km: c.distancia_km || null,
     atualizado_em: new Date().toISOString()
   };
   if (c.id) row.id = c.id;
@@ -320,6 +350,88 @@ async function excluirClienteSupabase(id) {
   const { error } = await _SB.from('clientes').delete().eq('id', id);
   if (error) { console.error('Erro ao excluir cliente:', error); showToast('⚠ Erro ao excluir cliente'); return false; }
   await loadClientesSupabase();
+  return true;
+}
+
+// ─── CONTRATOS ───
+let _contratosCache = null;
+
+async function loadContratosSupabase() {
+  try {
+    const { data, error } = await _SB.from('contratos').select('*').order('ano', { ascending: false });
+    if (error) throw error;
+    _contratosCache = (data || []).map(c => ({
+      id: c.id,
+      cliente: c.cliente,
+      ano: c.ano,
+      descricao: c.descricao,
+      cotas: c.cotas || {},
+      fretePorTon: parseFloat(c.frete_por_ton) || 0,
+      distanciaKm: c.distancia_km || 0,
+      status: c.status || 'ativo',
+      dataInicio: c.data_inicio,
+      dataFim: c.data_fim,
+      observacoes: c.observacoes
+    }));
+    localStorage.setItem('neofrut_contratos_v1', JSON.stringify(_contratosCache));
+    return _contratosCache;
+  } catch (e) {
+    console.error('Erro ao carregar contratos:', e);
+    try { _contratosCache = JSON.parse(localStorage.getItem('neofrut_contratos_v1') || '[]'); } catch (e2) { _contratosCache = []; }
+    return _contratosCache;
+  }
+}
+
+function loadContratosLocal() {
+  if (_contratosCache && _contratosCache.length > 0) return _contratosCache;
+  try { _contratosCache = JSON.parse(localStorage.getItem('neofrut_contratos_v1') || '[]'); } catch (e) { _contratosCache = []; }
+  return _contratosCache;
+}
+
+function getContratoAtivo(cliente, ano) {
+  const contratos = loadContratosLocal();
+  return contratos.find(c => c.cliente === cliente && c.ano === (ano || new Date().getFullYear()) && c.status === 'ativo') || null;
+}
+
+function getCotaMes(contrato, mes) {
+  if (!contrato || !contrato.cotas) return null;
+  const key = String(mes).padStart(2, '0');
+  return contrato.cotas[key] || null;
+}
+
+function getLitrosUsadosMes(cliente, contratoId, ano, mes) {
+  const vendas = loadVendas();
+  const mesStr = String(mes).padStart(2, '0');
+  const prefix = `${ano}-${mesStr}`;
+  return vendas
+    .filter(v => v.cliente === cliente && v.data && v.data.startsWith(prefix) && v.contratoId === contratoId && v.litrosContrato)
+    .reduce((s, v) => s + (v.litrosContrato || 0), 0);
+}
+
+async function salvarContratoSupabase(c) {
+  const row = {
+    id: c.id || Date.now(),
+    cliente: c.cliente,
+    ano: c.ano,
+    descricao: c.descricao || null,
+    cotas: c.cotas || {},
+    frete_por_ton: c.fretePorTon || 0,
+    distancia_km: c.distanciaKm || 0,
+    status: c.status || 'ativo',
+    data_inicio: c.dataInicio || null,
+    data_fim: c.dataFim || null,
+    observacoes: c.observacoes || null
+  };
+  const { error } = await _SB.from('contratos').upsert(row);
+  if (error) { console.error('Erro ao salvar contrato:', error); showToast('⚠ Erro ao salvar contrato'); return null; }
+  await loadContratosSupabase();
+  return row;
+}
+
+async function excluirContratoSupabase(id) {
+  const { error } = await _SB.from('contratos').delete().eq('id', id);
+  if (error) { console.error('Erro ao excluir contrato:', error); showToast('⚠ Erro ao excluir contrato'); return false; }
+  await loadContratosSupabase();
   return true;
 }
 

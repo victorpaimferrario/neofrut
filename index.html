@@ -63,6 +63,7 @@
     <button class="btn btn-primary" style="background:var(--vermelho);border-color:var(--vermelho);white-space:nowrap;font-size:12px" onclick="showPage('lancamento')">⚡ Lançar Agora</button>
   </div>
   <div class="kpi-grid" id="kpi-grid"><div style="padding:20px;color:var(--muted);font-size:13px">⏳ Carregando dados...</div></div>
+  <div id="dash-contratos-alertas" style="margin-bottom:16px"></div>
   <div class="areas-grid" id="areas-grid"></div>
 
   <!-- PROJEÇÃO DE COLHEITA -->
@@ -431,6 +432,7 @@
     <button class="vd-tab" onclick="showVendasTab('lista')">📋 Vendas</button>
     <button class="vd-tab" onclick="showVendasTab('pendentes')">⏳ Pendentes</button>
     <button class="vd-tab" onclick="showVendasTab('clientes')">👥 Clientes</button>
+    <button class="vd-tab" onclick="showVendasTab('simulador')">🔢 Simulador</button>
   </div>
 
   <!-- PAINEL -->
@@ -493,8 +495,8 @@
           <div style="flex:2"><label class="form-label">Cidade Destino</label><div class="ac-wrap"><input class="form-input" type="text" id="v-cidade-destino" placeholder="Cidade de destino" autocomplete="off" oninput="acCidade()"><div class="ac-list" id="ac-cidade-list"></div></div></div>
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:16px;cursor:pointer">
-        <input type="checkbox" id="v-modo-litro" onchange="onModoLitro()"> Venda por litro (FRYSK)
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:16px;cursor:pointer" id="v-label-litro">
+        <input type="checkbox" id="v-modo-litro" onchange="onModoLitro()"> Venda por litro
       </label>
       <div class="form-group">
         <label class="form-label">Cocos por área</label>
@@ -514,9 +516,50 @@
         <div class="form-row">
           <div class="form-group"><label class="form-label">Peso (kg)</label><input class="form-input" type="number" min="0" step="0.01" id="v-peso" placeholder="0" oninput="calcVendaLitro()"></div>
           <div class="form-group"><label class="form-label">Litragem (Lts)</label><input class="form-input" type="number" min="0" step="0.01" id="v-litragem" placeholder="0" oninput="calcVendaLitro()"></div>
-          <div class="form-group"><label class="form-label">R$ por Litro</label><input class="form-input" type="number" min="0" step="0.01" id="v-vlitro" placeholder="3.10" oninput="calcVendaLitro()"></div>
+          <div class="form-group"><label class="form-label">R$ por Litro</label><input class="form-input" type="number" min="0" step="0.01" id="v-vlitro" placeholder="" oninput="calcVendaLitro()"></div>
         </div>
       </div>
+      <!-- CAMPOS FÁBRICA -->
+      <div id="v-campos-fabrica" style="display:none">
+        <div id="v-importar-box" style="margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📋 IMPORTAR DADOS DA FÁBRICA</div>
+          <textarea id="v-import-text" rows="3" placeholder="Cole aqui os dados copiados da planilha Excel da fábrica (selecione a linha e Ctrl+C)" style="width:100%;font-size:12px;font-family:monospace;padding:10px;border:1.5px dashed var(--border);border-radius:8px;background:var(--surface2);resize:vertical" onpaste="setTimeout(()=>parsePlanilhaFabrica(),100)"></textarea>
+          <div id="v-import-preview" style="display:none"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Qtde Fábrica (contagem)</label><input class="form-input" type="number" min="0" id="v-qtde-fabrica" placeholder="0" oninput="calcFabrica()"></div>
+          <div class="form-group"><label class="form-label">Fora (descarte)</label><input class="form-input" type="number" min="0" id="v-fora" placeholder="0" oninput="calcFabrica()"></div>
+          <div class="form-group"><label class="form-label">BRIX</label><input class="form-input" type="number" min="0" step="0.1" id="v-brix" placeholder="0"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Placa</label><input class="form-input" type="text" id="v-placa" placeholder="ABC1D23"></div>
+          <div class="form-group"><label class="form-label">Ticket fábrica</label><input class="form-input" type="text" id="v-ticket" placeholder="nº ticket"></div>
+          <div class="form-group"><label class="form-label">Frete R$/ton</label><input class="form-input" type="number" min="0" step="0.01" id="v-frete-ton" placeholder="0" oninput="calcFabrica()"></div>
+        </div>
+        <div id="v-diff-contagem" style="display:none;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:12px"></div>
+        <!-- MODO VENDA CONTRATO/SPOT -->
+        <div id="v-modo-venda-box" style="margin-bottom:16px">
+          <label class="form-label">Modo de Venda</label>
+          <div style="display:flex;gap:12px;margin-top:4px">
+            <label class="fab-radio"><input type="radio" name="v-modo-venda" value="contrato" onchange="onModoVendaChange()"> Contrato</label>
+            <label class="fab-radio"><input type="radio" name="v-modo-venda" value="spot" onchange="onModoVendaChange()" checked> Spot</label>
+            <label class="fab-radio"><input type="radio" name="v-modo-venda" value="misto" onchange="onModoVendaChange()"> Misto</label>
+          </div>
+        </div>
+        <div id="v-contrato-info" style="display:none;padding:12px;background:var(--verde-bg);border:1px solid var(--verde-border);border-radius:8px;margin-bottom:12px;font-size:12px"></div>
+        <div id="v-spot-fields" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">R$/litro Spot</label><input class="form-input" type="number" min="0" step="0.01" id="v-vlitro-spot" placeholder="" oninput="calcFabrica()"></div>
+          </div>
+        </div>
+        <div id="v-misto-fields" style="display:none;font-size:12px;padding:10px 12px;background:var(--surface2);border-radius:8px;margin-bottom:12px"></div>
+        <!-- NF COMPLEMENTAR -->
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">NF Complementar</label><input class="form-input" type="text" id="v-nf-compl" placeholder="nº NF compl."></div>
+          <div class="form-group"><label class="form-label">Valor NF Compl. (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-val-nf-compl" placeholder="0"></div>
+        </div>
+      </div>
+      <!-- FIM CAMPOS FÁBRICA -->
       <div class="form-row">
         <div class="form-group"><label class="form-label">Valor Total (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-total" placeholder="0" oninput="calcVendaRecebido()"></div>
         <div class="form-group"><label class="form-label">Frete (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-frete" placeholder="0" oninput="calcVendaRecebido()"></div>
@@ -527,6 +570,20 @@
         <div class="vcalc-item"><div class="vcalc-label">R$/Coco</div><div class="vcalc-val" id="vc-preco">—</div></div>
         <div class="vcalc-item"><div class="vcalc-label">R$/Litro</div><div class="vcalc-val" id="vc-litro">—</div></div>
         <div class="vcalc-item"><div class="vcalc-label">ml/Coco</div><div class="vcalc-val" id="vc-ml">—</div></div>
+      </div>
+      <!-- INDICADORES FÁBRICA -->
+      <div id="v-fab-indicadores" style="display:none">
+        <div class="vcalc">
+          <div class="vcalc-item"><div class="vcalc-label">ml/fruto</div><div class="vcalc-val" id="vc-ml-fruto">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">kg/fruto</div><div class="vcalc-val" id="vc-kg-fruto">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">L/ton</div><div class="vcalc-val" id="vc-l-ton">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">R$/L CIF</div><div class="vcalc-val" id="vc-rl-cif">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">Frete/L</div><div class="vcalc-val" id="vc-frete-l">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">R$/L FOB</div><div class="vcalc-val" id="vc-rl-fob">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">Frete/coco</div><div class="vcalc-val" id="vc-frete-coco">—</div></div>
+          <div class="vcalc-item"><div class="vcalc-label">R$/coco efet.</div><div class="vcalc-val" id="vc-rcoco-efet">—</div></div>
+        </div>
+        <div id="vc-ml-badge" style="display:none;text-align:center;margin-top:6px;margin-bottom:8px"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Data Depósito</label><input class="form-input" type="date" id="v-deposito"></div>
@@ -603,6 +660,19 @@
     </div>
     <div id="cli-lista-wrap"></div>
   </div>
+
+  <!-- SIMULADOR -->
+  <div class="vd-sec" id="vsec-simulador">
+    <div class="vform">
+      <div style="font-size:15px;font-weight:800;margin-bottom:4px">Simulador de Carga</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Informe a quantidade de cocos e compare o resultado entre as fábricas.</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Quantidade de cocos</label><input class="form-input" type="number" min="0" id="sim-qtde" placeholder="ex: 18000" oninput="calcSimulador()"></div>
+      </div>
+      <div id="sim-estimativa" style="display:none;padding:12px;background:var(--surface2);border-radius:8px;margin-bottom:16px;font-size:13px"></div>
+      <div id="sim-resultado" style="margin-top:8px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL CLIENTE -->
@@ -621,6 +691,48 @@
         <tbody id="modal-receber-tbody"></tbody>
         <tfoot id="modal-receber-tfoot"></tfoot>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTRATO -->
+<div class="modal-overlay" id="modal-contrato" style="z-index:1100">
+  <div class="modal" style="max-width:680px;max-height:85vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <h3 style="margin:0" id="modal-contrato-title">Novo Contrato</h3>
+      <button onclick="closeModal('modal-contrato')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
+    </div>
+    <div style="overflow-y:auto;flex:1">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" type="text" id="ctr-cliente" readonly></div>
+        <div class="form-group"><label class="form-label">Ano</label><input class="form-input" type="number" id="ctr-ano" value="2026"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Descrição</label><input class="form-input" type="text" id="ctr-desc" placeholder="ex: Contrato anual Frysk 2026"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Vigência início</label><input class="form-input" type="date" id="ctr-inicio"></div>
+        <div class="form-group"><label class="form-label">Vigência fim</label><input class="form-input" type="date" id="ctr-fim"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Frete R$/ton</label><input class="form-input" type="number" min="0" step="0.01" id="ctr-frete" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Distância (km)</label><input class="form-input" type="number" min="0" id="ctr-dist" placeholder="0"></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin:16px 0 8px">Cotas Mensais</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button class="btn btn-outline" style="font-size:11px" onclick="ctrCopiarJanTodos()">Copiar Jan → todos</button>
+        <button class="btn btn-outline" style="font-size:11px" onclick="ctrVerao5()">+5% verão (Nov-Mar)</button>
+      </div>
+      <table class="vtable" style="width:100%">
+        <thead><tr><th>Mês</th><th>Litros</th><th>R$/litro</th></tr></thead>
+        <tbody id="ctr-cotas-body"></tbody>
+        <tfoot><tr><td style="font-weight:700">Total</td><td id="ctr-total-litros" style="font-weight:700">0</td><td id="ctr-media-preco" style="font-weight:700">—</td></tr></tfoot>
+      </table>
+      <div class="form-group" style="margin-top:12px"><label class="form-label">Observações</label><textarea class="form-input" id="ctr-obs" rows="2" placeholder="Observações"></textarea></div>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="salvarContrato()">💾 Salvar Contrato</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-contrato')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -698,18 +810,18 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1774166402"></script>
-<script src="js/utils.js?v=1774166450"></script>
-<script src="js/storage.js?v=1774166450"></script>
-<script src="js/components.js?v=1774166403"></script>
-<script src="js/dashboard.js?v=1774166450"></script>
-<script src="js/lancamento.js?v=1774166450"></script>
-<script src="js/analise.js?v=1774166450"></script>
-<script src="js/vendas.js?v=1774166430"></script>
-<script src="js/gestao.js?v=1773813587"></script>
-<script src="js/mercados.js?v=1773886000"></script>
-<script src="js/router.js?v=1774080011"></script>
-<script src="js/app.js?v=1773813587"></script>
+<script src="js/config.js?v=1775340018"></script>
+<script src="js/utils.js?v=1775340018"></script>
+<script src="js/storage.js?v=1775340018"></script>
+<script src="js/components.js?v=1775340018"></script>
+<script src="js/dashboard.js?v=1775340018"></script>
+<script src="js/lancamento.js?v=1775340018"></script>
+<script src="js/analise.js?v=1775340018"></script>
+<script src="js/vendas.js?v=1775340018"></script>
+<script src="js/gestao.js?v=1775340018"></script>
+<script src="js/mercados.js?v=1775340018"></script>
+<script src="js/router.js?v=1775340018"></script>
+<script src="js/app.js?v=1775340018"></script>
 <script src="js/auth.js?v=1773813587"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
@@ -761,6 +873,9 @@
     </div>
     <div class="cli-tab-card" id="cli-tab-edit" onclick="switchCliTab('editar')">
       <span>✏️</span><span>Editar</span>
+    </div>
+    <div class="cli-tab-card" id="cli-tab-contrato" onclick="switchCliTab('contrato')" style="display:none">
+      <span>📄</span><span>Contrato</span>
     </div>
   </div>
   <!-- Aba Histórico -->
@@ -844,6 +959,18 @@
       <label class="form-label">Contato secundário</label>
       <input class="form-input" type="text" id="cli-contato2" placeholder="Nome e telefone de quem recebe a carga">
     </div>
+    <div id="cli-fab-fields" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="form-group">
+          <label class="form-label">Frete R$/ton</label>
+          <input class="form-input" type="number" min="0" step="0.01" id="cli-frete-ton" placeholder="ex: 180">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Distância (km)</label>
+          <input class="form-input" type="number" min="0" id="cli-distancia" placeholder="ex: 120">
+        </div>
+      </div>
+    </div>
     <div class="form-group" style="margin-bottom:10px">
       <label class="form-label">Observações</label>
       <textarea class="form-input" id="cli-obs" rows="2" placeholder="Preferências, horários, forma de pagamento..." style="resize:vertical"></textarea>
@@ -852,6 +979,13 @@
     <div style="display:flex;gap:10px;margin-top:14px">
       <button class="btn btn-primary" onclick="salvarCliente()">💾 Salvar</button>
       <button class="btn btn-outline" onclick="switchCliTab('historico')">Cancelar</button>
+    </div>
+  </div>
+  <!-- Aba Contrato (fábrica) -->
+  <div class="side-panel-body cli-tab-content" id="cli-body-contrato" style="display:none">
+    <div id="cli-contrato-content"></div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="abrirNovoContrato()" style="font-size:12px">+ Novo Contrato</button>
     </div>
   </div>
 </div>

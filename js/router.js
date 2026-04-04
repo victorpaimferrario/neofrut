@@ -10,6 +10,7 @@ function showPage(id) {
     renderProjecao();
     renderComparativo();
     renderMapa();
+    renderContratosAlertas();
   } else if (id === 'analise') {
     document.querySelectorAll('.nav-tab')[1].classList.add('active');
     initAnalise();
@@ -35,6 +36,7 @@ function showPage(id) {
   }
 }
 
+function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // Close modals on overlay click (delegation — works for static and dynamic modals)

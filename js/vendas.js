@@ -87,13 +87,14 @@ function selMes(mes){
 function showVendasTab(tab){
   document.querySelectorAll('.vd-tab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.vd-sec').forEach(s=>s.classList.remove('active'));
-  const idx={'painel':0,'nova':1,'lista':2,'pendentes':3,'clientes':4}[tab];
+  const idx={'painel':0,'nova':1,'lista':2,'pendentes':3,'clientes':4,'simulador':5}[tab];
   document.querySelectorAll('.vd-tab')[idx]?.classList.add('active');
   document.getElementById('vsec-'+tab)?.classList.add('active');
   localStorage.setItem('neofrut_vendas_tab', tab);
   if(tab==='lista')renderVendasLista();
   if(tab==='pendentes')renderVendasPendentes();
   if(tab==='clientes')initClientes();
+  if(tab==='simulador')calcSimulador();
 }
 
 function filtrarVendas(db,ano,mes){
@@ -355,6 +356,235 @@ function calcVenda(){
 function onModoLitro(){
   const litro=document.getElementById('v-modo-litro').checked;
   document.getElementById('v-campos-litro').style.display=litro?'':'none';
+  // Se é fábrica e litro ativado, mostrar campos fábrica
+  const nome=(document.getElementById('v-cliente').value||'').trim().toUpperCase();
+  const mapa=getMapaClientes();
+  const isFab=mapa[nome]?.fabrica;
+  document.getElementById('v-campos-fabrica').style.display=(litro&&isFab)?'':'none';
+  document.getElementById('v-fab-indicadores').style.display=(litro&&isFab)?'':'none';
+}
+
+function _checkFabricaMode(){
+  const nome=(document.getElementById('v-cliente').value||'').trim().toUpperCase();
+  const mapa=getMapaClientes();
+  const isFab=mapa[nome]?.fabrica;
+  const litroChk=document.getElementById('v-modo-litro');
+  if(isFab){
+    litroChk.checked=true;
+    document.getElementById('v-campos-litro').style.display='';
+    document.getElementById('v-campos-fabrica').style.display='';
+    document.getElementById('v-fab-indicadores').style.display='';
+    // Pré-preencher frete do cadastro
+    const clientes=loadClientesLocal();
+    const cli=clientes.find(c=>c.nome===nome);
+    if(cli&&cli.frete_por_ton){
+      const el=document.getElementById('v-frete-ton');
+      if(el&&!el.value)el.value=cli.frete_por_ton;
+    }
+    // Detectar contrato ativo
+    _updateContratoInfo(nome);
+  }else{
+    document.getElementById('v-campos-fabrica').style.display='none';
+    document.getElementById('v-fab-indicadores').style.display='none';
+  }
+}
+
+function _updateContratoInfo(cliente){
+  const contrato=getContratoAtivo(cliente);
+  const infoEl=document.getElementById('v-contrato-info');
+  const modoBox=document.getElementById('v-modo-venda-box');
+  if(contrato){
+    const agora=new Date();
+    const mes=agora.getMonth()+1;
+    const cota=getCotaMes(contrato,mes);
+    const usado=getLitrosUsadosMes(cliente,contrato.id,agora.getFullYear(),mes);
+    const disp=cota?(cota.litros-usado):0;
+    const mesNome=MESES_NOME[mes-1];
+    infoEl.innerHTML=`<strong>${contrato.descricao||'Contrato '+contrato.ano}</strong><br>`+
+      (cota?`Cota ${mesNome}: ${fmtNum(cota.litros)}L · R$ ${cota.valor_litro.toFixed(2)}/L<br>`+
+      `Usado: ${fmtNum(Math.round(usado))}L · Disponível: <strong>${fmtNum(Math.round(disp))}L</strong>`
+      :`Sem cota para ${mesNome}`);
+    infoEl.style.display='';
+    modoBox.style.display='';
+    // Default: contrato se tem cota disponível
+    if(disp>0){
+      document.querySelector('input[name="v-modo-venda"][value="contrato"]').checked=true;
+    }else{
+      document.querySelector('input[name="v-modo-venda"][value="spot"]').checked=true;
+    }
+    window._vContratoAtivo=contrato;
+    window._vCotaDisp=disp>0?disp:0;
+    window._vCotaValor=cota?cota.valor_litro:0;
+    onModoVendaChange();
+  }else{
+    infoEl.style.display='none';
+    document.querySelector('input[name="v-modo-venda"][value="spot"]').checked=true;
+    window._vContratoAtivo=null;
+    window._vCotaDisp=0;
+    window._vCotaValor=0;
+    onModoVendaChange();
+  }
+}
+
+function onModoVendaChange(){
+  const modo=document.querySelector('input[name="v-modo-venda"]:checked')?.value||'spot';
+  document.getElementById('v-spot-fields').style.display=(modo==='spot'||modo==='misto')?'':'none';
+  document.getElementById('v-misto-fields').style.display=modo==='misto'?'':'none';
+  calcFabrica();
+}
+
+function calcFabrica(){
+  const qtdeFab=parseInt(document.getElementById('v-qtde-fabrica')?.value)||0;
+  const qtdeNf=parseInt(document.getElementById('va-total')?.value)||0;
+  const fora=parseInt(document.getElementById('v-fora')?.value)||0;
+  const litragem=parseFloat(document.getElementById('v-litragem')?.value)||0;
+  const pesoKg=parseFloat(document.getElementById('v-peso')?.value)||0;
+  const freteTon=parseFloat(document.getElementById('v-frete-ton')?.value)||0;
+
+  // Diferença de contagem
+  const diffEl=document.getElementById('v-diff-contagem');
+  if(qtdeFab>0&&qtdeNf>0){
+    const diff=qtdeFab-qtdeNf;
+    const pct=((diff/qtdeNf)*100).toFixed(1);
+    const cor=Math.abs(pct)<2?'var(--verde)':Math.abs(pct)<5?'var(--amarelo)':'var(--vermelho)';
+    diffEl.style.display='';
+    diffEl.style.background=Math.abs(pct)<2?'var(--verde-bg)':Math.abs(pct)<5?'var(--amarelo-bg)':'var(--vermelho-bg)';
+    diffEl.style.color=cor;
+    diffEl.innerHTML=`⚠ Diferença: ${diff>0?'+':''}${fmtNum(diff)} cocos (${pct}%)`;
+  }else{diffEl.style.display='none';}
+
+  // Frete total (R$/ton × peso em tons)
+  const freteTotalCalc=freteTon>0&&pesoKg>0?(freteTon*(pesoKg/1000)):0;
+  const freteEl=document.getElementById('v-frete');
+  if(freteEl&&freteTotalCalc>0)freteEl.value=freteTotalCalc.toFixed(2);
+
+  // Modo venda e cálculo do valor total
+  const modo=document.querySelector('input[name="v-modo-venda"]:checked')?.value||'spot';
+  const contrato=window._vContratoAtivo;
+  let receitaBruta=0;
+  let litrosContrato=0,litrosSpot=0,vlSpot=0,vlContrato=window._vCotaValor||0;
+
+  if(modo==='contrato'&&contrato&&litragem>0){
+    litrosContrato=litragem;
+    receitaBruta=litragem*vlContrato;
+    document.getElementById('v-vlitro').value=vlContrato.toFixed(2);
+  }else if(modo==='misto'&&contrato&&litragem>0){
+    const disp=window._vCotaDisp||0;
+    litrosContrato=Math.min(litragem,disp);
+    litrosSpot=litragem-litrosContrato;
+    vlSpot=parseFloat(document.getElementById('v-vlitro-spot')?.value)||0;
+    receitaBruta=(litrosContrato*vlContrato)+(litrosSpot*vlSpot);
+    const mistoEl=document.getElementById('v-misto-fields');
+    mistoEl.innerHTML=`Contrato: ${fmtNum(Math.round(litrosContrato))}L × R$ ${vlContrato.toFixed(2)} = R$ ${fmtR(litrosContrato*vlContrato)}<br>`+
+      `Spot: ${fmtNum(Math.round(litrosSpot))}L × R$ ${vlSpot.toFixed(2)} = R$ ${fmtR(litrosSpot*vlSpot)}`;
+    if(receitaBruta>0){document.getElementById('v-total').value=receitaBruta.toFixed(2);}
+  }else if(modo==='spot'&&litragem>0){
+    vlSpot=parseFloat(document.getElementById('v-vlitro-spot')?.value)||parseFloat(document.getElementById('v-vlitro')?.value)||0;
+    litrosSpot=litragem;
+    receitaBruta=litragem*vlSpot;
+    if(vlSpot>0)document.getElementById('v-vlitro').value=vlSpot.toFixed(2);
+  }
+
+  if(receitaBruta>0&&modo!=='spot'){
+    document.getElementById('v-total').value=receitaBruta.toFixed(2);
+  }
+
+  // Indicadores
+  const totalVal=parseFloat(document.getElementById('v-total')?.value)||0;
+  const freteTotal=parseFloat(document.getElementById('v-frete')?.value)||0;
+  const receitaLiq=totalVal-freteTotal;
+  const qtdeRef=qtdeFab||qtdeNf;
+
+  // ml/fruto (fábrica inclui fora no denominador)
+  const mlFruto=(litragem>0&&(qtdeRef+fora)>0)?Math.round(litragem/(qtdeRef+fora)*1000):0;
+  document.getElementById('vc-ml-fruto').textContent=mlFruto>0?mlFruto+'ml':'—';
+  const classif=classificarMlFruto(mlFruto);
+  const badgeEl=document.getElementById('vc-ml-badge');
+  if(classif&&mlFruto>0){
+    badgeEl.style.display='';
+    badgeEl.innerHTML=`<span style="display:inline-block;padding:4px 14px;border-radius:6px;font-size:12px;font-weight:700;background:${classif.bg};color:${classif.cor}">${classif.label} — ${mlFruto}ml/fruto</span>`;
+  }else{badgeEl.style.display='none';}
+
+  document.getElementById('vc-kg-fruto').textContent=(pesoKg>0&&qtdeRef>0)?(pesoKg/qtdeRef).toFixed(2)+' kg':'—';
+  document.getElementById('vc-l-ton').textContent=(litragem>0&&pesoKg>0)?Math.round(litragem/(pesoKg/1000))+' L/ton':'—';
+
+  // R$/L CIF, Frete/L, R$/L FOB
+  const rlCif=(totalVal>0&&litragem>0)?(totalVal/litragem):0;
+  const freteL=(freteTotal>0&&litragem>0)?(freteTotal/litragem):0;
+  const rlFob=rlCif-freteL;
+  document.getElementById('vc-rl-cif').textContent=rlCif>0?'R$ '+rlCif.toFixed(3):'—';
+  document.getElementById('vc-frete-l').textContent=freteL>0?'R$ '+freteL.toFixed(3):'—';
+  document.getElementById('vc-rl-fob').textContent=rlFob>0?'R$ '+rlFob.toFixed(3):'—';
+
+  // Frete/coco, R$/coco efetivo
+  document.getElementById('vc-frete-coco').textContent=(freteTotal>0&&qtdeRef>0)?'R$ '+(freteTotal/qtdeRef).toFixed(3):'—';
+  document.getElementById('vc-rcoco-efet').textContent=(receitaLiq>0&&qtdeRef>0)?'R$ '+(receitaLiq/qtdeRef).toFixed(3):'—';
+
+  calcVendaRecebido();
+}
+
+function parsePlanilhaFabrica(){
+  const raw=(document.getElementById('v-import-text')?.value||'').trim();
+  if(!raw)return;
+  const lines=raw.split('\n').filter(l=>l.trim());
+  const numVal=s=>{const n=parseFloat((s||'').replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n;};
+  const intVal=s=>{const n=parseInt((s||'').replace(/\./g,'').replace(',','.'));return isNaN(n)?0:n;};
+  let cols=null;
+  // Função auxiliar: encontra índice de coluna pelo header
+  function findCol(...keywords){
+    if(!cols)return -1;
+    for(const kw of keywords){
+      const idx=cols.findIndex(c=>c.toUpperCase().includes(kw.toUpperCase()));
+      if(idx!==-1)return idx;
+    }
+    return -1;
+  }
+  function colVal(idx){return idx>=0?parts[idx]:null;}
+  let parts;
+  for(const line of lines){
+    parts=line.split('\t').map(s=>s.trim());
+    if(parts.length<4)continue;
+    const isHeader=parts.some(p=>/^(FORNEC|NF|QTD|PREÇO|PLACA|FORA|BRIX|ML)/i.test(p));
+    if(isHeader){cols=parts;continue;}
+    let m={};
+    if(cols){
+      m.qtde_fabrica=intVal(colVal(findCol('QTD CONT','CONT')));
+      m.qtde_nf=intVal(colVal(findCol('QTD NF')));
+      m.litragem=numVal(colVal(findCol('QTD LT','LITRO','LT')));
+      m.fora=intVal(colVal(findCol('FORA')));
+      m.ml_fruto=numVal(colVal(findCol('ML FRUTO','ML')));
+      m.brix=numVal(colVal(findCol('BRIX')));
+      m.placa=colVal(findCol('PLACA'))||'';
+      m.preco_litro=numVal(colVal(findCol('PREÇO LT','PRECO','PREÇO')));
+      m.nf_venda=colVal(findCol('NF DE VENDA','NF VENDA'))||'';
+      m.nf_compl=colVal(findCol('NF COMPL','COMPL'))||'';
+      m.valor_compl=numVal(colVal(findCol('VL COMPL','VL. COMPL')));
+    }else{
+      COLUNAS_PLANILHA_FABRICA.forEach((col,i)=>{if(i<parts.length)m[col]=parts[i];});
+      m.qtde_fabrica=intVal(m.qtde_fabrica);m.qtde_nf=intVal(m.qtde_nf);
+      m.litragem=numVal(m.litragem);m.fora=intVal(m.fora);
+      m.ml_fruto=numVal(m.ml_fruto);m.brix=numVal(m.brix);
+      m.preco_litro=numVal(m.preco_litro);m.valor_compl=numVal(m.valor_complementar||0);
+      m.nf_venda=m.nf_venda||'';m.nf_compl=m.nf_complementar||'';m.placa=m.placa||'';
+    }
+    // Preencher campos do formulário
+    const fill=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+    fill('v-qtde-fabrica',m.qtde_fabrica);
+    if(m.qtde_nf){const el=document.getElementById('va-total');if(el){el.value=m.qtde_nf;el.classList.add('filled');}}
+    fill('v-litragem',m.litragem);fill('v-fora',m.fora);fill('v-brix',m.brix);
+    fill('v-placa',m.placa);fill('v-vlitro',m.preco_litro);
+    fill('v-nf',m.nf_venda);fill('v-nf-compl',m.nf_compl);fill('v-val-nf-compl',m.valor_compl);
+    const prev=document.getElementById('v-import-preview');
+    prev.style.display='';
+    prev.innerHTML=`<div style="padding:10px;background:var(--verde-bg);border:1px solid var(--verde-border);border-radius:8px;margin-top:8px;font-size:12px">
+      <strong>✅ Dados extraídos — revise os campos abaixo</strong><br>
+      Qtde Fábrica: ${fmtNum(m.qtde_fabrica)} · Qtde NF: ${fmtNum(m.qtde_nf)} · Litragem: ${fmtNum(Math.round(m.litragem))}L
+      ${m.fora?' · Fora: '+m.fora:''}${m.brix?' · BRIX: '+m.brix:''}
+      ${m.preco_litro?' · R$/L: '+m.preco_litro.toFixed(2):''}
+    </div>`;
+    calcFabrica();
+    break;
+  }
 }
 function calcVendaLitro(){
   const l=parseFloat(document.getElementById('v-litragem')?.value)||0;
@@ -366,6 +596,8 @@ function calcVendaLitro(){
     document.getElementById('vc-ml').textContent=q>0?Math.round(l/q*1000)+'ml':'—';
   }
   calcVenda();
+  // Atualizar indicadores fábrica se ativo
+  if(document.getElementById('v-campos-fabrica')?.style.display!=='none')calcFabrica();
 }
 function calcVendaRecebido(){
   const t=parseFloat(document.getElementById('v-total')?.value)||0;
@@ -382,7 +614,6 @@ function onClienteChange(){
     const ufSel=document.getElementById('v-uf-destino');
     const cidadeInp=document.getElementById('v-cidade-destino');
     if(ufSel)ufSel.value=info.uf||'';
-    // pre-fetch cities for this UF, then set cidade
     if(info.uf&&info.uf!=='FÁBRICA'){
       onUfDestinoChange(true).then(()=>{
         if(cidadeInp)cidadeInp.value=info.cidade||'';
@@ -391,6 +622,7 @@ function onClienteChange(){
       if(cidadeInp)cidadeInp.value=info.cidade||'';
     }
   }
+  _checkFabricaMode();
 }
 
 async function salvarVenda(){
@@ -423,13 +655,44 @@ async function salvarVenda(){
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const v=parseInt(document.getElementById('va-'+a)?.value)||0;if(v>0)areas[a]=v;});
   const quebra=parseInt(document.getElementById('va-quebra')?.value)||0;
+  const mapa=getMapaClientes();
+  const isFab=mapa[cliente]?.fabrica;
   const db=loadVendas();
-  db.push({id:Date.now(),data,cliente,nf,areas,qtde,total,frete,quebra,valorRecebido:recebido,status,dataDeposito:dep,
+  const venda={id:Date.now(),data,cliente,nf,areas,qtde,total,frete,quebra,valorRecebido:recebido,status,dataDeposito:dep,
     ufDestino:ufDestino,cidadeDestino:cidadeDestino,
     tipoVenda:litro?'litro':'coco',
     pesoKg:litro?(parseFloat(document.getElementById('v-peso')?.value)||0):null,
     litragem:litro?(parseFloat(document.getElementById('v-litragem')?.value)||0):null,
-    vPorLitro:litro?(parseFloat(document.getElementById('v-vlitro')?.value)||0):null});
+    vPorLitro:litro?(parseFloat(document.getElementById('v-vlitro')?.value)||0):null};
+  // Campos fábrica
+  if(isFab&&litro){
+    venda.qtdeFabrica=parseInt(document.getElementById('v-qtde-fabrica')?.value)||null;
+    venda.fora=parseInt(document.getElementById('v-fora')?.value)||0;
+    venda.brix=parseFloat(document.getElementById('v-brix')?.value)||null;
+    venda.placa=(document.getElementById('v-placa')?.value||'').trim()||null;
+    venda.ticket=(document.getElementById('v-ticket')?.value||'').trim()||null;
+    venda.nfComplementar=(document.getElementById('v-nf-compl')?.value||'').trim()||null;
+    venda.valorNfComplementar=parseFloat(document.getElementById('v-val-nf-compl')?.value)||null;
+    venda.fretePorTon=parseFloat(document.getElementById('v-frete-ton')?.value)||null;
+    const modo=document.querySelector('input[name="v-modo-venda"]:checked')?.value||'spot';
+    venda.modoVenda=modo;
+    const contrato=window._vContratoAtivo;
+    if(contrato)venda.contratoId=contrato.id;
+    if(modo==='contrato'){
+      venda.litrosContrato=venda.litragem;
+      venda.litrosSpot=null;
+      venda.valorLitroSpot=null;
+    }else if(modo==='misto'){
+      venda.litrosContrato=Math.min(venda.litragem,window._vCotaDisp||0);
+      venda.litrosSpot=venda.litragem-venda.litrosContrato;
+      venda.valorLitroSpot=parseFloat(document.getElementById('v-vlitro-spot')?.value)||null;
+    }else{
+      venda.litrosContrato=null;
+      venda.litrosSpot=venda.litragem;
+      venda.valorLitroSpot=parseFloat(document.getElementById('v-vlitro-spot')?.value)||parseFloat(document.getElementById('v-vlitro')?.value)||null;
+    }
+  }
+  db.push(venda);
   saveVendas(db);
   await salvarVendaSupabase(db[db.length-1]);
   limparFormVenda();
@@ -448,8 +711,19 @@ function limparFormVenda(){
   document.getElementById('v-status').value='PAGO';
   document.getElementById('v-modo-litro').checked=false;
   document.getElementById('v-campos-litro').style.display='none';
+  document.getElementById('v-campos-fabrica').style.display='none';
+  document.getElementById('v-fab-indicadores').style.display='none';
   document.getElementById('v-erro').style.display='none';
-  ['vc-cocos','vc-preco','vc-litro','vc-ml'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+  // Limpar campos fábrica
+  ['v-qtde-fabrica','v-fora','v-brix','v-placa','v-ticket','v-frete-ton','v-nf-compl','v-val-nf-compl','v-vlitro-spot','v-import-text'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('v-import-preview').style.display='none';
+  document.getElementById('v-diff-contagem').style.display='none';
+  document.getElementById('v-contrato-info').style.display='none';
+  document.getElementById('v-misto-fields').style.display='none';
+  document.getElementById('v-spot-fields').style.display='none';
+  document.getElementById('vc-ml-badge').style.display='none';
+  window._vContratoAtivo=null;window._vCotaDisp=0;window._vCotaValor=0;
+  ['vc-cocos','vc-preco','vc-litro','vc-ml','vc-ml-fruto','vc-kg-fruto','vc-l-ton','vc-rl-cif','vc-frete-l','vc-rl-fob','vc-frete-coco','vc-rcoco-efet'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
 }
 
 // Estado de ordenação da lista de vendas
@@ -1166,7 +1440,9 @@ async function salvarCliente() {
     contato_secundario: document.getElementById('cli-contato2').value.trim(),
     observacoes: document.getElementById('cli-obs').value.trim(),
     tipo: document.getElementById('cli-tipo').value,
-    status: document.getElementById('cli-status').value
+    status: document.getElementById('cli-status').value,
+    frete_por_ton: parseFloat(document.getElementById('cli-frete-ton')?.value)||null,
+    distancia_km: parseInt(document.getElementById('cli-distancia')?.value)||null
   };
 
   const saved = await salvarClienteSupabase(cliente);
@@ -1180,5 +1456,263 @@ async function salvarCliente() {
     renderListaClientes();
     showToast('✓ Cliente salvo — ' + nome);
   }
+}
+
+// ─── SIMULADOR DE CARGA ───
+
+function calcSimulador(){
+  const qtde=parseInt(document.getElementById('sim-qtde')?.value)||0;
+  const estEl=document.getElementById('sim-estimativa');
+  const resEl=document.getElementById('sim-resultado');
+  if(qtde<=0){estEl.style.display='none';resEl.innerHTML='';return;}
+
+  // Calcular média ml/fruto e kg/fruto das últimas cargas de fábrica
+  const vendas=loadVendas();
+  const fabVendas=vendas.filter(v=>v.tipoVenda==='litro'&&v.qtdeFabrica&&v.litragem&&v.pesoKg);
+  let mediaMl=350, mediaKg=1.1; // defaults
+  if(fabVendas.length>0){
+    const ultimas=fabVendas.slice(-10);
+    const somaMl=ultimas.reduce((s,v)=>s+((v.litragem/((v.qtdeFabrica||v.qtde)+(v.fora||0)))*1000),0);
+    mediaMl=Math.round(somaMl/ultimas.length);
+    const somaKg=ultimas.reduce((s,v)=>s+(v.pesoKg/(v.qtdeFabrica||v.qtde)),0);
+    mediaKg=somaKg/ultimas.length;
+  }
+
+  const litrosEst=Math.round(qtde*mediaMl/1000);
+  const pesoEst=Math.round(qtde*mediaKg);
+  estEl.style.display='';
+  estEl.innerHTML=`<strong>Estimativa automática</strong> (média ${fabVendas.length>0?'das últimas '+Math.min(fabVendas.length,10)+' cargas':'padrão — sem histórico'})<br>`+
+    `ml/fruto médio: <strong>${mediaMl}ml</strong> · Litragem estimada: <strong>≈ ${fmtNum(litrosEst)} litros</strong><br>`+
+    `kg/fruto médio: <strong>${mediaKg.toFixed(2)}kg</strong> · Peso estimado: <strong>≈ ${fmtNum(pesoEst)} kg</strong>`;
+
+  // Comparar fábricas
+  const mapa=getMapaClientes();
+  const clientes=loadClientesLocal();
+  const fabricas=Object.entries(mapa).filter(([n,i])=>i.fabrica).map(([nome])=>nome);
+  let cards=[];
+  for(const fab of fabricas){
+    const cli=clientes.find(c=>c.nome===fab);
+    const freteTon=cli?.frete_por_ton||0;
+    const distKm=cli?.distancia_km||0;
+    const contrato=getContratoAtivo(fab);
+    const agora=new Date();
+    const mes=agora.getMonth()+1;
+    const cota=contrato?getCotaMes(contrato,mes):null;
+    const usado=contrato?getLitrosUsadosMes(fab,contrato.id,agora.getFullYear(),mes):0;
+    const disp=cota?(cota.litros-usado):0;
+
+    let modo='spot',vlitro=0,receita=0;
+    if(contrato&&disp>=litrosEst){
+      modo='contrato';vlitro=cota.valor_litro;receita=litrosEst*vlitro;
+    }else if(contrato&&disp>0){
+      modo='misto';
+      const lctr=disp,lspot=litrosEst-disp;
+      receita=lctr*cota.valor_litro;
+      // Spot não tem preço — marcar como incompleto
+    }
+
+    const freteTotal=freteTon>0?(freteTon*(pesoEst/1000)):0;
+    const recLiq=receita-freteTotal;
+    const rCoco=receita>0&&qtde>0?(recLiq/qtde):0;
+
+    cards.push({fab,modo,vlitro,receita,freteTotal,recLiq,rCoco,freteTon,distKm,contrato,cota,disp:Math.max(0,disp),litrosEst});
+  }
+  // Ordenar por R$/coco (maior primeiro), mas fábricas sem preço vão pro final
+  cards.sort((a,b)=>(b.rCoco||0)-(a.rCoco||0));
+
+  let html='';
+  cards.forEach((c,i)=>{
+    const best=i===0&&c.rCoco>0;
+    html+=`<div style="padding:16px;background:${best?'var(--verde-bg)':'var(--surface2)'};border:1.5px solid ${best?'var(--verde-border)':'var(--border)'};border-radius:10px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong style="font-size:14px">${c.fab}</strong>
+        ${best?'<span style="background:var(--verde);color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">⭐ RECOMENDADO</span>':''}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+        Modo: <strong>${c.modo.toUpperCase()}</strong>
+        ${c.contrato?' · Contrato: '+c.contrato.descricao:''}
+        ${c.cota?' · Cota '+MESES_NOME[new Date().getMonth()]+': '+fmtNum(Math.round(c.disp))+'L restantes':''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+        <div>R$/litro: <strong>${c.vlitro>0?'R$ '+c.vlitro.toFixed(2):'—'}</strong></div>
+        <div>Frete: <strong>${c.freteTon>0?'R$ '+fmtNum(Math.round(c.freteTotal)):'—'}</strong> ${c.freteTon>0?'('+c.freteTon+'/ton)':''}</div>
+        <div>Receita bruta: <strong>${c.receita>0?'R$ '+fmtNum(Math.round(c.receita)):'—'}</strong></div>
+        <div>Receita líquida: <strong>${c.recLiq>0?'R$ '+fmtNum(Math.round(c.recLiq)):'—'}</strong></div>
+        <div>R$/coco efetivo: <strong>${c.rCoco>0?'R$ '+c.rCoco.toFixed(3):'—'}</strong></div>
+        <div>${c.distKm>0?'Distância: '+c.distKm+'km':''}</div>
+      </div>
+      ${c.modo==='spot'||c.modo==='misto'?`<div style="margin-top:8px;font-size:11px;color:var(--amarelo)">⚠ Informe o R$/litro spot para cálculo completo</div>`:''}
+    </div>`;
+  });
+
+  if(cards.length===0)html='<div style="color:var(--muted);font-size:13px">Nenhuma fábrica cadastrada. Cadastre clientes do tipo "Fábrica" na aba Clientes.</div>';
+  resEl.innerHTML=html;
+}
+
+// ─── CONTRATOS ───
+
+function abrirNovoContrato(){
+  const cliente=window._cliPanelNome;
+  if(!cliente)return;
+  document.getElementById('modal-contrato-title').textContent='Novo Contrato — '+cliente;
+  document.getElementById('ctr-cliente').value=cliente;
+  document.getElementById('ctr-ano').value=new Date().getFullYear();
+  document.getElementById('ctr-desc').value='';
+  document.getElementById('ctr-inicio').value='';
+  document.getElementById('ctr-fim').value='';
+  document.getElementById('ctr-obs').value='';
+  // Pré-preencher frete do cadastro do cliente
+  const clientes=loadClientesLocal();
+  const cli=clientes.find(c=>c.nome===cliente);
+  document.getElementById('ctr-frete').value=cli?.frete_por_ton||'';
+  document.getElementById('ctr-dist').value=cli?.distancia_km||'';
+  // Gerar linhas da tabela de cotas
+  const tbody=document.getElementById('ctr-cotas-body');
+  tbody.innerHTML='';
+  for(let m=1;m<=12;m++){
+    const mm=String(m).padStart(2,'0');
+    tbody.innerHTML+=`<tr>
+      <td>${MESES_NOME[m-1]}</td>
+      <td><input type="number" min="0" class="form-input ctr-litros" data-mes="${mm}" placeholder="0" oninput="ctrCalcTotal()" style="width:100px"></td>
+      <td><input type="number" min="0" step="0.01" class="form-input ctr-preco" data-mes="${mm}" placeholder="0.00" oninput="ctrCalcTotal()" style="width:90px"></td>
+    </tr>`;
+  }
+  delete document.getElementById('ctr-cliente').dataset.editId;
+  openModal('modal-contrato');
+}
+
+function abrirEditarContrato(id){
+  const contratos=loadContratosLocal();
+  const c=contratos.find(ct=>ct.id===id);
+  if(!c)return;
+  document.getElementById('modal-contrato-title').textContent='Editar Contrato — '+c.cliente;
+  document.getElementById('ctr-cliente').value=c.cliente;
+  document.getElementById('ctr-cliente').dataset.editId=c.id;
+  document.getElementById('ctr-ano').value=c.ano;
+  document.getElementById('ctr-desc').value=c.descricao||'';
+  document.getElementById('ctr-inicio').value=c.dataInicio||'';
+  document.getElementById('ctr-fim').value=c.dataFim||'';
+  document.getElementById('ctr-frete').value=c.fretePorTon||'';
+  document.getElementById('ctr-dist').value=c.distanciaKm||'';
+  document.getElementById('ctr-obs').value=c.observacoes||'';
+  const tbody=document.getElementById('ctr-cotas-body');
+  tbody.innerHTML='';
+  for(let m=1;m<=12;m++){
+    const mm=String(m).padStart(2,'0');
+    const cota=c.cotas[mm]||{};
+    tbody.innerHTML+=`<tr>
+      <td>${MESES_NOME[m-1]}</td>
+      <td><input type="number" min="0" class="form-input ctr-litros" data-mes="${mm}" value="${cota.litros||''}" placeholder="0" oninput="ctrCalcTotal()" style="width:100px"></td>
+      <td><input type="number" min="0" step="0.01" class="form-input ctr-preco" data-mes="${mm}" value="${cota.valor_litro||''}" placeholder="0.00" oninput="ctrCalcTotal()" style="width:90px"></td>
+    </tr>`;
+  }
+  ctrCalcTotal();
+  openModal('modal-contrato');
+}
+
+function ctrCalcTotal(){
+  let totalL=0,somaP=0,nP=0;
+  document.querySelectorAll('.ctr-litros').forEach(el=>{
+    const l=parseFloat(el.value)||0;totalL+=l;
+    const mes=el.dataset.mes;
+    const p=parseFloat(document.querySelector(`.ctr-preco[data-mes="${mes}"]`)?.value)||0;
+    if(p>0){somaP+=p;nP++;}
+  });
+  document.getElementById('ctr-total-litros').textContent=fmtNum(totalL)+'L';
+  document.getElementById('ctr-media-preco').textContent=nP>0?'R$ '+(somaP/nP).toFixed(2):'—';
+}
+
+function ctrCopiarJanTodos(){
+  const litros=document.querySelector('.ctr-litros[data-mes="01"]')?.value||'';
+  const preco=document.querySelector('.ctr-preco[data-mes="01"]')?.value||'';
+  document.querySelectorAll('.ctr-litros').forEach(el=>{if(!el.value)el.value=litros;});
+  document.querySelectorAll('.ctr-preco').forEach(el=>{if(!el.value)el.value=preco;});
+  ctrCalcTotal();
+}
+
+function ctrVerao5(){
+  ['11','12','01','02','03'].forEach(mm=>{
+    const el=document.querySelector(`.ctr-litros[data-mes="${mm}"]`);
+    if(el&&el.value){el.value=Math.round(parseFloat(el.value)*1.05);}
+    const p=document.querySelector(`.ctr-preco[data-mes="${mm}"]`);
+    if(p&&p.value){p.value=(parseFloat(p.value)*1.05).toFixed(2);}
+  });
+  ctrCalcTotal();
+}
+
+async function salvarContrato(){
+  const cliente=document.getElementById('ctr-cliente').value;
+  const editId=parseInt(document.getElementById('ctr-cliente').dataset.editId)||0;
+  const ano=parseInt(document.getElementById('ctr-ano').value)||new Date().getFullYear();
+  const cotas={};
+  document.querySelectorAll('.ctr-litros').forEach(el=>{
+    const mm=el.dataset.mes;
+    const litros=parseFloat(el.value)||0;
+    const vl=parseFloat(document.querySelector(`.ctr-preco[data-mes="${mm}"]`)?.value)||0;
+    if(litros>0||vl>0)cotas[mm]={litros,valor_litro:vl};
+  });
+  const contrato={
+    id:editId||Date.now(),
+    cliente,ano,
+    descricao:(document.getElementById('ctr-desc').value||'').trim(),
+    cotas,
+    fretePorTon:parseFloat(document.getElementById('ctr-frete').value)||0,
+    distanciaKm:parseInt(document.getElementById('ctr-dist').value)||0,
+    status:'ativo',
+    dataInicio:document.getElementById('ctr-inicio').value||null,
+    dataFim:document.getElementById('ctr-fim').value||null,
+    observacoes:(document.getElementById('ctr-obs').value||'').trim()
+  };
+  await salvarContratoSupabase(contrato);
+  closeModal('modal-contrato');
+  showToast('✓ Contrato salvo — '+cliente+' '+ano);
+  // Atualizar aba contrato se painel está aberto
+  if(window._cliPanelNome===cliente)renderContratoTab(cliente);
+}
+
+function renderContratoTab(cliente){
+  const el=document.getElementById('cli-contrato-content');
+  if(!el)return;
+  const contratos=loadContratosLocal().filter(c=>c.cliente===cliente);
+  if(contratos.length===0){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px 0;text-align:center">Nenhum contrato cadastrado.</div>';
+    return;
+  }
+  const vendas=loadVendas();
+  let html='';
+  for(const c of contratos){
+    const agora=new Date();
+    html+=`<div style="padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>${c.descricao||'Contrato '+c.ano}</strong>
+        <span style="font-size:11px;padding:3px 8px;border-radius:5px;background:${c.status==='ativo'?'var(--verde-bg)':'var(--surface)'};color:${c.status==='ativo'?'var(--verde)':'var(--muted)'}">${c.status}</span>
+      </div>
+      ${c.dataInicio?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${fmtData(c.dataInicio)} — ${fmtData(c.dataFim||'')}</div>`:''}
+      <div style="font-size:12px;margin-bottom:6px">Frete: R$ ${c.fretePorTon}/ton ${c.distanciaKm?'· '+c.distanciaKm+'km':''}</div>`;
+    // Cotas por mês com barra de progresso
+    html+='<div style="margin-top:8px">';
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      const cota=c.cotas[mm];
+      if(!cota)continue;
+      const usado=getLitrosUsadosMes(cliente,c.id,c.ano,m);
+      const pct=cota.litros>0?Math.min(100,Math.round(usado/cota.litros*100)):0;
+      const cor=pct<80?'var(--verde)':pct<100?'var(--amarelo)':'var(--vermelho)';
+      const isMesAtual=(m===agora.getMonth()+1&&c.ano===agora.getFullYear());
+      html+=`<div style="display:grid;grid-template-columns:40px 80px 70px 1fr 40px;gap:6px;align-items:center;font-size:11px;padding:3px 0;${isMesAtual?'font-weight:700':''}">
+        <span>${MESES_NOME[m-1]}</span>
+        <span>${fmtNum(cota.litros)}L</span>
+        <span>R$ ${cota.valor_litro.toFixed(2)}</span>
+        <div style="background:var(--surface);border-radius:4px;height:8px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${cor};border-radius:4px"></div></div>
+        <span style="color:${cor}">${pct}%</span>
+      </div>`;
+    }
+    html+=`</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-outline" style="font-size:11px" onclick="abrirEditarContrato(${c.id})">✏️ Editar</button>
+      </div>
+    </div>`;
+  }
+  el.innerHTML=html;
 }
 

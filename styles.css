@@ -283,6 +283,10 @@
   .cli-tab-content { display:none; }
   .cli-tab-content.active { display:block; }
 
+  /* RADIO FÁBRICA */
+  .fab-radio { display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text); }
+  .fab-radio input { accent-color:var(--verde); }
+
   /* DRAWER DE ÁREA */
   .area-drawer { position: fixed; top: 0; right: -72%; width: 70%; height: 100vh; background: var(--bg); border-left: 2px solid var(--accent); z-index: 148; transition: right 0.32s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; box-shadow: -8px 0 40px rgba(0,0,0,0.15); }
   .area-drawer.open { right: 0; }

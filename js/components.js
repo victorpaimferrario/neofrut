@@ -425,8 +425,12 @@ function switchCliTab(tab){
     document.getElementById('cli-tab-edit').classList.add('active');
     const body=document.getElementById('cli-body-editar');
     body.classList.add('active');body.style.display='block';
-    // Carregar dados do cliente no form
     _loadClienteForm(window._cliPanelNome);
+  } else if(tab==='contrato'){
+    document.getElementById('cli-tab-contrato').classList.add('active');
+    const body=document.getElementById('cli-body-contrato');
+    body.classList.add('active');body.style.display='block';
+    renderContratoTab(window._cliPanelNome);
   } else {
     document.getElementById('cli-tab-hist').classList.add('active');
     const body=document.getElementById('cli-body-historico');
@@ -464,6 +468,13 @@ function _loadClienteForm(nome){
   document.getElementById('cli-obs').value=c.observacoes||'';
   document.getElementById('cli-tipo').value=c.tipo||'mesa';
   document.getElementById('cli-status').value=c.status||'ativo';
+  // Campos fábrica
+  const fabFields=document.getElementById('cli-fab-fields');
+  if(fabFields)fabFields.style.display=(c.tipo==='fabrica')?'':'none';
+  const freteTon=document.getElementById('cli-frete-ton');
+  if(freteTon)freteTon.value=c.frete_por_ton||'';
+  const distKm=document.getElementById('cli-distancia');
+  if(distKm)distKm.value=c.distancia_km||'';
 }
 
 function openClientePanel(cliente, tab){
@@ -564,6 +575,11 @@ function openClientePanel(cliente, tab){
       +pagoBtn
     +'</div>';
   }).join('');
+
+  // Mostrar/ocultar tab contrato para fábricas
+  const mapa=getMapaClientes();
+  const ctrTab=document.getElementById('cli-tab-contrato');
+  if(ctrTab)ctrTab.style.display=mapa[cliente]?.fabrica?'':'none';
 
   // Abrir na tab correta
   switchCliTab(tab||'historico');

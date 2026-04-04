@@ -1247,3 +1247,46 @@ function renderAreaTable() {
     <td></td><td></td>
   </tr>`;
 }
+
+// ─── ALERTAS DE CONTRATOS NO DASHBOARD ───
+function renderContratosAlertas(){
+  const el=document.getElementById('dash-contratos-alertas');
+  if(!el)return;
+  const contratos=loadContratosLocal().filter(c=>c.status==='ativo');
+  if(contratos.length===0){el.innerHTML='';return;}
+  const agora=new Date();
+  const mes=agora.getMonth()+1;
+  const ano=agora.getFullYear();
+  const dia=agora.getDate();
+  let alertas=[];
+  let cards='';
+  for(const c of contratos){
+    const cota=getCotaMes(c,mes);
+    if(!cota)continue;
+    const usado=getLitrosUsadosMes(c.cliente,c.id,ano,mes);
+    const pct=cota.litros>0?Math.round(usado/cota.litros*100):0;
+    const disp=Math.max(0,cota.litros-usado);
+    const cor=pct<50?'var(--verde)':pct<80?'var(--amarelo)':pct<100?'#b45309':'var(--vermelho)';
+    // Alertas
+    if(dia>20&&pct<50)alertas.push(`⚠ ${c.cliente}: cota de ${MESES_NOME[mes-1]} em ${pct}% faltando ${30-dia} dias`);
+    if(c.dataFim){
+      const fim=new Date(c.dataFim);
+      const diasFim=Math.round((fim-agora)/(1000*60*60*24));
+      if(diasFim<=30&&diasFim>0)alertas.push(`⚠ ${c.cliente}: contrato vence em ${diasFim} dias (${fmtData(c.dataFim)})`);
+    }
+    if(pct>=100)alertas.push(`🔴 ${c.cliente}: cota ${MESES_NOME[mes-1]} atingida — vendas excedentes = SPOT`);
+    cards+=`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;font-size:12px">
+      <strong style="min-width:120px">${c.cliente}</strong>
+      <span>${MESES_NOME[mes-1]}: ${fmtNum(Math.round(usado))}/${fmtNum(cota.litros)}L</span>
+      <div style="flex:1;background:var(--surface);border-radius:4px;height:8px;overflow:hidden;max-width:120px"><div style="width:${Math.min(pct,100)}%;height:100%;background:${cor};border-radius:4px"></div></div>
+      <span style="color:${cor};font-weight:700">${pct}%</span>
+      <span style="color:var(--muted)">R$ ${cota.valor_litro.toFixed(2)}/L</span>
+    </div>`;
+  }
+  if(!cards){el.innerHTML='';return;}
+  let alertHtml=alertas.map(a=>`<div style="font-size:11px;color:var(--amarelo);margin-top:4px">${a}</div>`).join('');
+  el.innerHTML=`<div class="mapa-wrap" style="margin:0">
+    <div class="mapa-title">📊 Contratos <span>— cotas do mês</span></div>
+    <div style="padding:10px 20px">${cards}${alertHtml}</div>
+  </div>`;
+}

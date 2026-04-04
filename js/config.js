@@ -59,6 +59,26 @@ const NOMES_UF   = {
 
 const MAPA_CLIENTES = {"LINCOLN - CAMPO GRANDE":{"uf":"MS","cidade":"CAMPO GRANDE","fabrica":false},"DIEGO - LINHARES":{"uf":"ES","cidade":"LINHARES","fabrica":false},"LEONARDO - CEAGESP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"MIGUEL - CUIABÁ":{"uf":"MT","cidade":"CUIABÁ","fabrica":false},"JACIARA - FEIRA DE SANTANA":{"uf":"BA","cidade":"FEIRA DE SANTANA","fabrica":false},"ASSIS - CAMPINAS":{"uf":"SP","cidade":"CAMPINAS","fabrica":false},"CEARÁ - CAMPINAS":{"uf":"SP","cidade":"CAMPINAS","fabrica":false},"GEORGE - VITTA FRUTAS":{"uf":"MG","cidade":"BELO HORIZONTE","fabrica":false},"ARTHUR - PETROLINA":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"DONA FATIMA - THALYSON - MACEIÓ":{"uf":"AL","cidade":"MACEIÓ","fabrica":false},"ALEXANDRE - MT":{"uf":"MT","cidade":"RONDONOPOLIS","fabrica":false},"DAIANE - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"RAFAEL - MACEIÓ":{"uf":"AL","cidade":"MACEIÓ","fabrica":false},"ALDO SERGIO - CURITIBA":{"uf":"PR","cidade":"CURITIBA","fabrica":false},"ALEX - COCO BAMBU":{"uf":"GO","cidade":"GOIANIA","fabrica":false},"MATEUS - BRASILIA":{"uf":"DF","cidade":"BRASILIA","fabrica":false},"GLAUBER - BH":{"uf":"MG","cidade":"BELO HORIZONTE","fabrica":false},"SR JOAO - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"BINHO DO COCO":{"uf":"AL","cidade":"ARAPIRACA","fabrica":false},"MARCELLA - CEAGESP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"CARLÃO - SÃO JOSÉ DO RIO PRETO - SP":{"uf":"SP","cidade":"SÃO JOSE DO RIO PRETO","fabrica":false},"EDGAR - SP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"JAMISSON":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"PRETO DO COCO - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"TITIL - INDAIATUBA":{"uf":"SP","cidade":"CAMPINAS","fabrica":false},"CARLÃO FALECIDO":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"GILDO - CEASA":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"RAUL ALVES - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"NETO - PIRACICABA":{"uf":"SP","cidade":"PIRACICABA","fabrica":false},"NOELTON - SP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"RENAN - RIO DE JANEIRO":{"uf":"RJ","cidade":"RIO DE JANEIRO","fabrica":false},"JONATHAN - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"MM FRUTAS - SP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"WANDERLEY - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"BENASSI - SP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"CARLOS - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"WALTER - SP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"RICARDO - COCO DIAMANTE":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"PAULO - SINOP":{"uf":"MT","cidade":"SINOP","fabrica":false},"DA HORTA PARA PORTA":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"MARLY - COCO VIDA":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"SEVERINO - CAMPINAS":{"uf":"SP","cidade":"CAMPINAS","fabrica":false},"WELLINGTON - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"DANIEL - MACEIÓ":{"uf":"AL","cidade":"MACEIÓ","fabrica":false},"MAIKE - COCO MACENA":{"uf":"ES","cidade":"LINHARES","fabrica":false},"TOMOHIDE - BA":{"uf":"BA","cidade":"COSTA DO SAUIPE","fabrica":false},"GENILSON - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"JAILSON - ARUANA":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"MARIA - CEAGESP":{"uf":"SP","cidade":"SÃO PAULO","fabrica":false},"JONATHAN - MG":{"uf":"MG","cidade":"UBERLANDIA","fabrica":false},"EDVANEIDE - HORTOLANDIA":{"uf":"SP","cidade":"PIRACICABA","fabrica":false},"RAMON - ARACAJU":{"uf":"SE","cidade":"ARACAJU","fabrica":false},"VALTENIO - NEOPOLIS":{"uf":"SE","cidade":"NEOPOLIS","fabrica":false},"VAL DA BANANA":{"uf":"SE","cidade":"PROPRIÁ","fabrica":false},"EVERLAN - AQUIDABÃ":{"uf":"SE","cidade":"AQUIDABÃ","fabrica":false},"VAL - PENEDO":{"uf":"AL","cidade":"PENEDO","fabrica":false},"CLEIDIANE":{"uf":"SE","cidade":"PROPRIÁ","fabrica":false},"ANTONIO ALVES":{"uf":"SE","cidade":"PROPRIÁ","fabrica":false},"DAVID - SANTANA":{"uf":"SE","cidade":"SANTANA SÃO FRANCISCO","fabrica":false},"WEYSIANE - NEOLPOLIS":{"uf":"SE","cidade":"NEOPOLIS","fabrica":false},"MARCOS FALCÃO":{"uf":"FÁBRICA","cidade":"—","fabrica":true},"FRYSK":{"uf":"FÁBRICA","cidade":"—","fabrica":true},"NECTTARE":{"uf":"FÁBRICA","cidade":"—","fabrica":true},"QUALICOCO":{"uf":"FÁBRICA","cidade":"—","fabrica":true}};
 
+// ─── CLASSIFICAÇÃO ML/FRUTO ───
+const ML_FRUTO_FAIXAS = [
+  { min: 450, label: 'ÓTIMO',    cor: '#0d6e3f', bg: '#d1fae5' },
+  { min: 400, label: 'BOM',      cor: '#1a7a6e', bg: '#d5f5f0' },
+  { min: 350, label: 'RAZOÁVEL', cor: '#b45309', bg: '#fef3c7' },
+  { min: 300, label: 'RUIM',     cor: '#dc2626', bg: '#fee2e2' },
+  { min: 0,   label: 'PÉSSIMO',  cor: '#7f1d1d', bg: '#fecaca' }
+];
+function classificarMlFruto(ml) {
+  if (!ml || ml <= 0) return null;
+  return ML_FRUTO_FAIXAS.find(f => ml >= f.min) || ML_FRUTO_FAIXAS[ML_FRUTO_FAIXAS.length - 1];
+}
+
+// ─── COLUNAS PLANILHA FÁBRICA (para importação por colagem) ───
+const COLUNAS_PLANILHA_FABRICA = [
+  'fornecedores','nf_venda','nf_complementar','qtde_fabrica','qtde_nf',
+  'litragem','fora','ml_fruto','brix','placa','preco_litro',
+  'valor_pagar','valor_nf_venda','valor_complementar'
+];
+
 // ─────────── CACHES ───────────
 let _telefonesCache = {};
 let _dadosClima = {};

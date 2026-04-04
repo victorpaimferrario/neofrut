@@ -30,7 +30,8 @@ async function initApp() {
         loadDBFromSupabase(),
         loadVendasSupabase(),
         carregarTelefones(),
-        loadClientesSupabase()
+        loadClientesSupabase(),
+        loadContratosSupabase()
       ]);
       // Re-renderizar a página atual com dados atualizados do Supabase
       const paginaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
