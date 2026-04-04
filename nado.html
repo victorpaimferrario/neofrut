@@ -13,128 +13,124 @@
 <style>
 :root {
   --verde:#1a5c1a; --verde2:#2a7a2a; --verde-bg:#e8f5e0;
-  --amarelo:#f59e0b; --amarelo-bg:#fffbeb;
-  --vermelho:#dc2626; --vermelho-bg:#fef2f2;
-  --cinza:#6b7280; --borda:#d1d5db; --bg:#f0f7ec;
-  --branco:#fff; --texto:#111827; --muted:#6b7280;
+  --amarelo:#e6a817; --amarelo-bg:#fff8e1;
+  --vermelho:#c62828; --vermelho-bg:#ffebee;
+  --cinza:#6b7280; --borda:#c8cfd8; --bg:#f0f7ec;
+  --branco:#fff; --texto:#1a1a1a; --muted:#6b7280;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;max-width:430px;margin:0 auto;padding-bottom:40px;-webkit-user-select:none;user-select:none}
 
-/* TOPO */
-.topo{background:var(--verde);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
-.topo-logo{font-size:17px;font-weight:900}
-.topo-data{font-size:11px;opacity:.7;margin-top:2px}
-.sync-badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
+/* TOPO — compacto */
+.topo{background:var(--verde);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+.topo-logo{font-size:15px;font-weight:900}
+.topo-data{font-size:10px;opacity:.7;margin-top:1px}
+.sync-badge{font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;display:flex;align-items:center;gap:5px}
 .sync-badge.offline{background:rgba(255,255,255,.15);color:#fff}
 .sync-badge.online{background:#22c55e;color:#fff}
 .sync-badge.enviado{background:#3b82f6;color:#fff}
 .sync-badge.enviando{background:var(--amarelo);color:#fff}
 
-/* PROGRESS */
-.progress-wrap{background:var(--branco);padding:12px 20px;border-bottom:1px solid var(--borda)}
-.progress-info{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
-.progress-info strong{color:var(--verde);font-size:13px}
-.progress-bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
-.progress-fill{height:100%;background:var(--verde);border-radius:4px;transition:width .3s}
+/* PROGRESS — escondido por default, só aparece com contagens */
+.progress-wrap{background:var(--branco);padding:8px 16px;border-bottom:1px solid var(--borda)}
+.progress-info{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px}
+.progress-info strong{color:var(--verde);font-size:14px;font-weight:900}
+.progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--verde);border-radius:3px;transition:width .3s}
 
-/* TELA INICIO */
-.lista-areas{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* ════════ TELA INICIO ════════ */
+.lista-areas{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* Card de area */
-.area-card{background:var(--branco);border:2px solid var(--borda);border-radius:14px;overflow:hidden;transition:border-color .2s}
-.area-card.aberta{border-color:var(--verde);grid-column:1/-1}
-.area-card-header{padding:14px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:80px;justify-content:center;gap:6px}
-.area-card-header:active{background:var(--bg)}
-.area-card-icon{width:40px;height:40px;border-radius:12px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;flex-shrink:0}
-.area-card-nome{font-size:14px;font-weight:900;color:var(--texto);line-height:1.1}
-.area-card-qtd{font-size:11px;color:var(--muted);font-weight:600}
-.area-card-arrow{display:none}
+/* Card de area — grande, tactil */
+.area-card{background:var(--branco);border:3px solid var(--borda);border-radius:16px;overflow:hidden;transition:all .2s}
+.area-card.aberta{border-color:var(--verde);grid-column:1/-1;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.area-card-header{padding:16px 10px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:90px;justify-content:center;gap:4px}
+.area-card-header:active{background:var(--verde-bg);transform:scale(.97)}
+.area-card-icon{width:52px;height:52px;border-radius:14px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex-shrink:0;letter-spacing:1px}
+.area-card-nome{font-size:13px;font-weight:800;color:var(--texto);line-height:1.1;margin-top:2px}
+.area-card-qtd{font-size:11px;color:var(--muted);font-weight:700}
 
 /* Eitos dentro do card */
-.area-eitos{display:none;padding:4px 10px 12px;border-top:1px solid var(--borda)}
+.area-eitos{display:none;padding:6px 8px 14px;border-top:2px solid var(--borda)}
 .area-card.aberta .area-eitos{display:block}
-.eitos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.eitos-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 
-.eito-btn{background:var(--bg);border:2px solid var(--borda);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;min-height:56px;display:flex;flex-direction:column;justify-content:center}
-.eito-btn:active{transform:scale(.96);background:var(--verde-bg)}
+/* Botao de eito — grande e claro */
+.eito-btn{background:var(--bg);border:3px solid var(--borda);border-radius:12px;padding:12px 8px;cursor:pointer;transition:all .1s;-webkit-tap-highlight-color:transparent;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.eito-btn:active{transform:scale(.94);background:var(--verde-bg)}
 .eito-btn.concluido{border-color:var(--verde);background:var(--verde-bg)}
 .eito-btn.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
-.eito-btn-top{display:flex;align-items:center;justify-content:space-between}
-.eito-id{font-size:18px;font-weight:900;color:var(--verde)}
-.eito-check{font-size:18px}
-.eito-btn-bottom{display:flex;align-items:center;gap:6px;margin-top:4px}
-.eito-plantas{font-size:10px;color:var(--muted);font-weight:600}
-.dias-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+.eito-id{font-size:17px;font-weight:900;color:var(--verde);line-height:1}
+.eito-check{font-size:16px;margin-top:2px}
+.eito-dias{font-size:11px;font-weight:800;margin-top:4px;padding:2px 8px;border-radius:6px}
 .dias-verde{background:var(--verde-bg);color:var(--verde)}
 .dias-amarelo{background:var(--amarelo-bg);color:var(--amarelo)}
 .dias-vermelho{background:var(--vermelho-bg);color:var(--vermelho)}
-.eito-resultado{font-size:10px;color:var(--verde);font-weight:700}
+.eito-resultado{font-size:11px;color:var(--verde);font-weight:800;margin-top:2px}
 
 /* Secao programados */
 .prog-section{padding:0 12px;margin-bottom:8px}
-.prog-titulo{font-size:11px;font-weight:700;color:var(--amarelo);letter-spacing:.05em;text-transform:uppercase;margin:12px 0 8px;display:flex;align-items:center;gap:6px}
-.prog-titulo::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amarelo)}
-.prog-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prog-titulo{font-size:12px;font-weight:800;color:var(--amarelo);text-transform:uppercase;margin:12px 0 8px;display:flex;align-items:center;gap:6px}
+.prog-titulo::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--amarelo)}
+.prog-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 
-/* TELA CONTAGEM */
-#tela-contagem{display:none;padding:20px}
-.eito-header{background:var(--verde);color:#fff;border-radius:16px;padding:18px;text-align:center;margin-bottom:20px}
-.eito-header-area{font-size:11px;opacity:.7;text-transform:uppercase;margin-bottom:2px}
-.eito-header-id{font-size:40px;font-weight:900;line-height:1}
-.eito-header-plantas{font-size:12px;opacity:.7;margin-top:4px}
+/* ════════ TELA CONTAGEM ════════ */
+#tela-contagem{display:none;padding:8px 10px;min-height:100vh;display:none;flex-direction:column}
+.eito-header{background:var(--verde);color:#fff;border-radius:12px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.eito-header-area{font-size:11px;opacity:.8;text-transform:uppercase;font-weight:700}
+.eito-header-id{font-size:26px;font-weight:900;line-height:1}
+.eito-header-plantas{font-size:11px;opacity:.7}
 
-.campo-wrap{background:var(--branco);border:2px solid var(--borda);border-radius:16px;padding:18px;margin-bottom:14px}
-.campo-label{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.campo-dot{width:10px;height:10px;border-radius:50%}
+.campo-wrap{background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:8px 10px;margin-bottom:6px}
+.campo-label{font-size:15px;font-weight:900;color:var(--texto);text-transform:uppercase;margin-bottom:2px;display:flex;align-items:center;gap:8px}
+.campo-dot{width:12px;height:12px;border-radius:50%}
 .campo-dot.mesa{background:var(--verde)}
 .campo-dot.fabrica{background:var(--amarelo)}
-.campo-input{width:100%;font-size:52px;font-weight:900;color:var(--texto);border:none;outline:none;text-align:center;background:transparent;padding:6px 0;-webkit-appearance:none}
+.campo-input{width:100%;font-size:44px;font-weight:900;color:var(--texto);border:none;outline:none;text-align:center;background:transparent;padding:0;-webkit-appearance:none;line-height:1.2}
 .campo-input::placeholder{color:#d1d5db}
 .campo-input:focus{color:var(--verde)}
-.campo-ajuste{display:flex;align-items:center;gap:6px;margin-top:12px}
-.btn-aj{flex:1;padding:11px 4px;border:2px solid var(--borda);border-radius:10px;background:var(--bg);font-size:17px;font-weight:800;color:var(--verde);cursor:pointer;text-align:center}
-.btn-aj:active{background:var(--verde-bg);transform:scale(.96)}
+.campo-ajuste{display:flex;align-items:center;gap:4px;margin-top:4px}
+.btn-aj{flex:1;padding:10px 2px;border:2px solid var(--borda);border-radius:10px;background:var(--bg);font-size:17px;font-weight:900;color:var(--verde);cursor:pointer;text-align:center}
+.btn-aj:active{background:var(--verde-bg);transform:scale(.94)}
 .btn-aj.minus{color:var(--vermelho)}
-.btn-aj-label{font-size:10px;color:var(--muted);text-align:center;font-weight:700;flex:0 0 40px}
 
-.total-box{background:#f9fafb;border:2px solid var(--borda);border-radius:16px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-.total-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
-.total-val{font-size:30px;font-weight:900;color:var(--texto)}
+.total-box{background:var(--verde-bg);border:3px solid var(--verde);border-radius:12px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.total-label{font-size:14px;font-weight:800;color:var(--verde);text-transform:uppercase}
+.total-val{font-size:30px;font-weight:900;color:var(--verde)}
 
-.btn-grande{display:block;width:100%;padding:16px;background:var(--verde);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;text-align:center;transition:all .12s}
-.btn-grande:active{background:var(--verde2);transform:scale(.98)}
-.btn-grande.sec{background:var(--branco);color:var(--verde);border:2px solid var(--verde);font-size:14px;padding:13px}
+.btn-grande{display:block;width:100%;padding:16px;background:var(--verde);color:#fff;border:none;border-radius:14px;font-size:20px;font-weight:900;cursor:pointer;text-align:center;transition:all .12s;letter-spacing:.5px}
+.btn-grande:active{background:var(--verde2);transform:scale(.97)}
+.btn-grande.sec{background:var(--branco);color:var(--verde);border:3px solid var(--verde);font-size:15px;padding:12px}
 
-/* TELA RESUMO */
-#tela-resumo{display:none;padding:20px}
-.resumo-header{text-align:center;padding:20px 0 16px}
-.resumo-icon{font-size:48px;margin-bottom:6px}
-.resumo-titulo{font-size:20px;font-weight:900;color:var(--verde)}
-.resumo-sub{font-size:13px;color:var(--muted)}
+/* ════════ TELA RESUMO ════════ */
+#tela-resumo{display:none;padding:16px}
+.resumo-header{text-align:center;padding:16px 0 14px}
+.resumo-icon{font-size:52px;margin-bottom:6px}
+.resumo-titulo{font-size:22px;font-weight:900;color:var(--verde)}
+.resumo-sub{font-size:14px;color:var(--muted);font-weight:600}
 
 .resumo-card{background:var(--branco);border:2px solid var(--borda);border-radius:14px;overflow:hidden;margin-bottom:10px}
 .resumo-card-header{background:var(--verde-bg);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--borda)}
-.resumo-card-area{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
-.resumo-card-id{font-size:16px;font-weight:900;color:var(--verde)}
+.resumo-card-area{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.resumo-card-id{font-size:18px;font-weight:900;color:var(--verde)}
 .resumo-card-body{padding:12px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center}
-.r-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:2px}
-.r-val{font-size:20px;font-weight:900}
+.r-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:2px}
+.r-val{font-size:22px;font-weight:900}
 .r-val.verde{color:var(--verde)}
 .r-val.amar{color:var(--amarelo)}
 
-.total-dia-box{background:var(--verde);color:#fff;border-radius:14px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.total-dia-label{font-size:12px;opacity:.8;font-weight:700;text-transform:uppercase}
-.total-dia-val{font-size:32px;font-weight:900}
+.total-dia-box{background:var(--verde);color:#fff;border-radius:16px;padding:18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.total-dia-label{font-size:14px;opacity:.9;font-weight:800;text-transform:uppercase}
+.total-dia-val{font-size:36px;font-weight:900}
 
-.sync-status{text-align:center;font-size:12px;color:var(--muted);padding:8px 10px 16px;line-height:1.5}
+.sync-status{text-align:center;font-size:13px;color:var(--muted);padding:8px 10px 16px;line-height:1.5;font-weight:600}
 .btn-grande.enviar{background:#25D366}
 .btn-grande.enviar:active{background:#1da851}
 
 @keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 .pop{animation:pop .3s ease forwards}
 
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:14px 28px;border-radius:14px;font-size:16px;font-weight:800;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
 .toast.show{opacity:1}
 </style>
 </head>
@@ -145,7 +141,7 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
     <div class="topo-logo">Neofrut Campo</div>
     <div class="topo-data" id="topo-data"></div>
   </div>
-  <div class="sync-badge offline" id="sync-badge">OFFLINE</div>
+  <div class="sync-badge offline" id="sync-badge">SEM SINAL</div>
 </div>
 
 <div class="progress-wrap" id="progress-wrap" style="display:none">
@@ -167,42 +163,40 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 <!-- TELA CONTAGEM -->
 <div id="tela-contagem">
   <div class="eito-header">
-    <div class="eito-header-area" id="cnt-area"></div>
-    <div class="eito-header-id" id="cnt-id"></div>
+    <div>
+      <div class="eito-header-area" id="cnt-area"></div>
+      <div class="eito-header-id" id="cnt-id"></div>
+    </div>
     <div class="eito-header-plantas" id="cnt-plantas"></div>
   </div>
   <div class="campo-wrap">
-    <div class="campo-label"><span class="campo-dot mesa"></span> Mesa</div>
+    <div class="campo-label"><span class="campo-dot mesa"></span> MESA</div>
     <input class="campo-input" type="number" id="inp-mesa" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
     <div class="campo-ajuste">
-      <button class="btn-aj minus" onclick="aj('mesa',-100)">-100</button>
       <button class="btn-aj minus" onclick="aj('mesa',-10)">-10</button>
       <button class="btn-aj minus" onclick="aj('mesa',-1)">-1</button>
-      <span class="btn-aj-label">MESA</span>
       <button class="btn-aj" onclick="aj('mesa',1)">+1</button>
       <button class="btn-aj" onclick="aj('mesa',10)">+10</button>
       <button class="btn-aj" onclick="aj('mesa',100)">+100</button>
     </div>
   </div>
   <div class="campo-wrap">
-    <div class="campo-label"><span class="campo-dot fabrica"></span> Fabrica</div>
+    <div class="campo-label"><span class="campo-dot fabrica"></span> FABRICA</div>
     <input class="campo-input" type="number" id="inp-fabrica" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
     <div class="campo-ajuste">
-      <button class="btn-aj minus" onclick="aj('fab',-100)">-100</button>
       <button class="btn-aj minus" onclick="aj('fab',-10)">-10</button>
       <button class="btn-aj minus" onclick="aj('fab',-1)">-1</button>
-      <span class="btn-aj-label">FABR.</span>
       <button class="btn-aj" onclick="aj('fab',1)">+1</button>
       <button class="btn-aj" onclick="aj('fab',10)">+10</button>
       <button class="btn-aj" onclick="aj('fab',100)">+100</button>
     </div>
   </div>
   <div class="total-box">
-    <span class="total-label">Total do eito</span>
+    <span class="total-label">TOTAL</span>
     <span class="total-val" id="total-eito">0</span>
   </div>
-  <button class="btn-grande" onclick="confirmarEito()">CONFIRMAR EITO</button>
-  <button class="btn-grande sec" onclick="voltarInicio()" style="margin-top:10px">Voltar</button>
+  <button class="btn-grande" onclick="confirmarEito()">CONFIRMAR</button>
+  <button class="btn-grande sec" onclick="voltarInicio()" style="margin-top:8px">VOLTAR</button>
 </div>
 
 <!-- TELA RESUMO -->
@@ -401,7 +395,7 @@ function salvarResultados() {
 function atualizarSyncBadge(estado) {
   const el = document.getElementById('sync-badge');
   el.className = 'sync-badge ' + estado;
-  const labels = { offline: 'OFFLINE', online: 'ONLINE', enviado: 'ENVIADO', enviando: 'ENVIANDO...' };
+  const labels = { offline: 'SEM SINAL', online: 'CONECTADO', enviado: 'ENVIADO', enviando: 'ENVIANDO...' };
   el.textContent = labels[estado] || estado;
 }
 
@@ -500,22 +494,18 @@ function criarEitoBtn(area, eito, isProgramado) {
   const k = chaveEito(area, eito.id);
   const feito = resultados[k];
   const dias = diasDesde(ultimaColheita[k]);
-  const diasTxt = dias !== null ? dias + 'd' : '?';
+  const diasTxt = dias !== null ? dias + ' dias' : '?';
 
   const div = document.createElement('div');
   div.className = 'eito-btn' + (feito ? ' concluido' : isProgramado ? ' programado' : '');
   div.onclick = () => abrirContagem(area, eito);
 
   div.innerHTML = `
-    <div class="eito-btn-top">
-      <span class="eito-id">${eito.id}</span>
-      ${feito ? '<span class="eito-check">✅</span>' : ''}
-    </div>
-    <div class="eito-btn-bottom">
-      <span class="dias-badge ${diasClass(dias)}">${diasTxt}</span>
-      <span class="eito-plantas">${eito.plantas}pl</span>
-      ${feito ? `<span class="eito-resultado">${fmtN(feito.total)}</span>` : ''}
-    </div>
+    <span class="eito-id">${eito.id}</span>
+    ${feito
+      ? `<span class="eito-check">✅</span><span class="eito-resultado">${fmtN(feito.total)}</span>`
+      : `<span class="eito-dias ${diasClass(dias)}">${diasTxt}</span>`
+    }
   `;
   return div;
 }
@@ -553,6 +543,9 @@ function abrirContagem(area, eito) {
 
   document.getElementById('tela-inicio').style.display = 'none';
   document.getElementById('tela-contagem').style.display = 'block';
+  // Esconder topo e progresso para maximizar espaço
+  document.querySelector('.topo').style.display = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
   window.scrollTo(0, 0);
   ativarWakeLock();
 }
@@ -606,6 +599,7 @@ function voltarInicio() {
   document.getElementById('tela-contagem').style.display = 'none';
   document.getElementById('tela-resumo').style.display = 'none';
   document.getElementById('tela-inicio').style.display = 'block';
+  document.querySelector('.topo').style.display = '';
   renderLista();
   window.scrollTo(0, 0);
 }
