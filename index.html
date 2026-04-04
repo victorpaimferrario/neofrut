@@ -157,21 +157,21 @@
   </div>
 
   <!-- CARD NADO CONTADOR -->
-  <div id="nado-card" style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div id="nado-card" style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:20px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
       <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DE COCO DO CAMPO</div>
       <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-outline" onclick="abrirPrepararDia()">Preparar dia</button>
       <button class="btn" id="nado-btn-pendentes" onclick="toggleValidacaoNado()" style="display:none;background:#fffbeb;color:#d97706;border:1px solid #d97706;font-weight:700">Validar Colheita</button>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <button class="btn btn-primary" onclick="window.open('nado.html','_blank')" style="display:flex;align-items:center;gap:6px;font-size:13px">
-        <span>📱</span> Acessar Sistema Campo
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <button class="btn btn-primary" onclick="window.open('nado.html','_blank')" style="display:flex;align-items:center;gap:6px;font-size:12px;flex:1;justify-content:center">
+        📱 Acessar Campo
       </button>
-      <button class="btn btn-outline" onclick="copiarLinkCampo()" style="font-size:13px;display:flex;align-items:center;gap:6px">
-        <span>🔗</span> Copiar link
+      <button class="btn btn-outline" onclick="copiarLinkCampo()" style="font-size:12px;display:flex;align-items:center;gap:6px">
+        🔗 Copiar link
       </button>
     </div>
   </div>
@@ -901,7 +901,7 @@
   <p style="font-size:10px;color:var(--muted);padding:8px 16px 0">
     Volume histórico de cocos vendidos por dia da semana · Útil para planejar quando prospectar clientes
   </p>
-  <div style="display:flex;gap:10px;padding:16px" id="heatmap-dias"></div>
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding:16px"><div style="display:flex;gap:10px;min-width:600px" id="heatmap-dias"></div></div>
 </div>
 
 <!-- MODAL CLIMA -->

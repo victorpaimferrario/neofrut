@@ -490,7 +490,7 @@ function renderProjecao() {
         <div class="proj-card-label" style="margin-bottom:0">📅 Esta semana</div>
         <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${fmtSemana(segEsta, sexEsta)}</div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px">
+      <div class="proj-inner-grid">
         <div style="text-align:center;padding:6px 4px;background:rgba(220,53,69,0.06);border-radius:6px;border:1px solid rgba(220,53,69,0.15)">
           <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Urgente</div>
           <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho);margin:2px 0">${fmtNum(r1.totalUrg)}</div>
@@ -775,7 +775,7 @@ function renderProjecao() {
   wrap.innerHTML = `
     <div class="proj-wrap">
       <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
-      <div class="proj-cards" style="grid-template-columns:repeat(3,1fr)">
+      <div class="proj-cards">
         ${cardEsta}
         ${cardColhido}
         ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
