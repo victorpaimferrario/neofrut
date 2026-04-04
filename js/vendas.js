@@ -1461,7 +1461,14 @@ async function salvarCliente() {
 // ─── SIMULADOR DE CARGA ───
 
 window._simCenarios = [];
-const COCOS_POR_LITRO = 2.3; // regra fixa: 1 litro = 2,3 cocos
+const COCOS_POR_LITRO = 2.3;  // 1 litro = 2,3 cocos
+const KG_POR_COCO = 2.2;      // peso médio por coco
+
+function onSimQtdeChange() {
+  const qtde = parseInt(document.getElementById('sim-qtde')?.value) || 0;
+  document.getElementById('sim-peso').value = qtde > 0 ? Math.round(qtde * KG_POR_COCO) : '';
+  calcSimulador();
+}
 
 function adicionarCenario() {
   const mapa = getMapaClientes();
