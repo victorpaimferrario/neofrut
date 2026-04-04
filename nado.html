@@ -39,27 +39,48 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .progress-fill{height:100%;background:var(--verde);border-radius:4px;transition:width .3s}
 
 /* TELA INICIO */
-.sec-titulo{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:20px 20px 10px;display:flex;align-items:center;justify-content:space-between}
-.sec-titulo .toggle{font-size:18px;cursor:pointer;color:var(--verde);padding:4px 8px}
+.lista-areas{padding:12px}
 
-.eito-item{background:var(--branco);border:2px solid var(--borda);border-radius:14px;padding:14px 16px;margin:0 20px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .12s}
-.eito-item:active{transform:scale(.98)}
-.eito-item.concluido{border-color:var(--verde);background:var(--verde-bg)}
-.eito-item.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
-.eito-area{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
-.eito-id{font-size:20px;font-weight:900;color:var(--verde)}
-.eito-meta{display:flex;align-items:center;gap:6px}
+/* Card de area */
+.area-card{background:var(--branco);border:2px solid var(--borda);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+.area-card.aberta{border-color:var(--verde)}
+.area-card-header{padding:18px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:72px}
+.area-card-header:active{background:var(--bg)}
+.area-card-left{display:flex;align-items:center;gap:14px}
+.area-card-icon{width:48px;height:48px;border-radius:14px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0}
+.area-card-nome{font-size:17px;font-weight:900;color:var(--texto)}
+.area-card-info{display:flex;align-items:center;gap:8px;margin-top:3px}
+.area-card-qtd{font-size:12px;color:var(--muted);font-weight:600}
+.area-card-badges{display:flex;gap:4px}
+.area-badge{font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;min-width:20px;text-align:center}
+.area-card-arrow{font-size:22px;color:var(--verde);transition:transform .2s;flex-shrink:0;padding:8px}
+.area-card.aberta .area-card-arrow{transform:rotate(90deg)}
+
+/* Eitos dentro do card */
+.area-eitos{display:none;padding:4px 10px 12px;border-top:1px solid var(--borda)}
+.area-card.aberta .area-eitos{display:block}
+.eitos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.eito-btn{background:var(--bg);border:2px solid var(--borda);border-radius:12px;padding:14px 12px;cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;min-height:56px;display:flex;flex-direction:column;justify-content:center}
+.eito-btn:active{transform:scale(.96);background:var(--verde-bg)}
+.eito-btn.concluido{border-color:var(--verde);background:var(--verde-bg)}
+.eito-btn.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
+.eito-btn-top{display:flex;align-items:center;justify-content:space-between}
+.eito-id{font-size:18px;font-weight:900;color:var(--verde)}
+.eito-check{font-size:18px}
+.eito-btn-bottom{display:flex;align-items:center;gap:6px;margin-top:4px}
 .eito-plantas{font-size:10px;color:var(--muted);font-weight:600}
 .dias-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
 .dias-verde{background:var(--verde-bg);color:var(--verde)}
 .dias-amarelo{background:var(--amarelo-bg);color:var(--amarelo)}
 .dias-vermelho{background:var(--vermelho-bg);color:var(--vermelho)}
-.eito-status-icon{font-size:24px}
-.eito-resumo{font-size:10px;color:var(--verde);font-weight:700;text-align:right;margin-top:2px}
+.eito-resultado{font-size:10px;color:var(--verde);font-weight:700}
 
-/* Area colapsavel */
-.area-group{margin-bottom:4px}
-.area-group.fechada .eito-item{display:none}
+/* Secao programados */
+.prog-section{padding:0 12px;margin-bottom:8px}
+.prog-titulo{font-size:11px;font-weight:700;color:var(--amarelo);letter-spacing:.05em;text-transform:uppercase;margin:12px 0 8px;display:flex;align-items:center;gap:6px}
+.prog-titulo::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--amarelo)}
+.prog-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* TELA CONTAGEM */
 #tela-contagem{display:none;padding:20px}
@@ -411,7 +432,6 @@ function renderLista() {
   if (areas.length === 0) { document.getElementById('sem-eitos').style.display = 'block'; return; }
   document.getElementById('sem-eitos').style.display = 'none';
 
-  const totalEitos = areas.reduce((s, a) => s + todosEitos[a].length, 0);
   const contados = Object.keys(resultados).length;
 
   // Progresso
@@ -421,74 +441,115 @@ function renderLista() {
     document.getElementById('progress-fill').style.width = `${Math.min(100,(contados/Math.max(1,programados.length||contados))*100)}%`;
   }
 
-  // Programados no topo
+  // Programados no topo (eitos soltos, sem card de area)
   if (programados.length > 0) {
-    const titulo = document.createElement('div');
-    titulo.className = 'sec-titulo';
-    titulo.innerHTML = `PROGRAMADOS HOJE (${programados.length})`;
-    el.appendChild(titulo);
+    const sec = document.createElement('div');
+    sec.className = 'prog-section';
+    sec.innerHTML = `<div class="prog-titulo">PROGRAMADOS HOJE (${programados.length})</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'prog-grid';
     programados.forEach(p => {
-      const area = p.area;
-      const eito = (todosEitos[area] || []).find(e => e.id === p.eito_id);
+      const eito = (todosEitos[p.area] || []).find(e => e.id === p.eito_id);
       if (!eito) return;
-      el.appendChild(criarEitoItem(area, eito, true));
+      grid.appendChild(criarEitoBtn(p.area, eito, true));
     });
+    sec.appendChild(grid);
+    el.appendChild(sec);
   }
 
-  // Todas as areas
+  // Cards por area
+  const wrap = document.createElement('div');
+  wrap.className = 'lista-areas';
   areas.forEach(area => {
     const eitos = todosEitos[area];
-    const grupoId = 'grp-' + area.replace(/\s/g, '_');
-    const aberta = areasAbertas[area] !== false; // default aberta
+    const aberta = areasAbertas[area] === true; // default fechada
 
-    const titulo = document.createElement('div');
-    titulo.className = 'sec-titulo';
-    titulo.innerHTML = `${area} (${eitos.length}) <span class="toggle" data-area="${area}" onclick="toggleArea('${area}')">${aberta ? '▼' : '▶'}</span>`;
-    el.appendChild(titulo);
+    // Calcular resumo da area
+    let urgentes = 0, ok = 0, feitos = 0;
+    eitos.forEach(e => {
+      const k = chaveEito(area, e.id);
+      if (resultados[k]) { feitos++; return; }
+      const d = diasDesde(ultimaColheita[k]);
+      if (d === null || d >= 21) urgentes++;
+      else ok++;
+    });
 
-    const grupo = document.createElement('div');
-    grupo.className = 'area-group' + (aberta ? '' : ' fechada');
-    grupo.id = grupoId;
-    eitos.forEach(eito => grupo.appendChild(criarEitoItem(area, eito, false)));
-    el.appendChild(grupo);
+    const sigla = area.replace('AREA ', '').replace('MAMÃO DE ', 'M').substring(0, 2);
+
+    const card = document.createElement('div');
+    card.className = 'area-card' + (aberta ? ' aberta' : '');
+    card.id = 'card-' + area.replace(/\s/g, '_');
+
+    card.innerHTML = `
+      <div class="area-card-header" onclick="toggleArea('${area}')">
+        <div class="area-card-left">
+          <div class="area-card-icon">${sigla}</div>
+          <div>
+            <div class="area-card-nome">${area}</div>
+            <div class="area-card-info">
+              <span class="area-card-qtd">${eitos.length} eitos</span>
+              <div class="area-card-badges">
+                ${urgentes > 0 ? `<span class="area-badge dias-vermelho">${urgentes}</span>` : ''}
+                ${feitos > 0 ? `<span class="area-badge dias-verde">${feitos}✓</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="area-card-arrow">▶</span>
+      </div>
+      <div class="area-eitos">
+        <div class="eitos-grid" id="grid-${area.replace(/\s/g, '_')}"></div>
+      </div>
+    `;
+    wrap.appendChild(card);
+
+    // Preencher grid de eitos
+    const grid = card.querySelector('.eitos-grid');
+    eitos.forEach(eito => grid.appendChild(criarEitoBtn(area, eito, false)));
   });
+  el.appendChild(wrap);
 }
 
-function criarEitoItem(area, eito, isProgramado) {
+function criarEitoBtn(area, eito, isProgramado) {
   const k = chaveEito(area, eito.id);
   const feito = resultados[k];
   const dias = diasDesde(ultimaColheita[k]);
   const diasTxt = dias !== null ? dias + 'd' : '?';
 
   const div = document.createElement('div');
-  div.className = 'eito-item' + (feito ? ' concluido' : isProgramado ? ' programado' : '');
+  div.className = 'eito-btn' + (feito ? ' concluido' : isProgramado ? ' programado' : '');
   div.onclick = () => abrirContagem(area, eito);
 
   div.innerHTML = `
-    <div>
-      <div class="eito-area">${area}</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="eito-id">${eito.id}</div>
-        <div class="eito-meta">
-          <span class="dias-badge ${diasClass(dias)}">${diasTxt}</span>
-          <span class="eito-plantas">${eito.plantas}pl</span>
-        </div>
-      </div>
+    <div class="eito-btn-top">
+      <span class="eito-id">${eito.id}</span>
+      ${feito ? '<span class="eito-check">✅</span>' : ''}
     </div>
-    <div style="text-align:right">
-      ${feito ? `<div class="eito-status-icon">✅</div><div class="eito-resumo">${fmtN(feito.total)}</div>` : ''}
+    <div class="eito-btn-bottom">
+      <span class="dias-badge ${diasClass(dias)}">${diasTxt}</span>
+      <span class="eito-plantas">${eito.plantas}pl</span>
+      ${feito ? `<span class="eito-resultado">${fmtN(feito.total)}</span>` : ''}
     </div>
   `;
   return div;
 }
 
 function toggleArea(area) {
-  areasAbertas[area] = areasAbertas[area] === false ? true : false;
-  const grupoId = 'grp-' + area.replace(/\s/g, '_');
-  const grp = document.getElementById(grupoId);
-  if (grp) grp.classList.toggle('fechada');
-  const toggles = document.querySelectorAll(`.toggle[data-area="${area}"]`);
-  toggles.forEach(t => t.textContent = areasAbertas[area] !== false ? '▼' : '▶');
+  // Fechar outras areas (accordion)
+  Object.keys(todosEitos).forEach(a => {
+    if (a !== area) areasAbertas[a] = false;
+  });
+  areasAbertas[area] = !areasAbertas[area];
+  // Atualizar visual
+  document.querySelectorAll('.area-card').forEach(c => c.classList.remove('aberta'));
+  if (areasAbertas[area]) {
+    const cardEl = document.getElementById('card-' + area.replace(/\s/g, '_'));
+    if (cardEl) {
+      cardEl.classList.add('aberta');
+      // Scroll suave para o card
+      setTimeout(() => cardEl.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }
 }
 
 // ── CONTAGEM ──
