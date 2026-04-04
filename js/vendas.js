@@ -1467,14 +1467,15 @@ function calcSimulador(){
   if(qtde<=0){estEl.style.display='none';resEl.innerHTML='';return;}
 
   // Calcular média ml/fruto e kg/fruto das últimas cargas de fábrica
+  // Usa qtdeFabrica se disponível, senão qtde (vendas históricas)
   const vendas=loadVendas();
-  const fabVendas=vendas.filter(v=>v.tipoVenda==='litro'&&v.qtdeFabrica&&v.litragem&&v.pesoKg);
+  const fabVendas=vendas.filter(v=>v.tipoVenda==='litro'&&(v.qtdeFabrica||v.qtde)&&v.litragem&&v.pesoKg);
   let mediaMl=350, mediaKg=1.1; // defaults
   if(fabVendas.length>0){
     const ultimas=fabVendas.slice(-10);
-    const somaMl=ultimas.reduce((s,v)=>s+((v.litragem/((v.qtdeFabrica||v.qtde)+(v.fora||0)))*1000),0);
+    const somaMl=ultimas.reduce((s,v)=>{const q=(v.qtdeFabrica||v.qtde)+(v.fora||0);return s+(q>0?(v.litragem/q*1000):0);},0);
     mediaMl=Math.round(somaMl/ultimas.length);
-    const somaKg=ultimas.reduce((s,v)=>s+(v.pesoKg/(v.qtdeFabrica||v.qtde)),0);
+    const somaKg=ultimas.reduce((s,v)=>{const q=v.qtdeFabrica||v.qtde;return s+(q>0?(v.pesoKg/q):0);},0);
     mediaKg=somaKg/ultimas.length;
   }
 
