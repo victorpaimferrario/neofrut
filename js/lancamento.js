@@ -63,6 +63,7 @@ function initLancamento() {
   renderAreaBtns(window._lancAreaAtiva || 'todas');
   renderLancamento();
   if (localStorage.getItem(SK_RASCUNHO)) setTimeout(carregarRascunho, 120);
+  renderNadoCard();
 }
 
 function renderAreaBtns(areaAtiva) {
@@ -733,4 +734,300 @@ async function salvarVinculacaoClientes() {
   renderProjecao();
   closeModal('modal-vincular-clientes');
   showToast(`✓ ${count} colheita${count !== 1 ? 's' : ''} atualizada${count !== 1 ? 's' : ''}`);
+}
+
+// ═══════════════════════════════════
+// NADO CONTADOR — Preparar / Validar
+// ═══════════════════════════════════
+
+let _nadoPendentes = [];
+let _nadoSelPrep = new Set(); // eitos selecionados na preparação
+
+async function renderNadoCard() {
+  const card = document.getElementById('nado-card');
+  if (!card) return;
+  card.style.display = 'block';
+
+  try {
+    _nadoPendentes = await loadContagemsNado('pendente');
+  } catch(e) { _nadoPendentes = []; }
+
+  const badge = document.getElementById('nado-badge');
+  const btnPend = document.getElementById('nado-btn-pendentes');
+  if (_nadoPendentes.length > 0) {
+    badge.style.display = 'inline';
+    badge.textContent = _nadoPendentes.length + ' pendente' + (_nadoPendentes.length > 1 ? 's' : '');
+    btnPend.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+    btnPend.style.display = 'none';
+  }
+}
+
+// ── PREPARAR DIA ──
+
+function abrirPrepararDia() {
+  _nadoSelPrep = new Set();
+  document.getElementById('nado-prep-data').value = today();
+  renderPrepLista();
+  document.getElementById('modal-preparar-nado').classList.add('open');
+}
+
+function renderPrepLista() {
+  const el = document.getElementById('nado-prep-lista');
+  el.innerHTML = '';
+  const areas = Object.keys(DB);
+  areas.forEach(area => {
+    const eitos = DB[area] || [];
+    const secHtml = document.createElement('div');
+    secHtml.style.marginBottom = '12px';
+    let h = `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${area} (${eitos.length})</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+    eitos.forEach(e => {
+      const ult = getUltimaCompleta(e) || getUltima(e);
+      const dias = ult ? diasDesde(ult.data) : null;
+      const cls = dias === null ? 'vermelho' : dias >= 21 ? 'vermelho' : dias >= 15 ? 'amarelo' : 'verde';
+      const diasTxt = dias !== null ? dias + 'd' : '?';
+      const key = area + '||' + e.id;
+      const sel = _nadoSelPrep.has(key);
+      h += `<div onclick="togglePrepEito('${area}','${e.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:2px solid ${sel ? 'var(--verde)' : 'var(--border)'};border-radius:8px;cursor:pointer;background:${sel ? 'var(--verde-bg)' : 'var(--surface)'};user-select:none;font-size:12px" data-prep-key="${key}">
+        <span style="font-family:var(--font-mono);font-weight:700;color:var(--verde)">${e.id}</span>
+        <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:var(--${cls}-bg);color:var(--${cls})">${diasTxt}</span>
+      </div>`;
+    });
+    h += '</div>';
+    secHtml.innerHTML = h;
+    el.appendChild(secHtml);
+  });
+  atualizarPrepCount();
+}
+
+function togglePrepEito(area, eitoId) {
+  const key = area + '||' + eitoId;
+  if (_nadoSelPrep.has(key)) _nadoSelPrep.delete(key);
+  else _nadoSelPrep.add(key);
+  // Atualizar visual
+  const el = document.querySelector(`[data-prep-key="${key}"]`);
+  if (el) {
+    const sel = _nadoSelPrep.has(key);
+    el.style.borderColor = sel ? 'var(--verde)' : 'var(--border)';
+    el.style.background = sel ? 'var(--verde-bg)' : 'var(--surface)';
+  }
+  atualizarPrepCount();
+}
+
+function selecionarUrgentesNado() {
+  _nadoSelPrep = new Set();
+  Object.keys(DB).forEach(area => {
+    (DB[area] || []).forEach(e => {
+      const ult = getUltimaCompleta(e) || getUltima(e);
+      const dias = ult ? diasDesde(ult.data) : 999;
+      if (dias >= 21) _nadoSelPrep.add(area + '||' + e.id);
+    });
+  });
+  renderPrepLista();
+}
+
+function limparSelecaoNado() {
+  _nadoSelPrep = new Set();
+  renderPrepLista();
+}
+
+function atualizarPrepCount() {
+  const el = document.getElementById('nado-prep-count');
+  if (_nadoSelPrep.size === 0) el.textContent = 'Nenhum eito selecionado';
+  else el.innerHTML = `<strong style="color:var(--verde)">${_nadoSelPrep.size} eitos selecionados</strong>`;
+}
+
+async function salvarProgramacaoNadoUI() {
+  if (_nadoSelPrep.size === 0) { showToast('Selecione ao menos um eito'); return; }
+  const data = document.getElementById('nado-prep-data').value;
+  if (!data) { showToast('Informe a data'); return; }
+  // Salvar TODOS os eitos (não só selecionados) — Nado precisa de todos sem auth
+  const eitos = [];
+  Object.keys(DB).forEach(area => {
+    (DB[area] || []).forEach(e => {
+      const key = area + '||' + e.id;
+      const ult = getUltimaCompleta(e) || getUltima(e);
+      const dias = ult ? diasDesde(ult.data) : null;
+      eitos.push({
+        area, eito_id: e.id, plantas: e.plantas || 0,
+        sugerido: _nadoSelPrep.has(key),
+        dias_desde: dias
+      });
+    });
+  });
+  await salvarProgramacaoNado(data, eitos);
+  closeModal('modal-preparar-nado');
+}
+
+// ── VALIDAR CONTAGENS ──
+
+let _nadoValidacaoAberta = false;
+
+function toggleValidacaoNado() {
+  _nadoValidacaoAberta = !_nadoValidacaoAberta;
+  if (_nadoValidacaoAberta) renderValidacaoNado();
+  else document.getElementById('nado-validacao').style.display = 'none';
+}
+
+function renderValidacaoNado() {
+  const wrap = document.getElementById('nado-validacao');
+  if (_nadoPendentes.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  let totalMesa = 0, totalFab = 0;
+  _nadoPendentes.forEach(p => { totalMesa += (p.mesa||0); totalFab += (p.fabrica||0); });
+
+  let html = `<div style="background:var(--surface);border:2px solid var(--verde);border-radius:14px;padding:16px 20px">
+    <div style="font-size:14px;font-weight:800;color:var(--verde);margin-bottom:12px">Validar contagens do Nado</div>
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Data</div>
+        <input type="date" id="nado-val-data" value="${_nadoPendentes[0]?.data || today()}" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:13px">
+      </div>
+      <div style="flex:1;min-width:150px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Cliente</div>
+        <input list="dl-clientes-nado" id="nado-val-cliente" placeholder="Selecione o cliente" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;width:100%">
+        <datalist id="dl-clientes-nado">`;
+
+  // Popular clientes do MAPA_CLIENTES
+  if (typeof MAPA_CLIENTES !== 'undefined') {
+    Object.keys(MAPA_CLIENTES).forEach(c => { html += `<option value="${c}">`; });
+  }
+
+  html += `</datalist>
+      </div>
+    </div>`;
+
+  _nadoPendentes.forEach((p, i) => {
+    const total = (p.mesa||0) + (p.fabrica||0);
+    html += `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px" id="nado-val-row-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div>
+          <span style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">${p.area}</span>
+          <span style="font-size:15px;font-weight:900;color:var(--verde);margin-left:6px">Eito ${p.eito_id}</span>
+          <span id="nado-editado-${i}" style="display:none;font-size:9px;font-weight:700;color:#d97706;background:#fffbeb;padding:1px 6px;border-radius:8px;margin-left:6px">EDITADO</span>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:800" id="nado-val-total-${i}">${total} cocos</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+        <div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Mesa</div>
+          <input type="number" value="${p.mesa||0}" id="nado-val-mesa-${i}" data-orig="${p.mesa||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Fabrica</div>
+          <input type="number" value="${p.fabrica||0}" id="nado-val-fab-${i}" data-orig="${p.fabrica||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Total</div>
+          <input type="number" value="${total}" id="nado-val-tot-${i}" readonly style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center;background:var(--surface2);color:var(--muted)">
+        </div>
+        <div>
+          <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Parcial</div>
+          <input type="checkbox" id="nado-val-parcial-${i}" style="width:20px;height:20px;cursor:pointer">
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0;text-align:center">
+      <div style="background:var(--surface);border-radius:8px;padding:10px"><div style="font-size:9px;text-transform:uppercase;font-weight:700;color:var(--muted)">Total</div><div style="font-size:20px;font-weight:900;color:var(--verde)" id="nado-kpi-total">${fmtNum(totalMesa+totalFab)}</div></div>
+      <div style="background:var(--surface);border-radius:8px;padding:10px"><div style="font-size:9px;text-transform:uppercase;font-weight:700;color:var(--muted)">Mesa</div><div style="font-size:20px;font-weight:900;color:var(--verde)" id="nado-kpi-mesa">${fmtNum(totalMesa)}</div></div>
+      <div style="background:var(--surface);border-radius:8px;padding:10px"><div style="font-size:9px;text-transform:uppercase;font-weight:700;color:var(--muted)">Fabrica</div><div style="font-size:20px;font-weight:900;color:var(--verde)" id="nado-kpi-fab">${fmtNum(totalFab)}</div></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="confirmarContagemNado()" style="flex:1">Confirmar e lancar</button>
+      <button class="btn btn-outline" onclick="toggleValidacaoNado()">Fechar</button>
+    </div>
+  </div>`;
+  wrap.innerHTML = html;
+}
+
+function onEditNado(i) {
+  const m = parseInt(document.getElementById(`nado-val-mesa-${i}`).value) || 0;
+  const f = parseInt(document.getElementById(`nado-val-fab-${i}`).value) || 0;
+  document.getElementById(`nado-val-tot-${i}`).value = m + f;
+  document.getElementById(`nado-val-total-${i}`).textContent = (m + f) + ' cocos';
+
+  const origM = parseInt(document.getElementById(`nado-val-mesa-${i}`).dataset.orig) || 0;
+  const origF = parseInt(document.getElementById(`nado-val-fab-${i}`).dataset.orig) || 0;
+  const editou = (m !== origM || f !== origF);
+  document.getElementById(`nado-editado-${i}`).style.display = editou ? 'inline' : 'none';
+
+  // Atualizar KPIs
+  let tMesa = 0, tFab = 0;
+  _nadoPendentes.forEach((_, j) => {
+    tMesa += parseInt(document.getElementById(`nado-val-mesa-${j}`).value) || 0;
+    tFab += parseInt(document.getElementById(`nado-val-fab-${j}`).value) || 0;
+  });
+  document.getElementById('nado-kpi-total').textContent = fmtNum(tMesa + tFab);
+  document.getElementById('nado-kpi-mesa').textContent = fmtNum(tMesa);
+  document.getElementById('nado-kpi-fab').textContent = fmtNum(tFab);
+}
+
+async function confirmarContagemNado() {
+  const data = document.getElementById('nado-val-data').value;
+  const cliente = document.getElementById('nado-val-cliente').value.trim();
+  if (!data) { showToast('Informe a data'); return; }
+
+  const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const idsConfirmados = [];
+  let count = 0;
+
+  for (let i = 0; i < _nadoPendentes.length; i++) {
+    const p = _nadoPendentes[i];
+    const mesa = parseInt(document.getElementById(`nado-val-mesa-${i}`).value) || 0;
+    const fab = parseInt(document.getElementById(`nado-val-fab-${i}`).value) || 0;
+    const total = mesa + fab;
+    const parcial = document.getElementById(`nado-val-parcial-${i}`).checked;
+    if (total === 0) continue;
+
+    // Encontrar eito no DB
+    const area = p.area;
+    const eitoId = p.eito_id;
+    const eito = (DB[area] || []).find(e => e.id === eitoId);
+    if (!eito) continue;
+
+    // Verificar parcial pendente para merge
+    const pend = getParcialPendente(eito);
+    if (pend && !parcial) {
+      const mergedTotal = pend.total + total;
+      const mergedMesa = (pend.mesa || 0) + mesa;
+      const mergedFab = (pend.fabrica || 0) + fab;
+      // Remover parcial antigo
+      if (pend._id) {
+        try { await _SB.from('colheitas').delete().eq('id', pend._id); } catch(e) {}
+      }
+      eito.historico = eito.historico.filter(h => h !== pend);
+      eito.historico.push({ data, total: mergedTotal, mesa: mergedMesa, fabrica: mergedFab, cliente, lancamento_id: lancId });
+    } else {
+      const entry = { data, total, mesa, fabrica: fab, cliente, lancamento_id: lancId };
+      if (parcial) entry.parcial = true;
+      eito.historico.push(entry);
+    }
+
+    // Salvar no Supabase
+    const colheita = { data, total: parcial ? total : (pend && !parcial ? (pend.total||0)+total : total), mesa: parcial ? mesa : (pend && !parcial ? (pend.mesa||0)+mesa : mesa), fabrica: parcial ? fab : (pend && !parcial ? (pend.fabrica||0)+fab : fab), cliente, lancamento_id: lancId };
+    if (parcial) colheita.parcial = true;
+    await salvarColheitaSupabase(area, eitoId, colheita);
+
+    idsConfirmados.push(p.id);
+    count++;
+  }
+
+  // Marcar como confirmado
+  if (idsConfirmados.length > 0) {
+    await atualizarStatusNado(idsConfirmados, 'confirmado');
+  }
+
+  await saveData();
+  _nadoValidacaoAberta = false;
+  document.getElementById('nado-validacao').style.display = 'none';
+  renderNadoCard();
+  renderLancamento();
+  renderDashboard();
+  showToast(`✓ ${count} eito${count > 1 ? 's' : ''} lancado${count > 1 ? 's' : ''} do Nado`);
 }

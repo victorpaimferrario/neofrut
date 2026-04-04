@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neofrut Campo</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a5c1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="logo.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --verde:#1a5c1a; --verde2:#2a7a2a; --verde-bg:#e8f5e0;
+  --amarelo:#f59e0b; --amarelo-bg:#fffbeb;
+  --vermelho:#dc2626; --vermelho-bg:#fef2f2;
+  --cinza:#6b7280; --borda:#d1d5db; --bg:#f0f7ec;
+  --branco:#fff; --texto:#111827; --muted:#6b7280;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;max-width:430px;margin:0 auto;padding-bottom:40px;-webkit-user-select:none;user-select:none}
+
+/* TOPO */
+.topo{background:var(--verde);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.topo-logo{font-size:17px;font-weight:900}
+.topo-data{font-size:11px;opacity:.7;margin-top:2px}
+.sync-badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px}
+.sync-badge.offline{background:rgba(255,255,255,.15);color:#fff}
+.sync-badge.online{background:#22c55e;color:#fff}
+.sync-badge.enviado{background:#3b82f6;color:#fff}
+.sync-badge.enviando{background:var(--amarelo);color:#fff}
+
+/* PROGRESS */
+.progress-wrap{background:var(--branco);padding:12px 20px;border-bottom:1px solid var(--borda)}
+.progress-info{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px}
+.progress-info strong{color:var(--verde);font-size:13px}
+.progress-bar{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;background:var(--verde);border-radius:4px;transition:width .3s}
+
+/* TELA INICIO */
+.sec-titulo{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:20px 20px 10px;display:flex;align-items:center;justify-content:space-between}
+.sec-titulo .toggle{font-size:18px;cursor:pointer;color:var(--verde);padding:4px 8px}
+
+.eito-item{background:var(--branco);border:2px solid var(--borda);border-radius:14px;padding:14px 16px;margin:0 20px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .12s}
+.eito-item:active{transform:scale(.98)}
+.eito-item.concluido{border-color:var(--verde);background:var(--verde-bg)}
+.eito-item.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
+.eito-area{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+.eito-id{font-size:20px;font-weight:900;color:var(--verde)}
+.eito-meta{display:flex;align-items:center;gap:6px}
+.eito-plantas{font-size:10px;color:var(--muted);font-weight:600}
+.dias-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;font-variant-numeric:tabular-nums}
+.dias-verde{background:var(--verde-bg);color:var(--verde)}
+.dias-amarelo{background:var(--amarelo-bg);color:var(--amarelo)}
+.dias-vermelho{background:var(--vermelho-bg);color:var(--vermelho)}
+.eito-status-icon{font-size:24px}
+.eito-resumo{font-size:10px;color:var(--verde);font-weight:700;text-align:right;margin-top:2px}
+
+/* Area colapsavel */
+.area-group{margin-bottom:4px}
+.area-group.fechada .eito-item{display:none}
+
+/* TELA CONTAGEM */
+#tela-contagem{display:none;padding:20px}
+.eito-header{background:var(--verde);color:#fff;border-radius:16px;padding:18px;text-align:center;margin-bottom:20px}
+.eito-header-area{font-size:11px;opacity:.7;text-transform:uppercase;margin-bottom:2px}
+.eito-header-id{font-size:40px;font-weight:900;line-height:1}
+.eito-header-plantas{font-size:12px;opacity:.7;margin-top:4px}
+
+.campo-wrap{background:var(--branco);border:2px solid var(--borda);border-radius:16px;padding:18px;margin-bottom:14px}
+.campo-label{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.campo-dot{width:10px;height:10px;border-radius:50%}
+.campo-dot.mesa{background:var(--verde)}
+.campo-dot.fabrica{background:var(--amarelo)}
+.campo-input{width:100%;font-size:52px;font-weight:900;color:var(--texto);border:none;outline:none;text-align:center;background:transparent;padding:6px 0;-webkit-appearance:none}
+.campo-input::placeholder{color:#d1d5db}
+.campo-input:focus{color:var(--verde)}
+.campo-ajuste{display:flex;align-items:center;gap:6px;margin-top:12px}
+.btn-aj{flex:1;padding:11px 4px;border:2px solid var(--borda);border-radius:10px;background:var(--bg);font-size:17px;font-weight:800;color:var(--verde);cursor:pointer;text-align:center}
+.btn-aj:active{background:var(--verde-bg);transform:scale(.96)}
+.btn-aj.minus{color:var(--vermelho)}
+.btn-aj-label{font-size:10px;color:var(--muted);text-align:center;font-weight:700;flex:0 0 40px}
+
+.total-box{background:#f9fafb;border:2px solid var(--borda);border-radius:16px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.total-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.total-val{font-size:30px;font-weight:900;color:var(--texto)}
+
+.btn-grande{display:block;width:100%;padding:16px;background:var(--verde);color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:800;cursor:pointer;text-align:center;transition:all .12s}
+.btn-grande:active{background:var(--verde2);transform:scale(.98)}
+.btn-grande.sec{background:var(--branco);color:var(--verde);border:2px solid var(--verde);font-size:14px;padding:13px}
+
+/* TELA RESUMO */
+#tela-resumo{display:none;padding:20px}
+.resumo-header{text-align:center;padding:20px 0 16px}
+.resumo-icon{font-size:48px;margin-bottom:6px}
+.resumo-titulo{font-size:20px;font-weight:900;color:var(--verde)}
+.resumo-sub{font-size:13px;color:var(--muted)}
+
+.resumo-card{background:var(--branco);border:2px solid var(--borda);border-radius:14px;overflow:hidden;margin-bottom:10px}
+.resumo-card-header{background:var(--verde-bg);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--borda)}
+.resumo-card-area{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.resumo-card-id{font-size:16px;font-weight:900;color:var(--verde)}
+.resumo-card-body{padding:12px 14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center}
+.r-label{font-size:9px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:2px}
+.r-val{font-size:20px;font-weight:900}
+.r-val.verde{color:var(--verde)}
+.r-val.amar{color:var(--amarelo)}
+
+.total-dia-box{background:var(--verde);color:#fff;border-radius:14px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.total-dia-label{font-size:12px;opacity:.8;font-weight:700;text-transform:uppercase}
+.total-dia-val{font-size:32px;font-weight:900}
+
+.sync-status{text-align:center;font-size:12px;color:var(--muted);padding:8px 10px 16px;line-height:1.5}
+.btn-grande.enviar{background:#25D366}
+.btn-grande.enviar:active{background:#1da851}
+
+@keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .3s ease forwards}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div>
+    <div class="topo-logo">Neofrut Campo</div>
+    <div class="topo-data" id="topo-data"></div>
+  </div>
+  <div class="sync-badge offline" id="sync-badge">OFFLINE</div>
+</div>
+
+<div class="progress-wrap" id="progress-wrap" style="display:none">
+  <div class="progress-info">
+    <span>Progresso</span>
+    <strong id="progress-txt">0 / 0</strong>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+</div>
+
+<!-- TELA INICIO -->
+<div id="tela-inicio">
+  <div id="lista-eitos"></div>
+  <div id="sem-eitos" style="display:none;text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">
+    Nenhum eito carregado.<br>Conecte ao Wi-Fi para sincronizar.
+  </div>
+</div>
+
+<!-- TELA CONTAGEM -->
+<div id="tela-contagem">
+  <div class="eito-header">
+    <div class="eito-header-area" id="cnt-area"></div>
+    <div class="eito-header-id" id="cnt-id"></div>
+    <div class="eito-header-plantas" id="cnt-plantas"></div>
+  </div>
+  <div class="campo-wrap">
+    <div class="campo-label"><span class="campo-dot mesa"></span> Mesa</div>
+    <input class="campo-input" type="number" id="inp-mesa" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
+    <div class="campo-ajuste">
+      <button class="btn-aj minus" onclick="aj('mesa',-100)">-100</button>
+      <button class="btn-aj minus" onclick="aj('mesa',-10)">-10</button>
+      <button class="btn-aj minus" onclick="aj('mesa',-1)">-1</button>
+      <span class="btn-aj-label">MESA</span>
+      <button class="btn-aj" onclick="aj('mesa',1)">+1</button>
+      <button class="btn-aj" onclick="aj('mesa',10)">+10</button>
+      <button class="btn-aj" onclick="aj('mesa',100)">+100</button>
+    </div>
+  </div>
+  <div class="campo-wrap">
+    <div class="campo-label"><span class="campo-dot fabrica"></span> Fabrica</div>
+    <input class="campo-input" type="number" id="inp-fabrica" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
+    <div class="campo-ajuste">
+      <button class="btn-aj minus" onclick="aj('fab',-100)">-100</button>
+      <button class="btn-aj minus" onclick="aj('fab',-10)">-10</button>
+      <button class="btn-aj minus" onclick="aj('fab',-1)">-1</button>
+      <span class="btn-aj-label">FABR.</span>
+      <button class="btn-aj" onclick="aj('fab',1)">+1</button>
+      <button class="btn-aj" onclick="aj('fab',10)">+10</button>
+      <button class="btn-aj" onclick="aj('fab',100)">+100</button>
+    </div>
+  </div>
+  <div class="total-box">
+    <span class="total-label">Total do eito</span>
+    <span class="total-val" id="total-eito">0</span>
+  </div>
+  <button class="btn-grande" onclick="confirmarEito()">CONFIRMAR EITO</button>
+  <button class="btn-grande sec" onclick="voltarInicio()" style="margin-top:10px">Voltar</button>
+</div>
+
+<!-- TELA RESUMO -->
+<div id="tela-resumo">
+  <div class="resumo-header">
+    <div class="resumo-icon pop">✅</div>
+    <div class="resumo-titulo">Contagem do dia</div>
+    <div class="resumo-sub" id="resumo-sub"></div>
+  </div>
+  <div id="resumo-lista"></div>
+  <div class="total-dia-box">
+    <span class="total-dia-label">Total do dia</span>
+    <span class="total-dia-val" id="total-dia">0</span>
+  </div>
+  <div class="sync-status" id="sync-status">Verificando conexao...</div>
+  <button class="btn-grande enviar" onclick="tentarSync()">Enviar agora</button>
+  <button class="btn-grande sec" onclick="voltarDoResumo()" style="margin-top:10px">Voltar para eitos</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const SB_URL = 'https://gdskveecuarclajuchfx.supabase.co';
+const SB_KEY = 'sb_publishable_ocksk4S_Gw9cAXCZSHtFmw_l0IqAERL';
+const _SB = supabase.createClient(SB_URL, SB_KEY);
+
+const SK_EITOS = 'nado_eitos_cache';
+const SK_COLHEITAS = 'nado_colheitas_cache';
+const SK_PROG = 'nado_programacao_cache';
+const SK_RESULTADOS = 'nado_resultados';
+const SK_FILA = 'nado_fila_envio';
+
+// ── ESTADO ──
+let todosEitos = {};      // {area: [{id, plantas}]}
+let ultimaColheita = {};  // {"AREA-eito": "YYYY-MM-DD"}
+let programados = [];     // [{area, eito_id}]
+let resultados = {};      // {"AREA||eito": {area,id,mesa,fabrica,total,hora,data}}
+let filaEnvio = [];       // resultados aguardando sync
+let eitoAtual = null;     // {area, id, plantas}
+let wakeLock = null;
+let areasAbertas = {};    // controle de collapse
+
+// ── UTILS ──
+function hoje() { return new Date().toISOString().split('T')[0]; }
+function fmtData() {
+  const d = new Date();
+  const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+function fmtN(n) { return (n||0).toLocaleString('pt-BR'); }
+function gVal(id) { return parseInt(document.getElementById(id).value) || 0; }
+function diasDesde(data) {
+  if (!data) return null;
+  const d = new Date(data+'T00:00:00'), h = new Date(); h.setHours(0,0,0,0);
+  return Math.floor((h-d)/86400000);
+}
+function diasClass(dias) {
+  if (dias === null) return 'dias-vermelho';
+  if (dias >= 21) return 'dias-vermelho';
+  if (dias >= 15) return 'dias-amarelo';
+  return 'dias-verde';
+}
+function calcDataFromDias(dias) {
+  if (dias == null) return null;
+  const d = new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - dias);
+  return d.toISOString().split('T')[0];
+}
+function chaveEito(area, id) { return area + '||' + id; }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── SYNC SUPABASE ──
+async function sincronizarDados() {
+  if (!navigator.onLine) return false;
+  try {
+    atualizarSyncBadge('enviando');
+
+    // 1. Carregar eitos da nado_programacao (sem RLS, Jamille popula com todos os eitos)
+    // Buscar data mais recente disponível (pode ser hoje ou data anterior)
+    const { data: progAll } = await _SB.from('nado_programacao')
+      .select('area,eito_id,plantas,sugerido,dias_desde,data')
+      .order('data', { ascending: false });
+
+    if (progAll && progAll.length > 0) {
+      // Pegar dados da data mais recente
+      const dataRecente = progAll[0].data;
+      const progHoje = progAll.filter(p => p.data === dataRecente);
+
+      todosEitos = {};
+      programados = [];
+      progHoje.forEach(e => {
+        if (!todosEitos[e.area]) todosEitos[e.area] = [];
+        if (!todosEitos[e.area].find(x => x.id === e.eito_id)) {
+          todosEitos[e.area].push({ id: e.eito_id, plantas: e.plantas || 0 });
+        }
+        // Sugeridos
+        if (e.sugerido) programados.push({ area: e.area, eito_id: e.eito_id });
+        // Dias desde ultima colheita
+        if (e.dias_desde != null) {
+          ultimaColheita[chaveEito(e.area, e.eito_id)] = calcDataFromDias(e.dias_desde);
+        }
+      });
+      localStorage.setItem(SK_PROG, JSON.stringify({ data: hoje(), items: programados }));
+    } else {
+      // Fallback: tentar tabela eitos (requer auth)
+      try {
+        const { data: eitosDb } = await _SB.from('eitos').select('area,eito_id,plantas');
+        if (eitosDb && eitosDb.length > 0) {
+          todosEitos = {};
+          eitosDb.forEach(e => {
+            if (!todosEitos[e.area]) todosEitos[e.area] = [];
+            todosEitos[e.area].push({ id: e.eito_id, plantas: e.plantas || 0 });
+          });
+        }
+      } catch(e) {} // Sem auth, usa cache local
+    }
+
+    // Ordenar numericamente
+    Object.values(todosEitos).forEach(arr => arr.sort((a, b) => {
+      const na = parseInt(a.id.replace(/\D.*/, '')) || 0;
+      const nb = parseInt(b.id.replace(/\D.*/, '')) || 0;
+      return na - nb;
+    }));
+    if (Object.keys(todosEitos).length > 0) {
+      localStorage.setItem(SK_EITOS, JSON.stringify(todosEitos));
+      localStorage.setItem(SK_COLHEITAS, JSON.stringify(ultimaColheita));
+    }
+
+    // 4. Enviar fila pendente
+    await enviarFila();
+
+    atualizarSyncBadge('online');
+    return true;
+  } catch (e) {
+    console.error('Sync erro:', e);
+    atualizarSyncBadge('offline');
+    return false;
+  }
+}
+
+async function enviarFila() {
+  if (filaEnvio.length === 0) return;
+  atualizarSyncBadge('enviando');
+  const enviados = [];
+  for (const r of filaEnvio) {
+    try {
+      const { error } = await _SB.from('nado_contagens').upsert({
+        data: r.data, area: r.area, eito_id: r.id,
+        mesa: r.mesa, fabrica: r.fabrica, total: r.total,
+        hora: r.hora, status: 'pendente'
+      }, { onConflict: 'data,area,eito_id' });
+      if (!error) enviados.push(r);
+    } catch (e) { console.error('Envio erro:', e); }
+  }
+  filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
+  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  if (filaEnvio.length === 0 && enviados.length > 0) {
+    atualizarSyncBadge('enviado');
+    toast('Dados enviados!');
+  }
+}
+
+async function tentarSync() {
+  if (!navigator.onLine) { toast('Sem conexao'); return; }
+  await enviarFila();
+  atualizarSyncStatus();
+}
+
+// ── CARREGAR CACHE LOCAL ──
+function carregarCache() {
+  try { todosEitos = JSON.parse(localStorage.getItem(SK_EITOS)) || {}; } catch(e) {}
+  try { ultimaColheita = JSON.parse(localStorage.getItem(SK_COLHEITAS)) || {}; } catch(e) {}
+  try {
+    const p = JSON.parse(localStorage.getItem(SK_PROG));
+    programados = (p && p.data === hoje()) ? p.items : [];
+  } catch(e) { programados = []; }
+  try { resultados = JSON.parse(localStorage.getItem(SK_RESULTADOS)) || {}; } catch(e) { resultados = {}; }
+  // Limpar resultados de outros dias
+  const h = hoje();
+  Object.keys(resultados).forEach(k => { if (resultados[k].data !== h) delete resultados[k]; });
+  try { filaEnvio = JSON.parse(localStorage.getItem(SK_FILA)) || []; } catch(e) { filaEnvio = []; }
+}
+
+function salvarResultados() {
+  localStorage.setItem(SK_RESULTADOS, JSON.stringify(resultados));
+}
+
+// ── BADGE SYNC ──
+function atualizarSyncBadge(estado) {
+  const el = document.getElementById('sync-badge');
+  el.className = 'sync-badge ' + estado;
+  const labels = { offline: 'OFFLINE', online: 'ONLINE', enviado: 'ENVIADO', enviando: 'ENVIANDO...' };
+  el.textContent = labels[estado] || estado;
+}
+
+function atualizarSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (filaEnvio.length === 0 && Object.keys(resultados).length > 0) {
+    el.innerHTML = '✅ Todos os dados foram enviados';
+    atualizarSyncBadge('enviado');
+  } else if (filaEnvio.length > 0) {
+    el.innerHTML = `⏳ ${filaEnvio.length} eito(s) aguardando envio`;
+    atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
+  } else {
+    el.innerHTML = 'Nenhuma contagem realizada';
+    atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
+  }
+}
+
+// ── RENDER LISTA ──
+function renderLista() {
+  const el = document.getElementById('lista-eitos');
+  el.innerHTML = '';
+  const areas = Object.keys(todosEitos);
+  if (areas.length === 0) { document.getElementById('sem-eitos').style.display = 'block'; return; }
+  document.getElementById('sem-eitos').style.display = 'none';
+
+  const totalEitos = areas.reduce((s, a) => s + todosEitos[a].length, 0);
+  const contados = Object.keys(resultados).length;
+
+  // Progresso
+  if (contados > 0) {
+    document.getElementById('progress-wrap').style.display = 'block';
+    document.getElementById('progress-txt').textContent = `${contados} contado${contados>1?'s':''}`;
+    document.getElementById('progress-fill').style.width = `${Math.min(100,(contados/Math.max(1,programados.length||contados))*100)}%`;
+  }
+
+  // Programados no topo
+  if (programados.length > 0) {
+    const titulo = document.createElement('div');
+    titulo.className = 'sec-titulo';
+    titulo.innerHTML = `PROGRAMADOS HOJE (${programados.length})`;
+    el.appendChild(titulo);
+    programados.forEach(p => {
+      const area = p.area;
+      const eito = (todosEitos[area] || []).find(e => e.id === p.eito_id);
+      if (!eito) return;
+      el.appendChild(criarEitoItem(area, eito, true));
+    });
+  }
+
+  // Todas as areas
+  areas.forEach(area => {
+    const eitos = todosEitos[area];
+    const grupoId = 'grp-' + area.replace(/\s/g, '_');
+    const aberta = areasAbertas[area] !== false; // default aberta
+
+    const titulo = document.createElement('div');
+    titulo.className = 'sec-titulo';
+    titulo.innerHTML = `${area} (${eitos.length}) <span class="toggle" data-area="${area}" onclick="toggleArea('${area}')">${aberta ? '▼' : '▶'}</span>`;
+    el.appendChild(titulo);
+
+    const grupo = document.createElement('div');
+    grupo.className = 'area-group' + (aberta ? '' : ' fechada');
+    grupo.id = grupoId;
+    eitos.forEach(eito => grupo.appendChild(criarEitoItem(area, eito, false)));
+    el.appendChild(grupo);
+  });
+}
+
+function criarEitoItem(area, eito, isProgramado) {
+  const k = chaveEito(area, eito.id);
+  const feito = resultados[k];
+  const dias = diasDesde(ultimaColheita[k]);
+  const diasTxt = dias !== null ? dias + 'd' : '?';
+
+  const div = document.createElement('div');
+  div.className = 'eito-item' + (feito ? ' concluido' : isProgramado ? ' programado' : '');
+  div.onclick = () => abrirContagem(area, eito);
+
+  div.innerHTML = `
+    <div>
+      <div class="eito-area">${area}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="eito-id">${eito.id}</div>
+        <div class="eito-meta">
+          <span class="dias-badge ${diasClass(dias)}">${diasTxt}</span>
+          <span class="eito-plantas">${eito.plantas}pl</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right">
+      ${feito ? `<div class="eito-status-icon">✅</div><div class="eito-resumo">${fmtN(feito.total)}</div>` : ''}
+    </div>
+  `;
+  return div;
+}
+
+function toggleArea(area) {
+  areasAbertas[area] = areasAbertas[area] === false ? true : false;
+  const grupoId = 'grp-' + area.replace(/\s/g, '_');
+  const grp = document.getElementById(grupoId);
+  if (grp) grp.classList.toggle('fechada');
+  const toggles = document.querySelectorAll(`.toggle[data-area="${area}"]`);
+  toggles.forEach(t => t.textContent = areasAbertas[area] !== false ? '▼' : '▶');
+}
+
+// ── CONTAGEM ──
+function abrirContagem(area, eito) {
+  eitoAtual = { area, ...eito };
+  const k = chaveEito(area, eito.id);
+  const existente = resultados[k];
+
+  document.getElementById('cnt-area').textContent = area;
+  document.getElementById('cnt-id').textContent = 'Eito ' + eito.id;
+  document.getElementById('cnt-plantas').textContent = eito.plantas + ' plantas';
+  document.getElementById('inp-mesa').value = existente ? existente.mesa : '';
+  document.getElementById('inp-fabrica').value = existente ? existente.fabrica : '';
+  atualizarTotal();
+
+  document.getElementById('tela-inicio').style.display = 'none';
+  document.getElementById('tela-contagem').style.display = 'block';
+  window.scrollTo(0, 0);
+  ativarWakeLock();
+}
+
+function atualizarTotal() {
+  document.getElementById('total-eito').textContent = fmtN(gVal('inp-mesa') + gVal('inp-fabrica'));
+}
+['inp-mesa','inp-fabrica'].forEach(id => {
+  document.getElementById(id).addEventListener('input', atualizarTotal);
+});
+
+function aj(campo, val) {
+  const id = campo === 'mesa' ? 'inp-mesa' : 'inp-fabrica';
+  const el = document.getElementById(id);
+  el.value = Math.max(0, (parseInt(el.value) || 0) + val);
+  atualizarTotal();
+}
+
+function confirmarEito() {
+  const mesa = gVal('inp-mesa'), fab = gVal('inp-fabrica');
+  if (mesa + fab === 0) { toast('Preencha mesa ou fabrica'); return; }
+
+  const k = chaveEito(eitoAtual.area, eitoAtual.id);
+  const agora = new Date();
+  const resultado = {
+    area: eitoAtual.area, id: eitoAtual.id,
+    mesa, fabrica: fab, total: mesa + fab,
+    data: hoje(),
+    hora: agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0')
+  };
+  resultados[k] = resultado;
+  salvarResultados();
+
+  // Adicionar a fila de envio
+  filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
+  filaEnvio.push(resultado);
+  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+
+  // Tentar enviar imediatamente se online
+  if (navigator.onLine) enviarFila();
+
+  // Vibrar
+  if (navigator.vibrate) navigator.vibrate(100);
+
+  toast('Eito ' + eitoAtual.id + ' confirmado');
+  voltarInicio();
+}
+
+function voltarInicio() {
+  desativarWakeLock();
+  document.getElementById('tela-contagem').style.display = 'none';
+  document.getElementById('tela-resumo').style.display = 'none';
+  document.getElementById('tela-inicio').style.display = 'block';
+  renderLista();
+  window.scrollTo(0, 0);
+}
+
+// ── RESUMO ──
+function mostrarResumo() {
+  const lista = document.getElementById('resumo-lista');
+  lista.innerHTML = '';
+  let totalDia = 0;
+  const vals = Object.values(resultados);
+  if (vals.length === 0) { toast('Nenhuma contagem'); return; }
+
+  vals.forEach(r => {
+    totalDia += r.total;
+    const div = document.createElement('div');
+    div.className = 'resumo-card';
+    div.innerHTML = `
+      <div class="resumo-card-header">
+        <span class="resumo-card-area">${r.area}</span>
+        <span class="resumo-card-id">Eito ${r.id}</span>
+      </div>
+      <div class="resumo-card-body">
+        <div><div class="r-label">Mesa</div><div class="r-val verde">${fmtN(r.mesa)}</div></div>
+        <div><div class="r-label">Fabrica</div><div class="r-val amar">${fmtN(r.fabrica)}</div></div>
+        <div><div class="r-label">Total</div><div class="r-val">${fmtN(r.total)}</div></div>
+      </div>
+    `;
+    lista.appendChild(div);
+  });
+  document.getElementById('total-dia').textContent = fmtN(totalDia);
+  document.getElementById('resumo-sub').textContent = vals.length + ' eitos contados';
+  atualizarSyncStatus();
+
+  document.getElementById('tela-inicio').style.display = 'none';
+  document.getElementById('tela-contagem').style.display = 'none';
+  document.getElementById('tela-resumo').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function voltarDoResumo() { voltarInicio(); }
+
+// ── WAKE LOCK ──
+async function ativarWakeLock() {
+  try {
+    if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+  } catch(e) {}
+}
+function desativarWakeLock() {
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+
+// ── ONLINE/OFFLINE LISTENERS ──
+window.addEventListener('online', () => {
+  atualizarSyncBadge('online');
+  if (filaEnvio.length > 0) enviarFila();
+});
+window.addEventListener('offline', () => atualizarSyncBadge('offline'));
+
+// ── BOTAO RESUMO (adicionar dinamicamente) ──
+function addBtnResumo() {
+  const contados = Object.keys(resultados).length;
+  if (contados === 0) return;
+  const existing = document.getElementById('btn-ver-resumo');
+  if (existing) existing.remove();
+  const btn = document.createElement('div');
+  btn.id = 'btn-ver-resumo';
+  btn.style.cssText = 'padding:10px 20px 0';
+  btn.innerHTML = `<button class="btn-grande sec" onclick="mostrarResumo()" style="font-size:13px;padding:12px">Ver resumo do dia (${contados} eitos)</button>`;
+  document.getElementById('lista-eitos').appendChild(btn);
+}
+
+// ── INIT ──
+document.getElementById('topo-data').textContent = fmtData();
+carregarCache();
+renderLista();
+addBtnResumo();
+atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
+
+// Sync ao iniciar
+if (navigator.onLine) sincronizarDados().then(() => { renderLista(); addBtnResumo(); });
+
+// Retry a cada 30s
+setInterval(() => {
+  if (navigator.onLine && filaEnvio.length > 0) enviarFila();
+}, 30000);
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
