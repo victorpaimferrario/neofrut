@@ -423,7 +423,9 @@ function atualizarSyncStatus() {
 function renderLista() {
   const el = document.getElementById('lista-eitos');
   el.innerHTML = '';
-  const areas = Object.keys(todosEitos);
+  const ordemAreas = ['AREA A1','AREA C','AREA D','AREA A2','MAMÃO DE CIMA','MAMÃO DE BAIXO','MARACUJÁ'];
+  const areasExistentes = Object.keys(todosEitos);
+  const areas = ordemAreas.filter(a => areasExistentes.includes(a)).concat(areasExistentes.filter(a => !ordemAreas.includes(a)));
   if (areas.length === 0) { document.getElementById('sem-eitos').style.display = 'block'; return; }
   document.getElementById('sem-eitos').style.display = 'none';
 
