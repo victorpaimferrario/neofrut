@@ -1460,94 +1460,206 @@ async function salvarCliente() {
 
 // ─── SIMULADOR DE CARGA ───
 
-function calcSimulador(){
-  const qtde=parseInt(document.getElementById('sim-qtde')?.value)||0;
-  const estEl=document.getElementById('sim-estimativa');
-  const resEl=document.getElementById('sim-resultado');
-  if(qtde<=0){estEl.style.display='none';resEl.innerHTML='';return;}
+window._simCenarios = [];
+window._simMedias = { mediaMl: 350, mediaKg: 1.1, temHistorico: false, nCargas: 0 };
 
-  // Calcular média ml/fruto e kg/fruto das últimas cargas de fábrica
-  // Usa qtdeFabrica se disponível, senão qtde (vendas históricas)
-  const vendas=loadVendas();
-  const fabVendas=vendas.filter(v=>v.tipoVenda==='litro'&&(v.qtdeFabrica||v.qtde)&&v.litragem&&v.pesoKg);
-  let mediaMl=350, mediaKg=1.1; // defaults
-  if(fabVendas.length>0){
-    const ultimas=fabVendas.slice(-10);
-    const somaMl=ultimas.reduce((s,v)=>{const q=(v.qtdeFabrica||v.qtde)+(v.fora||0);return s+(q>0?(v.litragem/q*1000):0);},0);
-    mediaMl=Math.round(somaMl/ultimas.length);
-    const somaKg=ultimas.reduce((s,v)=>{const q=v.qtdeFabrica||v.qtde;return s+(q>0?(v.pesoKg/q):0);},0);
-    mediaKg=somaKg/ultimas.length;
+function _calcMediasFabrica() {
+  const vendas = loadVendas();
+  const fabVendas = vendas.filter(v => v.tipoVenda === 'litro' && (v.qtdeFabrica || v.qtde) && v.litragem && v.pesoKg);
+  let mediaMl = 350, mediaKg = 1.1;
+  if (fabVendas.length > 0) {
+    const ultimas = fabVendas.slice(-10);
+    const somaMl = ultimas.reduce((s, v) => { const q = (v.qtdeFabrica || v.qtde) + (v.fora || 0); return s + (q > 0 ? (v.litragem / q * 1000) : 0); }, 0);
+    mediaMl = Math.round(somaMl / ultimas.length);
+    const somaKg = ultimas.reduce((s, v) => { const q = v.qtdeFabrica || v.qtde; return s + (q > 0 ? (v.pesoKg / q) : 0); }, 0);
+    mediaKg = somaKg / ultimas.length;
+  }
+  window._simMedias = { mediaMl, mediaKg, temHistorico: fabVendas.length > 0, nCargas: Math.min(fabVendas.length, 10) };
+}
+
+function adicionarCenario() {
+  const mapa = getMapaClientes();
+  const fabricas = Object.entries(mapa).filter(([, i]) => i.fabrica).map(([nome]) => nome);
+  const clientes = loadClientesLocal();
+
+  // Pré-selecionar primeira fábrica não usada ainda
+  const usadas = window._simCenarios.map(c => c.fabrica);
+  const proxFab = fabricas.find(f => !usadas.includes(f)) || fabricas[0] || '';
+
+  const cli = clientes.find(c => c.nome === proxFab);
+  const id = Date.now();
+  window._simCenarios.push({
+    id,
+    fabrica: proxFab,
+    valorLitro: '',
+    freteTon: cli?.frete_por_ton || ''
+  });
+  _renderCenarios();
+  calcSimulador();
+}
+
+function _removerCenario(id) {
+  window._simCenarios = window._simCenarios.filter(c => c.id !== id);
+  _renderCenarios();
+  calcSimulador();
+}
+
+function _onCenarioChange(id, campo, valor) {
+  const c = window._simCenarios.find(c => c.id === id);
+  if (!c) return;
+  if (campo === 'fabrica') {
+    c.fabrica = valor;
+    // Pré-preencher frete do cadastro
+    const clientes = loadClientesLocal();
+    const cli = clientes.find(cl => cl.nome === valor);
+    c.freteTon = cli?.frete_por_ton || '';
+    _renderCenarios();
+  } else {
+    c[campo] = valor;
+  }
+  calcSimulador();
+}
+
+function _renderCenarios() {
+  const container = document.getElementById('sim-cenarios');
+  const mapa = getMapaClientes();
+  const fabricas = Object.entries(mapa).filter(([, i]) => i.fabrica).map(([nome]) => nome);
+
+  if (window._simCenarios.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:12px">Clique em "+ Adicionar cenário" para comparar fábricas.</div>';
+    return;
   }
 
-  const litrosEst=Math.round(qtde*mediaMl/1000);
-  const pesoEst=Math.round(qtde*mediaKg);
-  estEl.style.display='';
-  estEl.innerHTML=`<strong>Estimativa automática</strong> (média ${fabVendas.length>0?'das últimas '+Math.min(fabVendas.length,10)+' cargas':'padrão — sem histórico'})<br>`+
-    `ml/fruto médio: <strong>${mediaMl}ml</strong> · Litragem estimada: <strong>≈ ${fmtNum(litrosEst)} litros</strong><br>`+
-    `kg/fruto médio: <strong>${mediaKg.toFixed(2)}kg</strong> · Peso estimado: <strong>≈ ${fmtNum(pesoEst)} kg</strong>`;
+  let html = '';
+  window._simCenarios.forEach((c, i) => {
+    const opFab = fabricas.map(f => `<option value="${f}" ${f === c.fabrica ? 'selected' : ''}>${f}</option>`).join('');
+    html += `<div style="padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px" id="sim-cen-${c.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">CENÁRIO ${i + 1}</span>
+        <button onclick="_removerCenario(${c.id})" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted)" title="Remover">✕</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Fábrica</label>
+          <select class="form-input" onchange="_onCenarioChange(${c.id},'fabrica',this.value)">${opFab}</select>
+        </div>
+        <div class="form-group"><label class="form-label">R$/litro</label>
+          <input class="form-input" type="number" min="0" step="0.01" placeholder="ex: 1.80" value="${c.valorLitro}" oninput="_onCenarioChange(${c.id},'valorLitro',this.value)">
+        </div>
+        <div class="form-group"><label class="form-label">Frete R$/ton</label>
+          <input class="form-input" type="number" min="0" step="0.01" placeholder="ex: 180" value="${c.freteTon}" oninput="_onCenarioChange(${c.id},'freteTon',this.value)">
+        </div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
 
-  // Comparar fábricas
-  const mapa=getMapaClientes();
-  const clientes=loadClientesLocal();
-  const fabricas=Object.entries(mapa).filter(([n,i])=>i.fabrica).map(([nome])=>nome);
-  let cards=[];
-  for(const fab of fabricas){
-    const cli=clientes.find(c=>c.nome===fab);
-    const freteTon=cli?.frete_por_ton||0;
-    const distKm=cli?.distancia_km||0;
-    const contrato=getContratoAtivo(fab);
-    const agora=new Date();
-    const mes=agora.getMonth()+1;
-    const cota=contrato?getCotaMes(contrato,mes):null;
-    const usado=contrato?getLitrosUsadosMes(fab,contrato.id,agora.getFullYear(),mes):0;
-    const disp=cota?(cota.litros-usado):0;
+function calcSimulador() {
+  const qtde = parseInt(document.getElementById('sim-qtde')?.value) || 0;
+  const estEl = document.getElementById('sim-estimativa');
+  const resEl = document.getElementById('sim-resultado');
 
-    let modo='spot',vlitro=0,receita=0;
-    if(contrato&&disp>=litrosEst){
-      modo='contrato';vlitro=cota.valor_litro;receita=litrosEst*vlitro;
-    }else if(contrato&&disp>0){
-      modo='misto';
-      const lctr=disp,lspot=litrosEst-disp;
-      receita=lctr*cota.valor_litro;
-      // Spot não tem preço — marcar como incompleto
-    }
-
-    const freteTotal=freteTon>0?(freteTon*(pesoEst/1000)):0;
-    const recLiq=receita-freteTotal;
-    const rCoco=receita>0&&qtde>0?(recLiq/qtde):0;
-
-    cards.push({fab,modo,vlitro,receita,freteTotal,recLiq,rCoco,freteTon,distKm,contrato,cota,disp:Math.max(0,disp),litrosEst});
+  if (qtde <= 0) {
+    estEl.style.display = 'none';
+    resEl.innerHTML = '';
+    return;
   }
-  // Ordenar por R$/coco (maior primeiro), mas fábricas sem preço vão pro final
-  cards.sort((a,b)=>(b.rCoco||0)-(a.rCoco||0));
 
-  let html='';
-  cards.forEach((c,i)=>{
-    const best=i===0&&c.rCoco>0;
-    html+=`<div style="padding:16px;background:${best?'var(--verde-bg)':'var(--surface2)'};border:1.5px solid ${best?'var(--verde-border)':'var(--border)'};border-radius:10px;margin-bottom:12px">
+  // Calcular médias do histórico
+  _calcMediasFabrica();
+  const { mediaMl, mediaKg, temHistorico, nCargas } = window._simMedias;
+
+  // Peso e litragem: usa input do operador se preenchido, senão estima
+  let peso = parseFloat(document.getElementById('sim-peso')?.value) || 0;
+  let litragem = parseFloat(document.getElementById('sim-litragem')?.value) || 0;
+  const pesoAuto = peso <= 0;
+  const litAuto = litragem <= 0;
+  if (pesoAuto) peso = Math.round(qtde * mediaKg);
+  if (litAuto) litragem = Math.round(qtde * mediaMl / 1000);
+
+  // Mostrar estimativa
+  estEl.style.display = '';
+  const fonte = temHistorico ? 'média das últimas ' + nCargas + ' cargas' : 'padrão — sem histórico';
+  estEl.innerHTML = `<strong>Base de cálculo</strong> (${fonte})<br>` +
+    `ml/fruto: <strong>${mediaMl}ml</strong> · Litragem: <strong>${litAuto ? '≈ ' : ''}${fmtNum(Math.round(litragem))} L</strong>${litAuto ? ' (auto)' : ''}<br>` +
+    `kg/fruto: <strong>${mediaKg.toFixed(2)}kg</strong> · Peso: <strong>${pesoAuto ? '≈ ' : ''}${fmtNum(Math.round(peso))} kg</strong>${pesoAuto ? ' (auto)' : ''}`;
+
+  // Calcular cada cenário
+  if (window._simCenarios.length === 0) {
+    resEl.innerHTML = '';
+    return;
+  }
+
+  const resultados = [];
+  for (const c of window._simCenarios) {
+    const vlitro = parseFloat(c.valorLitro) || 0;
+    const freteTon = parseFloat(c.freteTon) || 0;
+
+    const receitaBruta = litragem * vlitro;
+    const freteTotal = freteTon > 0 ? freteTon * (peso / 1000) : 0;
+    const receitaLiq = receitaBruta - freteTotal;
+    const rCocoEfetivo = qtde > 0 ? receitaLiq / qtde : 0;
+    const freteLitro = litragem > 0 ? freteTotal / litragem : 0;
+    const rLitroFOB = vlitro - freteLitro;
+    const freteCoco = qtde > 0 ? freteTotal / qtde : 0;
+    const lTon = peso > 0 ? litragem / (peso / 1000) : 0;
+
+    resultados.push({
+      id: c.id,
+      fabrica: c.fabrica,
+      vlitro,
+      freteTon,
+      receitaBruta,
+      freteTotal,
+      receitaLiq,
+      rCocoEfetivo,
+      freteLitro,
+      rLitroFOB,
+      freteCoco,
+      lTon,
+      completo: vlitro > 0
+    });
+  }
+
+  // Ordenar por R$/coco efetivo (maior = melhor), incompletos no final
+  const ordenados = [...resultados].sort((a, b) => {
+    if (a.completo && !b.completo) return -1;
+    if (!a.completo && b.completo) return 1;
+    return (b.rCocoEfetivo || 0) - (a.rCocoEfetivo || 0);
+  });
+
+  const melhor = ordenados.find(r => r.completo);
+
+  let html = '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Resultado da Comparação</div>';
+
+  ordenados.forEach((r, i) => {
+    const isBest = melhor && r.id === melhor.id && ordenados.filter(x => x.completo).length > 1;
+    const diff = melhor && r.completo && r.id !== melhor.id ? (r.rCocoEfetivo - melhor.rCocoEfetivo) * qtde : 0;
+
+    html += `<div style="padding:14px 16px;background:${isBest ? 'var(--verde-bg)' : 'var(--surface2)'};border:1.5px solid ${isBest ? 'var(--verde-border)' : 'var(--border)'};border-radius:10px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <strong style="font-size:14px">${c.fab}</strong>
-        ${best?'<span style="background:var(--verde);color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">⭐ RECOMENDADO</span>':''}
+        <strong style="font-size:14px">${r.fabrica || 'Cenário ' + (i + 1)}</strong>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${!r.completo ? '<span style="background:var(--amarelo-bg);color:var(--amarelo);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">PREENCHA R$/LITRO</span>' : ''}
+          ${isBest ? '<span style="background:var(--verde);color:#fff;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700">MELHOR</span>' : ''}
+          ${diff < 0 ? `<span style="background:var(--vermelho-bg);color:var(--vermelho);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">R$ ${fmtNum(Math.abs(Math.round(diff)))} a menos</span>` : ''}
+        </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
-        Modo: <strong>${c.modo.toUpperCase()}</strong>
-        ${c.contrato?' · Contrato: '+c.contrato.descricao:''}
-        ${c.cota?' · Cota '+MESES_NOME[new Date().getMonth()]+': '+fmtNum(Math.round(c.disp))+'L restantes':''}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 12px;font-size:12px">
+        <div>R$/litro CIF: <strong>${r.vlitro > 0 ? 'R$ ' + r.vlitro.toFixed(2) : '—'}</strong></div>
+        <div>Frete/litro: <strong>${r.freteLitro > 0 ? 'R$ ' + r.freteLitro.toFixed(4) : '—'}</strong></div>
+        <div>R$/litro FOB: <strong>${r.rLitroFOB > 0 ? 'R$ ' + r.rLitroFOB.toFixed(4) : '—'}</strong></div>
+        <div>Frete/coco: <strong>${r.freteCoco > 0 ? 'R$ ' + r.freteCoco.toFixed(3) : '—'}</strong></div>
+        <div>R$/coco efetivo: <strong style="color:${isBest ? 'var(--verde)' : 'inherit'}">${r.rCocoEfetivo > 0 ? 'R$ ' + r.rCocoEfetivo.toFixed(3) : '—'}</strong></div>
+        <div>L/ton: <strong>${r.lTon > 0 ? fmtNum(Math.round(r.lTon)) : '—'}</strong></div>
+        <div>Frete total: <strong>${r.freteTotal > 0 ? 'R$ ' + fmtNum(Math.round(r.freteTotal)) : '—'}</strong> ${r.freteTon > 0 ? '(' + r.freteTon + '/ton)' : ''}</div>
+        <div>Receita bruta: <strong>${r.receitaBruta > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaBruta)) : '—'}</strong></div>
+        <div>Receita líquida: <strong style="font-size:13px">${r.receitaLiq > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaLiq)) : '—'}</strong></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
-        <div>R$/litro: <strong>${c.vlitro>0?'R$ '+c.vlitro.toFixed(2):'—'}</strong></div>
-        <div>Frete: <strong>${c.freteTon>0?'R$ '+fmtNum(Math.round(c.freteTotal)):'—'}</strong> ${c.freteTon>0?'('+c.freteTon+'/ton)':''}</div>
-        <div>Receita bruta: <strong>${c.receita>0?'R$ '+fmtNum(Math.round(c.receita)):'—'}</strong></div>
-        <div>Receita líquida: <strong>${c.recLiq>0?'R$ '+fmtNum(Math.round(c.recLiq)):'—'}</strong></div>
-        <div>R$/coco efetivo: <strong>${c.rCoco>0?'R$ '+c.rCoco.toFixed(3):'—'}</strong></div>
-        <div>${c.distKm>0?'Distância: '+c.distKm+'km':''}</div>
-      </div>
-      ${c.modo==='spot'||c.modo==='misto'?`<div style="margin-top:8px;font-size:11px;color:var(--amarelo)">⚠ Informe o R$/litro spot para cálculo completo</div>`:''}
     </div>`;
   });
 
-  if(cards.length===0)html='<div style="color:var(--muted);font-size:13px">Nenhuma fábrica cadastrada. Cadastre clientes do tipo "Fábrica" na aba Clientes.</div>';
-  resEl.innerHTML=html;
+  resEl.innerHTML = html;
 }
 
 // ─── CONTRATOS ───
