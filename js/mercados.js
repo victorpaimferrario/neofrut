@@ -399,8 +399,8 @@ async function carregarClima(){
   grid.innerHTML='';
   resultados.forEach(r=>{
     const card=document.createElement('div');
-    card.className='clima-card'+(r.chegadaRuim?' ruim':(!r.dias||r.dias[0].chuva||r.dias[0].tmax<28)?'':' otimo');
-    if(!r.ok||!r.dias){card.innerHTML='<div class="card-header"><span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span></div><div class="card-loading">Sem dados</div>';grid.appendChild(card);return;}
+    card.className='clima-card'+(r.chegadaRuim?' ruim':(!r.dias||!r.dias[0]||r.dias[0].chuva||r.dias[0].tmax<28)?'':' otimo');
+    if(!r.ok||!r.dias||!r.dias.length){card.innerHTML='<div class="card-header"><span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span></div><div class="card-loading">Sem dados</div>';grid.appendChild(card);return;}
     const diasCard=r.dias.slice(0,7);
     const bCls=r.chegadaRuim?'ruim':r.dias[0].tmax>=28?'ok':'neutro';
     const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':r.dias[0].tmax>=28?'☀️ FAVORÁVEL':'🌤️ NEUTRO';

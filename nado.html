@@ -97,7 +97,7 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .prog-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 
 /* ════════ TELA CONTAGEM ════════ */
-#tela-contagem{display:none;padding:8px 10px;min-height:100vh;display:none;flex-direction:column}
+#tela-contagem{display:none;padding:8px 10px;min-height:100vh;flex-direction:column}
 .eito-header{background:var(--verde);color:#fff;border-radius:12px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .eito-header-area{font-size:11px;opacity:.8;text-transform:uppercase;font-weight:700}
 .eito-header-id{font-size:26px;font-weight:900;line-height:1}
@@ -604,7 +604,7 @@ function abrirContagem(area, eito) {
   document.getElementById('btn-limpar').style.display = existente ? 'block' : 'none';
 
   document.getElementById('tela-inicio').style.display = 'none';
-  document.getElementById('tela-contagem').style.display = 'block';
+  document.getElementById('tela-contagem').style.display = 'flex';
   // Esconder topo e progresso para maximizar espaço
   document.querySelector('.topo').style.display = 'none';
   document.getElementById('progress-wrap').style.display = 'none';

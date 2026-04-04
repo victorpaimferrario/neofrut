@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260320f">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
 <body>
 
 <!-- TELA DE LOGIN -->
@@ -52,7 +53,7 @@
     <h1>Painel de Colheitas</h1>
     <p>Visão geral de todas as áreas — clique em uma área para detalhar e registrar colheitas</p>
   </div>
-  <div id="alerta-vencidos" style="display:none;background:rgba(239,68,68,0.08);border:1.5px solid var(--vermelho-border);border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+  <div id="alerta-vencidos" style="display:none;background:rgba(239,68,68,0.08);border:1.5px solid var(--vermelho-border);border-radius:10px;padding:12px 18px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px">
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:20px">🚨</span>
       <div>
@@ -139,7 +140,7 @@
       <div style="padding:20px 24px">
         <div id="prod-legenda" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px"></div>
         <canvas id="prod-canvas" style="width:100%;display:block"></canvas>
-        <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:var(--font-mono)" id="prod-sem-dados" style="display:none"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:var(--font-mono);display:none" id="prod-sem-dados"></div>
       </div>
     </div>
   </div>
