@@ -93,7 +93,7 @@ function showVendasTab(tab){
   localStorage.setItem('neofrut_vendas_tab', tab);
   if(tab==='lista')renderVendasLista();
   if(tab==='pendentes')renderVendasPendentes();
-  if(tab==='clientes')renderListaClientes();
+  if(tab==='clientes')initClientes();
 }
 
 function filtrarVendas(db,ano,mes){
@@ -1001,6 +1001,15 @@ function exportarVendasCSV(){
 }
 
 // ─────────── CLIENTES ───────────
+
+async function initClientes() {
+  const wrap = document.getElementById('cli-lista-wrap');
+  if (wrap && (!_clientesCache || _clientesCache.length === 0)) {
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">⏳ Carregando clientes...</div>';
+    await loadClientesSupabase();
+  }
+  renderListaClientes();
+}
 
 function renderListaClientes() {
   const clientes = loadClientesLocal();
