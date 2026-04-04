@@ -487,13 +487,35 @@
     .vkpi { padding: 10px 12px; }
     .vkpi-val { font-size: 16px; }
     body { padding: 12px; }
+    /* Nav — extra compacto */
+    nav { padding: 0 8px; }
+    .nav-brand { font-size: 13px; margin-right: 12px; }
+    .nav-tab { padding: 10px 6px; font-size: 9px; }
     /* Lançamento — extra compacto */
     .planilha-table th:nth-child(3), .planilha-table td:nth-child(3) { display: none; }
-    .p-input { min-width: 50px; font-size: 14px; }
+    .p-input { min-width: 44px; font-size: 14px; }
     .p-eito { font-size: 11px; }
     .area-btn { padding: 6px 8px; font-size: 10px; }
     .lancamento-sticky { padding: 8px 10px; }
     .contador-badge { font-size: 11px; padding: 3px 10px; }
+    /* Inputs — evitar overflow */
+    .search-input { width: 100% !important; min-width: 0 !important; }
+    .vfiltros input { min-width: 80px; }
+    /* Page padding */
+    .page { padding: 10px; }
+    /* Modal padding */
+    .modal { padding: 14px; }
+    .modal-overlay { padding: 10px; }
+    /* Toast */
+    .toast { max-width: calc(100vw - 24px); font-size: 12px; }
+    /* Filtros */
+    .filter-bar { gap: 6px; }
+    .filter-btn { padding: 6px 10px; font-size: 11px; }
+    /* Botões touch-friendly */
+    .btn-colher, .btn-hist, .btn-danger { min-height: 36px; }
+    /* Dash header */
+    .dash-header h1 { font-size: 16px; }
+    .dash-header p { font-size: 10px; }
   }
 
 /* ── MERCADOS ── */
