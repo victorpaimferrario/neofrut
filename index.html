@@ -665,13 +665,12 @@
   <div class="vd-sec" id="vsec-simulador">
     <div class="vform">
       <div style="font-size:15px;font-weight:800;margin-bottom:4px">Simulador de Carga</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Preencha os dados da carga e compare cenários entre fábricas.</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Informe a quantidade de cocos e o peso da carga. O sistema calcula a litragem (1 litro = 2,3 cocos) e compara as fábricas.</div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Quantidade de cocos</label><input class="form-input" type="number" min="0" id="sim-qtde" placeholder="ex: 18000" oninput="calcSimulador()"></div>
-        <div class="form-group"><label class="form-label">Peso estimado (kg)</label><input class="form-input" type="number" min="0" step="0.01" id="sim-peso" placeholder="auto" oninput="calcSimulador()"></div>
-        <div class="form-group"><label class="form-label">Litragem estimada (L)</label><input class="form-input" type="number" min="0" step="0.01" id="sim-litragem" placeholder="auto" oninput="calcSimulador()"></div>
+        <div class="form-group"><label class="form-label">Quantidade de cocos</label><input class="form-input" type="number" min="0" id="sim-qtde" placeholder="ex: 15000" oninput="calcSimulador()"></div>
+        <div class="form-group"><label class="form-label">Peso da carga (kg)</label><input class="form-input" type="number" min="0" step="1" id="sim-peso" placeholder="ex: 20000" oninput="calcSimulador()"></div>
       </div>
-      <div id="sim-estimativa" style="display:none;padding:10px 14px;background:var(--surface2);border-radius:8px;margin-bottom:16px;font-size:12px;color:var(--muted)"></div>
+      <div id="sim-estimativa" style="display:none;padding:12px 14px;background:var(--verde-bg);border:1px solid var(--verde-border);border-radius:8px;margin-bottom:16px;font-size:13px"></div>
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cenários</div>
       <div id="sim-cenarios"></div>
       <button class="btn btn-outline" onclick="adicionarCenario()" style="font-size:12px;margin-bottom:16px">+ Adicionar cenário</button>

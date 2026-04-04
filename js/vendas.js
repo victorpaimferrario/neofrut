@@ -1461,21 +1461,7 @@ async function salvarCliente() {
 // ─── SIMULADOR DE CARGA ───
 
 window._simCenarios = [];
-window._simMedias = { mediaMl: 350, mediaKg: 1.1, temHistorico: false, nCargas: 0 };
-
-function _calcMediasFabrica() {
-  const vendas = loadVendas();
-  const fabVendas = vendas.filter(v => v.tipoVenda === 'litro' && (v.qtdeFabrica || v.qtde) && v.litragem && v.pesoKg);
-  let mediaMl = 350, mediaKg = 1.1;
-  if (fabVendas.length > 0) {
-    const ultimas = fabVendas.slice(-10);
-    const somaMl = ultimas.reduce((s, v) => { const q = (v.qtdeFabrica || v.qtde) + (v.fora || 0); return s + (q > 0 ? (v.litragem / q * 1000) : 0); }, 0);
-    mediaMl = Math.round(somaMl / ultimas.length);
-    const somaKg = ultimas.reduce((s, v) => { const q = v.qtdeFabrica || v.qtde; return s + (q > 0 ? (v.pesoKg / q) : 0); }, 0);
-    mediaKg = somaKg / ultimas.length;
-  }
-  window._simMedias = { mediaMl, mediaKg, temHistorico: fabVendas.length > 0, nCargas: Math.min(fabVendas.length, 10) };
-}
+const COCOS_POR_LITRO = 2.3; // regra fixa: 1 litro = 2,3 cocos
 
 function adicionarCenario() {
   const mapa = getMapaClientes();
@@ -1556,6 +1542,7 @@ function _renderCenarios() {
 
 function calcSimulador() {
   const qtde = parseInt(document.getElementById('sim-qtde')?.value) || 0;
+  const peso = parseFloat(document.getElementById('sim-peso')?.value) || 0;
   const estEl = document.getElementById('sim-estimativa');
   const resEl = document.getElementById('sim-resultado');
 
@@ -1565,24 +1552,14 @@ function calcSimulador() {
     return;
   }
 
-  // Calcular médias do histórico
-  _calcMediasFabrica();
-  const { mediaMl, mediaKg, temHistorico, nCargas } = window._simMedias;
+  // Litragem: regra fixa 1 litro = 2,3 cocos
+  const litragem = Math.round(qtde / COCOS_POR_LITRO);
 
-  // Peso e litragem: usa input do operador se preenchido, senão estima
-  let peso = parseFloat(document.getElementById('sim-peso')?.value) || 0;
-  let litragem = parseFloat(document.getElementById('sim-litragem')?.value) || 0;
-  const pesoAuto = peso <= 0;
-  const litAuto = litragem <= 0;
-  if (pesoAuto) peso = Math.round(qtde * mediaKg);
-  if (litAuto) litragem = Math.round(qtde * mediaMl / 1000);
-
-  // Mostrar estimativa
+  // Mostrar resumo da carga
   estEl.style.display = '';
-  const fonte = temHistorico ? 'média das últimas ' + nCargas + ' cargas' : 'padrão — sem histórico';
-  estEl.innerHTML = `<strong>Base de cálculo</strong> (${fonte})<br>` +
-    `ml/fruto: <strong>${mediaMl}ml</strong> · Litragem: <strong>${litAuto ? '≈ ' : ''}${fmtNum(Math.round(litragem))} L</strong>${litAuto ? ' (auto)' : ''}<br>` +
-    `kg/fruto: <strong>${mediaKg.toFixed(2)}kg</strong> · Peso: <strong>${pesoAuto ? '≈ ' : ''}${fmtNum(Math.round(peso))} kg</strong>${pesoAuto ? ' (auto)' : ''}`;
+  estEl.innerHTML = `<strong>${fmtNum(qtde)} cocos</strong> ÷ 2,3 = <strong>${fmtNum(litragem)} litros</strong>` +
+    (peso > 0 ? ` · Peso: <strong>${fmtNum(Math.round(peso))} kg</strong>` : '') +
+    (!peso && window._simCenarios.some(c => parseFloat(c.freteTon) > 0) ? '<br><span style="color:var(--amarelo)">Informe o peso da carga para calcular o frete</span>' : '');
 
   // Calcular cada cenário
   if (window._simCenarios.length === 0) {
@@ -1596,13 +1573,10 @@ function calcSimulador() {
     const freteTon = parseFloat(c.freteTon) || 0;
 
     const receitaBruta = litragem * vlitro;
-    const freteTotal = freteTon > 0 ? freteTon * (peso / 1000) : 0;
+    const freteTotal = (freteTon > 0 && peso > 0) ? freteTon * (peso / 1000) : 0;
     const receitaLiq = receitaBruta - freteTotal;
     const rCocoEfetivo = qtde > 0 ? receitaLiq / qtde : 0;
-    const freteLitro = litragem > 0 ? freteTotal / litragem : 0;
-    const rLitroFOB = vlitro - freteLitro;
     const freteCoco = qtde > 0 ? freteTotal / qtde : 0;
-    const lTon = peso > 0 ? litragem / (peso / 1000) : 0;
 
     resultados.push({
       id: c.id,
@@ -1613,10 +1587,7 @@ function calcSimulador() {
       freteTotal,
       receitaLiq,
       rCocoEfetivo,
-      freteLitro,
-      rLitroFOB,
       freteCoco,
-      lTon,
       completo: vlitro > 0
     });
   }
@@ -1629,15 +1600,16 @@ function calcSimulador() {
   });
 
   const melhor = ordenados.find(r => r.completo);
+  const temVarios = ordenados.filter(x => x.completo).length > 1;
 
   let html = '<div style="font-size:13px;font-weight:700;margin-bottom:10px">Resultado da Comparação</div>';
 
   ordenados.forEach((r, i) => {
-    const isBest = melhor && r.id === melhor.id && ordenados.filter(x => x.completo).length > 1;
-    const diff = melhor && r.completo && r.id !== melhor.id ? (r.rCocoEfetivo - melhor.rCocoEfetivo) * qtde : 0;
+    const isBest = temVarios && melhor && r.id === melhor.id;
+    const diff = temVarios && melhor && r.completo && r.id !== melhor.id ? (r.rCocoEfetivo - melhor.rCocoEfetivo) * qtde : 0;
 
     html += `<div style="padding:14px 16px;background:${isBest ? 'var(--verde-bg)' : 'var(--surface2)'};border:1.5px solid ${isBest ? 'var(--verde-border)' : 'var(--border)'};border-radius:10px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <strong style="font-size:14px">${r.fabrica || 'Cenário ' + (i + 1)}</strong>
         <div style="display:flex;gap:6px;align-items:center">
           ${!r.completo ? '<span style="background:var(--amarelo-bg);color:var(--amarelo);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">PREENCHA R$/LITRO</span>' : ''}
@@ -1645,16 +1617,15 @@ function calcSimulador() {
           ${diff < 0 ? `<span style="background:var(--vermelho-bg);color:var(--vermelho);padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700">R$ ${fmtNum(Math.abs(Math.round(diff)))} a menos</span>` : ''}
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px 12px;font-size:12px">
-        <div>R$/litro CIF: <strong>${r.vlitro > 0 ? 'R$ ' + r.vlitro.toFixed(2) : '—'}</strong></div>
-        <div>Frete/litro: <strong>${r.freteLitro > 0 ? 'R$ ' + r.freteLitro.toFixed(4) : '—'}</strong></div>
-        <div>R$/litro FOB: <strong>${r.rLitroFOB > 0 ? 'R$ ' + r.rLitroFOB.toFixed(4) : '—'}</strong></div>
-        <div>Frete/coco: <strong>${r.freteCoco > 0 ? 'R$ ' + r.freteCoco.toFixed(3) : '—'}</strong></div>
-        <div>R$/coco efetivo: <strong style="color:${isBest ? 'var(--verde)' : 'inherit'}">${r.rCocoEfetivo > 0 ? 'R$ ' + r.rCocoEfetivo.toFixed(3) : '—'}</strong></div>
-        <div>L/ton: <strong>${r.lTon > 0 ? fmtNum(Math.round(r.lTon)) : '—'}</strong></div>
-        <div>Frete total: <strong>${r.freteTotal > 0 ? 'R$ ' + fmtNum(Math.round(r.freteTotal)) : '—'}</strong> ${r.freteTon > 0 ? '(' + r.freteTon + '/ton)' : ''}</div>
-        <div>Receita bruta: <strong>${r.receitaBruta > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaBruta)) : '—'}</strong></div>
-        <div>Receita líquida: <strong style="font-size:13px">${r.receitaLiq > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaLiq)) : '—'}</strong></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 16px;font-size:13px">
+        <div>Receita bruta<br><strong style="font-size:15px">${r.receitaBruta > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaBruta)) : '—'}</strong></div>
+        <div>Frete total<br><strong style="font-size:15px;color:${r.freteTotal > 0 ? 'var(--vermelho)' : 'inherit'}">${r.freteTotal > 0 ? '- R$ ' + fmtNum(Math.round(r.freteTotal)) : (r.freteTon > 0 && !peso ? 'peso?' : '—')}</strong></div>
+        <div>Receita líquida<br><strong style="font-size:15px;color:${isBest ? 'var(--verde)' : 'inherit'}">${r.receitaLiq > 0 ? 'R$ ' + fmtNum(Math.round(r.receitaLiq)) : '—'}</strong></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 16px;font-size:11px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <div>R$/coco efetivo: <strong style="color:var(--text)">${r.rCocoEfetivo > 0 ? 'R$ ' + r.rCocoEfetivo.toFixed(3) : '—'}</strong></div>
+        <div>Frete/coco: <strong style="color:var(--text)">${r.freteCoco > 0 ? 'R$ ' + r.freteCoco.toFixed(3) : '—'}</strong></div>
+        <div>R$/litro: <strong style="color:var(--text)">${r.vlitro > 0 ? 'R$ ' + r.vlitro.toFixed(2) : '—'}</strong> · Frete: <strong style="color:var(--text)">${r.freteTon > 0 ? r.freteTon + '/ton' : '—'}</strong></div>
       </div>
     </div>`;
   });
