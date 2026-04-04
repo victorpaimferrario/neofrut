@@ -919,7 +919,10 @@ function renderValidacaoNado() {
           <span style="font-size:15px;font-weight:900;color:var(--verde);margin-left:6px">Eito ${p.eito_id}</span>
           <span id="nado-editado-${i}" style="display:none;font-size:9px;font-weight:700;color:#d97706;background:#fffbeb;padding:1px 6px;border-radius:8px;margin-left:6px">EDITADO</span>
         </div>
-        <span style="font-family:var(--font-mono);font-size:13px;font-weight:800" id="nado-val-total-${i}">${total} cocos</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--font-mono);font-size:13px;font-weight:800" id="nado-val-total-${i}">${total} cocos</span>
+          <button onclick="excluirContagemNado(${i})" style="background:none;border:1px solid var(--vermelho);color:var(--vermelho);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;cursor:pointer">Excluir</button>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
         <div>
@@ -976,6 +979,23 @@ function onEditNado(i) {
   document.getElementById('nado-kpi-total').textContent = fmtNum(tMesa + tFab);
   document.getElementById('nado-kpi-mesa').textContent = fmtNum(tMesa);
   document.getElementById('nado-kpi-fab').textContent = fmtNum(tFab);
+}
+
+async function excluirContagemNado(i) {
+  const p = _nadoPendentes[i];
+  if (!p) return;
+  if (!confirm(`Excluir contagem do Eito ${p.eito_id} (${p.area})?`)) return;
+  // Marcar como excluído no Supabase
+  await atualizarStatusNado([p.id], 'excluido');
+  _nadoPendentes.splice(i, 1);
+  if (_nadoPendentes.length === 0) {
+    _nadoValidacaoAberta = false;
+    document.getElementById('nado-validacao').style.display = 'none';
+  } else {
+    renderValidacaoNado();
+  }
+  renderNadoCard();
+  showToast('Contagem excluída');
 }
 
 async function confirmarContagemNado() {
