@@ -39,22 +39,17 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .progress-fill{height:100%;background:var(--verde);border-radius:4px;transition:width .3s}
 
 /* TELA INICIO */
-.lista-areas{padding:12px}
+.lista-areas{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 
 /* Card de area */
-.area-card{background:var(--branco);border:2px solid var(--borda);border-radius:16px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
-.area-card.aberta{border-color:var(--verde)}
-.area-card-header{padding:18px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:72px}
+.area-card{background:var(--branco);border:2px solid var(--borda);border-radius:14px;overflow:hidden;transition:border-color .2s}
+.area-card.aberta{border-color:var(--verde);grid-column:1/-1}
+.area-card-header{padding:14px 12px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:80px;justify-content:center;gap:6px}
 .area-card-header:active{background:var(--bg)}
-.area-card-left{display:flex;align-items:center;gap:14px}
-.area-card-icon{width:48px;height:48px;border-radius:14px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;flex-shrink:0}
-.area-card-nome{font-size:17px;font-weight:900;color:var(--texto)}
-.area-card-info{display:flex;align-items:center;gap:8px;margin-top:3px}
-.area-card-qtd{font-size:12px;color:var(--muted);font-weight:600}
-.area-card-badges{display:flex;gap:4px}
-.area-badge{font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;min-width:20px;text-align:center}
-.area-card-arrow{font-size:22px;color:var(--verde);transition:transform .2s;flex-shrink:0;padding:8px}
-.area-card.aberta .area-card-arrow{transform:rotate(90deg)}
+.area-card-icon{width:40px;height:40px;border-radius:12px;background:var(--verde);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;flex-shrink:0}
+.area-card-nome{font-size:14px;font-weight:900;color:var(--texto);line-height:1.1}
+.area-card-qtd{font-size:11px;color:var(--muted);font-weight:600}
+.area-card-arrow{display:none}
 
 /* Eitos dentro do card */
 .area-eitos{display:none;padding:4px 10px 12px;border-top:1px solid var(--borda)}
@@ -482,20 +477,9 @@ function renderLista() {
 
     card.innerHTML = `
       <div class="area-card-header" onclick="toggleArea('${area}')">
-        <div class="area-card-left">
-          <div class="area-card-icon">${sigla}</div>
-          <div>
-            <div class="area-card-nome">${area}</div>
-            <div class="area-card-info">
-              <span class="area-card-qtd">${eitos.length} eitos</span>
-              <div class="area-card-badges">
-                ${urgentes > 0 ? `<span class="area-badge dias-vermelho">${urgentes}</span>` : ''}
-                ${feitos > 0 ? `<span class="area-badge dias-verde">${feitos}✓</span>` : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-        <span class="area-card-arrow">▶</span>
+        <div class="area-card-icon">${sigla}</div>
+        <div class="area-card-nome">${area}</div>
+        <span class="area-card-qtd">${eitos.length} eitos</span>
       </div>
       <div class="area-eitos">
         <div class="eitos-grid" id="grid-${area.replace(/\s/g, '_')}"></div>
