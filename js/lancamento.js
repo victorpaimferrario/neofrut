@@ -764,6 +764,16 @@ async function renderNadoCard() {
   }
 }
 
+function copiarLinkCampo() {
+  const url = window.location.origin + window.location.pathname.replace(/[^/]*$/, '') + 'nado.html';
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Link copiado! Cole no WhatsApp para enviar.');
+  }).catch(() => {
+    // Fallback para navegadores sem clipboard API
+    prompt('Copie o link abaixo:', url);
+  });
+}
+
 // ── PREPARAR DIA ──
 
 function abrirPrepararDia() {

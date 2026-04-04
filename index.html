@@ -158,12 +158,20 @@
   <!-- CARD NADO CONTADOR -->
   <div id="nado-card" style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DO NADO</div>
+      <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DE COCO DO CAMPO</div>
       <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline" onclick="abrirPrepararDia()">Preparar dia</button>
       <button class="btn btn-outline" id="nado-btn-pendentes" onclick="toggleValidacaoNado()" style="display:none">Ver pendentes</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="btn btn-primary" onclick="window.open('nado.html','_blank')" style="display:flex;align-items:center;gap:6px;font-size:13px">
+        <span>📱</span> Acessar Sistema Campo
+      </button>
+      <button class="btn btn-outline" onclick="copiarLinkCampo()" style="font-size:13px;display:flex;align-items:center;gap:6px">
+        <span>🔗</span> Copiar link
+      </button>
     </div>
   </div>
   <!-- VALIDACAO NADO (inline, expande abaixo do card) -->
