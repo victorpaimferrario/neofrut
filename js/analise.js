@@ -70,8 +70,9 @@ function renderAnalise() {
     const quedaBrusca = !parcialPend && ult && mediaHist > 0 && (ult.total / mediaHist) < 0.70;
     return { e, mediaAtual, st, dias, trend, hist, nColheitas, fpp, quedaBrusca, parcialPend };
   }).sort((a,b) => {
-    const urgA = (a.dias === null || a.dias >= 21) ? 0 : a.dias >= 15 ? 1 : 2;
-    const urgB = (b.dias === null || b.dias >= 21) ? 0 : b.dias >= 15 ? 1 : 2;
+    const ordSt = {critico:0, vermelho:1, sem:1, amarelo:2, verde:3};
+    const urgA = ordSt[a.st] ?? 2;
+    const urgB = ordSt[b.st] ?? 2;
     if (urgA !== urgB) return urgA - urgB;
     return (b.dias ?? 999) - (a.dias ?? 999);
   });
@@ -108,9 +109,9 @@ function renderAnalise() {
           const colheitasCor = r.nColheitas === 0 ? 'var(--vermelho)' : r.nColheitas <= 2 ? 'var(--amarelo)' : 'var(--muted)';
           return `<tr style="cursor:pointer" onclick="selectEitoAnalise('${r.e.id}')">
             <td style="font-family:var(--font-mono);font-weight:600">${r.e.id}${alertaQueda}${parcialBadge}</td>
-            <td><span class="status-dot sd-${r.st}"></span><span style="font-size:11px;font-weight:600;color:${r.st==='verde'?'var(--verde)':r.st==='amarelo'?'var(--amarelo)':r.st==='vermelho'?'var(--vermelho)':'var(--muted)'}">${statusLabel(r.st)}</span></td>
+            <td><span class="status-dot sd-${r.st}"></span><span style="font-size:11px;font-weight:600;color:${corStatus(r.st)}">${statusLabel(r.st)}</span></td>
             <td>${r.dias!==null?`<span class="dias-badge dias-${r.st}">${r.dias}d</span>`:'<span class="dias-badge dias-sem">—</span>'}</td>
-            <td style="font-family:var(--font-mono);font-size:12px;color:${r.dias!==null&&r.dias>=21?'var(--vermelho)':r.dias!==null&&r.dias>=15?'var(--amarelo)':'var(--muted)'}">
+            <td style="font-family:var(--font-mono);font-size:12px;color:${r.dias!==null&&r.dias>=32?'var(--critico)':r.dias!==null&&r.dias>=21?'var(--vermelho)':r.dias!==null&&r.dias>=15?'var(--amarelo)':'var(--muted)'}">
               ${proxData !== '—' ? fmtData(proxData) : '—'}
               ${proxDias !== '—' ? `<span style="font-size:10px;margin-left:4px">(${proxDias}d)</span>` : ''}
             </td>

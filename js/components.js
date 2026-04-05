@@ -23,9 +23,9 @@ function openSidePanel(area, eitoId) {
     <div class="side-kpi"><div class="side-kpi-label">Última colheita</div><div class="side-kpi-value">${fmtNum(ultima)}</div></div>
     <div class="side-kpi"><div class="side-kpi-label">Média histórica</div><div class="side-kpi-value" style="color:var(--accent2)">${fmtNum(media)}</div></div>
     <div class="side-kpi"><div class="side-kpi-label">Tendência</div><div class="side-kpi-value" style="color:${tendencia===null?'var(--muted)':tendencia>0?'var(--verde)':'var(--vermelho)'}">${tendencia===null?'—':tendencia>0?'+'+fmtNum(tendencia):fmtNum(tendencia)}</div></div>
-    <div class="side-kpi"><div class="side-kpi-label">Próxima colheita</div><div class="side-kpi-value" style="font-size:14px;color:${st==='vermelho'?'var(--vermelho)':st==='amarelo'?'var(--amarelo)':'var(--muted)'}">${proxData?fmtData(proxData):'—'}</div></div>
+    <div class="side-kpi"><div class="side-kpi-label">Próxima colheita</div><div class="side-kpi-value" style="font-size:14px;color:${corStatus(st)}">${proxData?fmtData(proxData):'—'}</div></div>
     <div class="side-kpi"><div class="side-kpi-label">Melhor colheita</div><div class="side-kpi-value" style="color:var(--verde)">${fmtNum(melhor)}</div></div>
-    <div class="side-kpi"><div class="side-kpi-label">Dias s/ colheita</div><div class="side-kpi-value" style="color:${st==='vermelho'?'var(--vermelho)':st==='amarelo'?'var(--amarelo)':'var(--text)'}">${dias!==null?dias+'d':'—'}</div></div>
+    <div class="side-kpi"><div class="side-kpi-label">Dias s/ colheita</div><div class="side-kpi-value" style="color:${st==='vermelho'||st==='critico'?corStatus(st):st==='amarelo'?'var(--amarelo)':'var(--text)'}">${dias!==null?dias+'d':'—'}</div></div>
   `;
 
   // Gráfico
@@ -146,7 +146,7 @@ function openAreaDrawer(area, filtro) {
   document.getElementById('search-eito').value = '';
   // resetar filtros visuais
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  const idx = {todos:0,vermelho:1,amarelo:2,verde:3,sem:4}[currentFilter];
+  const idx = {todos:0,critico:1,vermelho:2,amarelo:3,verde:4,sem:5}[currentFilter];
   const btns = document.querySelectorAll('.filter-btn');
   if (btns[idx]) btns[idx].classList.add('active');
   // abrir

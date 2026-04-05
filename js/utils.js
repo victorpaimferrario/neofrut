@@ -15,12 +15,17 @@ function diasDesde(data) {
 
 function statusDias(dias) {
   if (dias === null || dias === undefined) return 'sem';
+  if (dias >= 32) return 'critico';
   if (dias >= 21) return 'vermelho';
   if (dias >= 15) return 'amarelo';
   return 'verde';
 }
 
-function statusLabel(s) { return {verde:'VERDE',amarelo:'AMARELO',vermelho:'VERMELHO',sem:'SEM COLHEITA'}[s]; }
+function statusLabel(s) { return {verde:'VERDE',amarelo:'AMARELO',vermelho:'VERMELHO',critico:'CRÍTICO',sem:'SEM COLHEITA'}[s]; }
+
+function corStatus(st) {
+  return {verde:'var(--verde)',amarelo:'var(--amarelo)',vermelho:'var(--vermelho)',critico:'var(--critico)'}[st] || 'var(--muted)';
+}
 
 function fmtData(d) {
   if (!d) return '—';

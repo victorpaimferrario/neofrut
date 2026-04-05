@@ -316,6 +316,7 @@
   <div class="area-drawer-body">
     <div class="filter-bar" style="margin-bottom:16px">
       <button class="filter-btn active" onclick="setFilter('todos')">Todos</button>
+      <button class="filter-btn" style="color:var(--critico)" onclick="setFilter('critico')">🟣 Crítico</button>
       <button class="filter-btn f-vermelho" onclick="setFilter('vermelho')">🔴 Vencidos</button>
       <button class="filter-btn f-amarelo" onclick="setFilter('amarelo')">🟡 Atenção</button>
       <button class="filter-btn f-verde" onclick="setFilter('verde')">🟢 OK</button>
@@ -1229,9 +1230,10 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">
           <span style="background:var(--verde-bg);border:1px solid var(--verde-border);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">VERDE: 1–14 dias (ok)</span>
           <span style="background:var(--amarelo-bg);border:1px solid var(--amarelo-border);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">AMARELO: 15–20 dias (atenção)</span>
-          <span style="background:var(--vermelho-bg);border:1px solid var(--vermelho-border);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">VERMELHO: 21+ dias (atrasado)</span>
+          <span style="background:var(--vermelho-bg);border:1px solid var(--vermelho-border);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">VERMELHO: 21–31 dias (atrasado)</span>
+          <span style="background:var(--critico-bg);border:1px solid var(--critico-border);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600">CRÍTICO: 32+ dias (verificar planta)</span>
         </div>
-        <p>Se um eito está vermelho, ele precisa ser colhido urgentemente.</p>
+        <p>Se um eito está vermelho, ele precisa ser colhido urgentemente. Se está <strong>roxo (crítico)</strong>, pode indicar problema na planta — verificar no campo.</p>
 
         <div class="ajuda-titulo">Classificação do coco</div>
         <p><strong>Mesa:</strong> coco de qualidade para venda direta ao consumidor ou distribuidor.</p>

@@ -90,7 +90,7 @@ function sortLancEitos(eitos, col, asc) {
     const ult = getUltima(e);
     const dias = ult ? diasDesde(ult.data) : 9999;
     const st = statusDias(dias === 9999 ? null : dias);
-    const stOrder = st === 'vermelho' ? 0 : st === 'amarelo' ? 1 : st === 'verde' ? 2 : 3;
+    const stOrder = st === 'critico' ? 0 : st === 'vermelho' ? 1 : st === 'amarelo' ? 2 : st === 'verde' ? 3 : 4;
     return { e, dias, stOrder };
   });
   arr.sort((a, b) => {
@@ -795,7 +795,7 @@ function renderPrepLista() {
     eitos.forEach(e => {
       const ult = getUltimaCompleta(e) || getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
-      const cls = dias === null ? 'vermelho' : dias >= 21 ? 'vermelho' : dias >= 15 ? 'amarelo' : 'verde';
+      const cls = dias === null ? 'vermelho' : dias >= 32 ? 'critico' : dias >= 21 ? 'vermelho' : dias >= 15 ? 'amarelo' : 'verde';
       const diasTxt = dias !== null ? dias + 'd' : '?';
       const key = area + '||' + e.id;
       const sel = _nadoSelPrep.has(key);

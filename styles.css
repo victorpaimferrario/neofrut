@@ -14,6 +14,9 @@
     --vermelho: #b91c1c;
     --vermelho-bg: #fee2e2;
     --vermelho-border: #f87171;
+    --critico: #7c3aed;
+    --critico-bg: #ede9fe;
+    --critico-border: #a78bfa;
     --accent: #1e7e5a;
     --accent2: #155f44;
     --forest: #1a5c1a;
@@ -81,12 +84,14 @@
   .kpi.verde { border-left-color: var(--verde); }
   .kpi.amarelo { border-left-color: var(--amarelo); }
   .kpi.vermelho { border-left-color: var(--vermelho); }
+  .kpi.critico { border-left-color: var(--critico); }
   .kpi-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
   .kpi-value { font-size: 24px; font-weight: 800; font-family: var(--font-mono); }
   .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
   .kpi.verde .kpi-value { color: var(--verde); }
   .kpi.amarelo .kpi-value { color: var(--amarelo); }
   .kpi.vermelho .kpi-value { color: var(--vermelho); }
+  .kpi.critico .kpi-value { color: var(--critico); }
   .kpi.accent .kpi-value { color: var(--accent); }
 
   .areas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
@@ -100,18 +105,21 @@
   .pill.verde { background: var(--verde-bg); color: var(--forest); border: 1px solid var(--verde-border); }
   .pill.amarelo { background: var(--amarelo-bg); color: var(--amarelo); border: 1px solid var(--amarelo-border); }
   .pill.vermelho { background: var(--vermelho-bg); color: var(--vermelho); border: 1px solid var(--vermelho-border); }
+  .pill.critico { background: var(--critico-bg); color: var(--critico); border: 1px solid var(--critico-border); }
   .pill.sem { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
   .area-bar { height: 6px; display: flex; }
   .bar-seg { height: 100%; transition: width 0.3s; }
   .bar-verde { background: var(--verde); }
   .bar-amarelo { background: var(--amarelo); }
   .bar-vermelho { background: var(--vermelho); }
+  .bar-critico { background: var(--critico); }
   .bar-sem { background: var(--surface2); }
   .area-stats { padding: 10px 14px 14px; display: flex; gap: 10px; flex-wrap: wrap; }
   .area-stat { text-align: center; }
   .area-stat-val { font-size: 15px; font-weight: 700; font-family: var(--font-mono); }
   .area-stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
   .urgente-tag { background: var(--vermelho-bg); border: 1px solid var(--vermelho-border); color: var(--vermelho); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; }
+  .critico-tag { background: var(--critico-bg); border: 1px solid var(--critico-border); color: var(--critico); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; }
 
   /* AREA DETAIL */
   .area-detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
@@ -136,12 +144,14 @@
   .sd-verde { background: var(--verde); box-shadow: 0 0 6px var(--verde); }
   .sd-amarelo { background: var(--amarelo); box-shadow: 0 0 6px var(--amarelo); }
   .sd-vermelho { background: var(--vermelho); box-shadow: 0 0 6px var(--vermelho); animation: pulse-red 1.5s infinite; }
+  .sd-critico { background: var(--critico); box-shadow: 0 0 8px var(--critico); animation: pulse-red 1.5s infinite; }
   .sd-sem { background: var(--muted); }
   @keyframes pulse-red { 0%,100% { box-shadow: 0 0 4px var(--vermelho); } 50% { box-shadow: 0 0 10px var(--vermelho); } }
   .dias-badge { font-family: var(--font-mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; }
   .dias-verde { background: var(--verde-bg); color: var(--verde); }
   .dias-amarelo { background: var(--amarelo-bg); color: var(--amarelo); }
   .dias-vermelho { background: var(--vermelho-bg); color: var(--vermelho); }
+  .dias-critico { background: var(--critico-bg); color: var(--critico); }
   .dias-sem { background: var(--surface2); color: var(--muted); }
   .btn-colher { padding: 5px 12px; border-radius: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; cursor: pointer; border: none; font-family: var(--font-main); transition: all 0.15s; letter-spacing: 0.03em; }
   .btn-colher:hover { background: #3b7de8; }

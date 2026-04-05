@@ -16,7 +16,7 @@ function renderDashboard() {
   // frutos/planta/ano por área — soma colheitas do ano calendário ÷ plantas da área
   const fppArea = {};
   const colhidosAnoArea = {};
-  let totalEitos=0, totalVerdes=0, totalAmareloDash=0, totalVermelho=0, totalCocos=0;
+  let totalEitos=0, totalVerdes=0, totalAmareloDash=0, totalVermelho=0, totalCritico=0, totalCocos=0;
   let totalPlantas=0, ultimaDataGlobal=null;
   let fppFazendaCocos=0, fppFazendaPlantas=0;
   let colhidosMes=0, colhidosAno=0;
@@ -35,6 +35,7 @@ function renderDashboard() {
       if (st==='verde') totalVerdes++;
       else if (st==='amarelo') totalAmareloDash++;
       else if (st==='vermelho') totalVermelho++;
+      else if (st==='critico') { totalVermelho++; totalCritico++; }
       if (ult && (!ultimaDataGlobal || ult.data > ultimaDataGlobal)) ultimaDataGlobal = ult.data;
       if (ult) totalCocos += ult.total;
       // somar colheitas do ano calendário
@@ -67,8 +68,18 @@ function renderDashboard() {
     // alerta de vencidos
   const alertEl = document.getElementById('alerta-vencidos');
   if (alertEl) {
-    if (totalVermelho > 0) {
+    if (totalCritico > 0) {
       alertEl.style.display = 'flex';
+      alertEl.style.background = 'var(--critico-bg)';
+      alertEl.style.borderColor = 'var(--critico-border)';
+      alertEl.style.color = 'var(--critico)';
+      document.getElementById('alerta-vencidos-txt').textContent =
+        `${totalCritico} eito${totalCritico>1?'s':''} CRÍTICO${totalCritico>1?'S':''} (+32 dias) — verificar plantas!`;
+    } else if (totalVermelho > 0) {
+      alertEl.style.display = 'flex';
+      alertEl.style.background = '';
+      alertEl.style.borderColor = '';
+      alertEl.style.color = '';
       document.getElementById('alerta-vencidos-txt').textContent =
         `${totalVermelho} eito${totalVermelho>1?'s':''} vencido${totalVermelho>1?'s':''} — colheita urgente!`;
     } else {
@@ -79,7 +90,8 @@ function renderDashboard() {
   const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesNome = nomesMes[hoje.getMonth()+1];
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver todos os eitos vencidos"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho)}</div><div class="kpi-sub">+21 dias</div></div>
+    ${totalCritico>0?`<div class="kpi critico clicavel" style="text-align:center" onclick="abrirTodasFiltrado('critico')" title="Ver eitos críticos (+32 dias)"><div class="kpi-label">🟣 Crítico</div><div class="kpi-value">${fmtNum(totalCritico)}</div><div class="kpi-sub">+32 dias</div></div>`:''}
+    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver eitos vencidos (21-31 dias)"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho - totalCritico)}</div><div class="kpi-sub">21–31 dias</div></div>
     <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias</div></div>
     <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias</div></div>
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="abrirColhidosMes()" title="Ver colhidos do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
@@ -94,19 +106,25 @@ function renderDashboard() {
   // incluir áreas que existam em DB mas não estejam na ordem definida
   Object.keys(DB).forEach(a=>{if(!ORDEM_AREAS.includes(a))areasOrdenadas.push([a,DB[a]]);});
   for (const [area, eitos] of areasOrdenadas) {
-    let v=0,a=0,r=0,s=0,cocos=0,plantas=0;
+    let v=0,a=0,r=0,c=0,s=0,cocos=0,plantas=0;
     let maisAntiga = null, maisRecente = null;
     let somaMediaPl=0, eitosComColheita=0;
-    let projecaoVencidos=0; // soma da média histórica dos eitos vencidos
+    let projecaoVencidos=0;
     for (const e of eitos) {
       const ult = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
       const st = statusDias(dias);
       if (st==='verde') v++;
       else if (st==='amarelo') a++;
+      else if (st==='critico') {
+        c++; r++;
+        if (e.historico && e.historico.length > 0) {
+          const somaHist = e.historico.reduce((s,h)=>s+(h.total||0),0);
+          projecaoVencidos += Math.round(somaHist / e.historico.length);
+        }
+      }
       else if (st==='vermelho') {
         r++;
-        // Calcular média histórica deste eito vencido
         if (e.historico && e.historico.length > 0) {
           const somaHist = e.historico.reduce((s,h)=>s+(h.total||0),0);
           projecaoVencidos += Math.round(somaHist / e.historico.length);
@@ -132,8 +150,10 @@ function renderDashboard() {
     const mediaPlColor = mediaPl === null ? 'var(--muted)' : mediaPl >= 8 ? 'var(--verde)' : mediaPl >= 5 ? 'var(--amarelo)' : 'var(--vermelho)';
     const total = eitos.length;
     const pv = (v/total*100).toFixed(0), pa = (a/total*100).toFixed(0),
-          pr = (r/total*100).toFixed(0), ps = (s/total*100).toFixed(0);
-    const urgente = r > 0 ? `<span class="urgente-tag">${r} VENCIDO${r>1?'S':''}</span>${projecaoVencidos>0?'<span style="font-size:10px;font-family:var(--font-mono);color:var(--vermelho);font-weight:700">≈ '+fmtNum(projecaoVencidos)+' cocos</span>':''}` : '';
+          pc = (c/total*100).toFixed(0), prr = ((r-c)/total*100).toFixed(0), ps = (s/total*100).toFixed(0);
+    const badgeCritico = c > 0 ? `<span class="critico-tag">${c} CRÍTICO${c>1?'S':''}</span>` : '';
+    const badgeVencido = (r-c) > 0 ? `<span class="urgente-tag">${r-c} VENCIDO${(r-c)>1?'S':''}</span>` : '';
+    const urgente = r > 0 ? `${badgeCritico}${badgeVencido}${projecaoVencidos>0?'<span style="font-size:10px;font-family:var(--font-mono);color:var(--vermelho);font-weight:700">≈ '+fmtNum(projecaoVencidos)+' cocos</span>':''}` : '';
 
     grid.innerHTML += `
       <div class="area-card" onclick="openArea('${area}')">
@@ -153,13 +173,15 @@ function renderDashboard() {
         <div class="area-bar">
           <div class="bar-seg bar-verde" style="width:${pv}%"></div>
           <div class="bar-seg bar-amarelo" style="width:${pa}%"></div>
-          <div class="bar-seg bar-vermelho" style="width:${pr}%"></div>
+          <div class="bar-seg bar-vermelho" style="width:${prr}%"></div>
+          <div class="bar-seg bar-critico" style="width:${pc}%"></div>
           <div class="bar-seg bar-sem" style="width:${ps}%"></div>
         </div>
         <div class="area-stats">
           <div class="area-stat"><div class="area-stat-val" style="color:var(--verde)">${v}</div><div class="area-stat-label">Verde</div></div>
           <div class="area-stat"><div class="area-stat-val" style="color:var(--amarelo)">${a}</div><div class="area-stat-label">Amarelo</div></div>
-          <div class="area-stat"><div class="area-stat-val" style="color:var(--vermelho)">${r}</div><div class="area-stat-label">Vencido</div></div>
+          <div class="area-stat"><div class="area-stat-val" style="color:var(--vermelho)">${r-c}</div><div class="area-stat-label">Vencido</div></div>
+          ${c>0?`<div class="area-stat"><div class="area-stat-val" style="color:var(--critico)">${c}</div><div class="area-stat-label">Crítico</div></div>`:''}
           <div class="area-stat"><div class="area-stat-val" style="color:var(--accent2)">${fmtNum(cocos)}</div><div class="area-stat-label">Ult. Colheita</div></div>
           <div class="area-stat" title="Frutos por planta no ano ${anoStr} — meta: 300"><div class="area-stat-val" style="color:${corFpp(fppArea[area])}">${fppArea[area]!==null?Math.round(fppArea[area]):'—'}</div><div class="area-stat-label">Fr/Pl/${anoStr}</div></div>
           <div class="area-stat" title="Total de frutos colhidos nesta área em ${anoStr}"><div class="area-stat-val" style="color:var(--teal)">${fmtNum(colhidosAnoArea[area]||0)}</div><div class="area-stat-label">Colhidos ${anoStr}</div></div>
@@ -428,7 +450,7 @@ function renderProjecao() {
     const nome = nomes[area] || area;
     const safeKey = areaKey.replace(/[^a-zA-Z0-9]/g, '_');
     const totalCocos = info.cocosUrg + info.cocosSem;
-    const diasCor = info.maxDias >= 21 ? 'var(--vermelho)' : info.maxDias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
+    const diasCor = info.maxDias >= 32 ? 'var(--critico)' : info.maxDias >= 21 ? 'var(--vermelho)' : info.maxDias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
     const bordaCor = info.nUrg > 0 ? 'rgba(220,53,69,0.15)' : 'rgba(224,168,0,0.15)';
     const badges = (info.nUrg > 0 ? `<span style="font-size:9px;font-weight:800;background:var(--vermelho);color:#fff;padding:1px 6px;border-radius:4px">URG ${info.nUrg}</span> ` : '')
                  + (info.nSem > 0 ? `<span style="font-size:9px;font-weight:800;background:var(--amarelo);color:#fff;padding:1px 6px;border-radius:4px">SEM ${info.nSem}</span>` : '');
@@ -437,7 +459,7 @@ function renderProjecao() {
     const eitoRows = info.eitos.map(ei => {
       const tipoCor = ei.tipo === 'urg' ? 'var(--vermelho)' : 'var(--amarelo)';
       const tipoLabel = ei.tipo === 'urg' ? 'URGENTE' : 'SEMANA';
-      const diasEitoCor = ei.dias >= 21 ? 'var(--vermelho)' : ei.dias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
+      const diasEitoCor = ei.dias >= 32 ? 'var(--critico)' : ei.dias >= 21 ? 'var(--vermelho)' : ei.dias >= 15 ? 'var(--amarelo)' : 'var(--verde)';
       return `<tr>
         <td style="font-family:var(--font-mono);font-weight:700;color:var(--forest);font-size:12px;padding:4px 6px">${ei.id}</td>
         <td style="font-family:var(--font-mono);font-weight:800;color:${diasEitoCor};font-size:12px;padding:4px 6px;text-align:center">${ei.dias}d</td>
@@ -527,7 +549,7 @@ function renderProjecao() {
       .map(([area, info]) => `
         <div class="proj-row proj-row-clicavel" onclick="openArea('${area}')" title="Abrir ${area} · ${info.nEitos} eitos" style="display:grid;grid-template-columns:1fr 50px 70px;align-items:center;padding:4px 6px;border-radius:6px">
           <span style="font-size:12px;font-weight:700;color:var(--text)">${nomes[area]||area}</span>
-          <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:${info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};text-align:center">${info.maxDias}d</span>
+          <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:${info.maxDias>=32?'var(--critico)':info.maxDias>=21?'var(--vermelho)':info.maxDias>=15?'var(--amarelo)':'var(--verde)'};text-align:center">${info.maxDias}d</span>
           <span style="font-size:12px;font-weight:800;font-family:var(--font-mono);color:var(--forest);text-align:right">${fmtNum(info.cocos)}</span>
         </div>`).join('');
   }
@@ -961,7 +983,7 @@ function renderMapa() {
   let gtFrutos=0, gtVerde=0, gtAmarelo=0, gtVermelho=0;
 
   for (const area of areas) {
-    let frutos=0, verde=0, amarelo=0, vermelho=0;
+    let frutos=0, verde=0, amarelo=0, vermelho=0, critico=0;
     for (const e of DB[area]) {
       const ult = getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
@@ -970,9 +992,10 @@ function renderMapa() {
       frutos += total;
       if (st==='verde') verde += total;
       else if (st==='amarelo') amarelo += total;
+      else if (st==='critico') { critico += total; vermelho += total; }
       else if (st==='vermelho') vermelho += total;
     }
-    stats[area] = {frutos, verde, amarelo, vermelho};
+    stats[area] = {frutos, verde, amarelo, vermelho, critico};
     gtFrutos+=frutos; gtVerde+=verde; gtAmarelo+=amarelo; gtVermelho+=vermelho;
   }
 
@@ -1044,7 +1067,8 @@ function renderMapa() {
     const segs = [
       {val: s.verde,    color: '#22a745'},
       {val: s.amarelo,  color: '#e0a800'},
-      {val: s.vermelho, color: '#dc3545'},
+      {val: s.vermelho - s.critico, color: '#dc3545'},
+      {val: s.critico,  color: '#7c3aed'},
     ];
     let yBottom = pad.t + gH;
     for (const seg of segs) {
@@ -1084,7 +1108,7 @@ function renderMapa() {
 // ─────────── FILTRO MAPA ───────────
 function setMapaFiltro(filtro) {
   _mapaFiltro = filtro;
-  ['todos','vermelho','amarelo','verde'].forEach(f => {
+  ['todos','critico','vermelho','amarelo','verde'].forEach(f => {
     const btn = document.getElementById('mapa-filtro-' + f);
     if (btn) btn.classList.toggle('ativo', f === filtro);
   });
@@ -1093,8 +1117,8 @@ function setMapaFiltro(filtro) {
 
 // ─────────── AREA DETAIL ───────────
 function abrirTodasFiltrado(filtro) {
-  const labels = {vermelho:'🔴 Vencidos (+21 dias)', amarelo:'🟡 Atenção (15-20 dias)', verde:'🟢 Em dia (1-14 dias)'};
-  const cores  = {vermelho:'var(--vermelho)', amarelo:'var(--amarelo)', verde:'var(--verde)'};
+  const labels = {critico:'🟣 Críticos (+32 dias)', vermelho:'🔴 Vencidos (21–31 dias)', amarelo:'🟡 Atenção (15-20 dias)', verde:'🟢 Em dia (1-14 dias)'};
+  const cores  = {critico:'var(--critico)', vermelho:'var(--vermelho)', amarelo:'var(--amarelo)', verde:'var(--verde)'};
 
   // coletar todos os eitos do filtro em todas as áreas
   const linhas = [];
@@ -1123,7 +1147,7 @@ function abrirTodasFiltrado(filtro) {
     tr.innerHTML =
       '<td style="font-size:12px;color:var(--muted)">' + (NOMES_CURTOS[area]||area) + '</td>'
      +'<td style="font-family:var(--font-mono);font-weight:700;color:var(--forest)">' + e.id + '</td>'
-     +'<td><span style="font-size:11px;font-weight:700;color:'+cores[st]+'">' + (st==='vermelho'?'VENCIDO':st==='amarelo'?'ATENÇÃO':'VERDE') + '</span></td>'
+     +'<td><span style="font-size:11px;font-weight:700;color:'+cores[st]+'">' + (st==='critico'?'CRÍTICO':st==='vermelho'?'VENCIDO':st==='amarelo'?'ATENÇÃO':'VERDE') + '</span></td>'
      +'<td><span class="dias-badge dias-'+st+'">' + (dias!==null?dias+'d':'—') + '</span></td>'
      +'<td style="font-family:var(--font-mono);font-size:12px">' + (ult?fmtData(ult.data):'—') + '</td>'
      +'<td style="font-family:var(--font-mono)">' + (ult?fmtNum(ult.total):'—') + '</td>'
@@ -1150,7 +1174,7 @@ function setFilter(f) {
   currentFilter = f;
   const drawer = document.getElementById('area-drawer');
   drawer.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  const idx = {todos:0,vermelho:1,amarelo:2,verde:3,sem:4}[f];
+  const idx = {todos:0,critico:1,vermelho:2,amarelo:3,verde:4,sem:5}[f];
   const btns = drawer.querySelectorAll('.filter-btn');
   if (btns[idx]) btns[idx].classList.add('active');
   renderAreaTable();
@@ -1203,12 +1227,13 @@ function renderAreaTable() {
     const proxFmt = proxData ? fmtData(proxData) : '—';
     const proxDiasRestantes = ult ? Math.max(0, 21 - dias) : null;
     const urgente = (dias === null || dias >= 21);
-    return `<tr style="${urgente?'background:rgba(239,68,68,0.04)':''}">
+    const trBg = st==='critico'?'background:rgba(124,58,237,0.04)':urgente?'background:rgba(239,68,68,0.04)':'';
+    return `<tr style="${trBg}">
       <td><span class="eito-id">${e.id}</span>${alertaQueda ? `<span class="alerta-queda" title="Queda de ${alertaQueda.pct}% vs média histórica (${fmtNum(alertaQueda.mediaHist)} cocos)">⚠️</span>` : ''}</td>
-      <td><span class="status-dot sd-${st}"></span><span style="font-size:12px;font-weight:600;color:${st==='verde'?'var(--verde)':st==='amarelo'?'var(--amarelo)':st==='vermelho'?'var(--vermelho)':'var(--muted)'}">${statusLabel(st)}</span></td>
+      <td><span class="status-dot sd-${st}"></span><span style="font-size:12px;font-weight:600;color:${corStatus(st)}">${statusLabel(st)}</span></td>
       <td>${dias!==null?`<span class="dias-badge dias-${st}">${dias}d</span>`:'<span class="dias-badge dias-sem">—</span>'}</td>
       <td style="font-family:var(--font-mono);font-size:12px">${ult?fmtData(ult.data):'—'}</td>
-      <td style="font-family:var(--font-mono);font-size:12px;color:${urgente?'var(--vermelho)':dias>=15?'var(--amarelo)':'var(--muted)'}">
+      <td style="font-family:var(--font-mono);font-size:12px;color:${urgente?corStatus(st):dias>=15?'var(--amarelo)':'var(--muted)'}">
         ${proxFmt}${proxDiasRestantes!==null&&!urgente?` <span style="font-size:10px">(${proxDiasRestantes}d)</span>`:''}
       </td>
       <td style="font-family:var(--font-mono)">${ult?fmtNum(ult.total):'—'}</td>
