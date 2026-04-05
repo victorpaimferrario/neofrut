@@ -343,7 +343,7 @@ function fmtData() {
   return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 function fmtN(n) { return (n||0).toLocaleString('pt-BR'); }
-function gVal(id) { return parseInt(document.getElementById(id).value) || 0; }
+function gVal(id) { if (id==='inp-mesa') return _valMesa; if (id==='inp-fabrica') return _valFabrica; return 0; }
 function diasDesde(data) {
   if (!data) return null;
   const d = new Date(data+'T00:00:00'), h = new Date(); h.setHours(0,0,0,0);
@@ -390,7 +390,7 @@ async function sincronizarDados() {
 
     // 2. Carregar colheitas para calcular dias desde última colheita
     try {
-      const { data: colhDb } = await _SB.from('colheitas').select('area,eito_id,data').order('data', { ascending: false });
+      const { data: colhDb } = await _SB.from('colheitas').select('area,eito_id,data').order('data', { ascending: false }).limit(2000);
       if (colhDb && colhDb.length > 0) {
         // Pegar data mais recente por eito
         colhDb.forEach(c => {
@@ -443,26 +443,29 @@ let _enviando = false;
 async function enviarFila() {
   if (filaEnvio.length === 0 || _enviando) return;
   _enviando = true;
-  atualizarSyncBadge('enviando');
-  const enviados = [];
-  for (const r of filaEnvio) {
-    try {
-      const payload = {
-        data: r.data, area: r.area, eito_id: r.id,
-        mesa: r.mesa, fabrica: r.fabrica, total: r.total,
-        hora: r.hora, status: 'pendente'
-      };
-      if (r.obs) payload.obs = r.obs;
-      const { error } = await _SB.from('nado_contagens').upsert(payload, { onConflict: 'data,area,eito_id' });
-      if (!error) enviados.push(r);
-    } catch (e) { console.error('Envio erro:', e); }
-  }
-  filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
-  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
-  _enviando = false;
-  if (filaEnvio.length === 0 && enviados.length > 0) {
-    atualizarSyncBadge('enviado');
-    toast('Dados enviados!');
+  try {
+    atualizarSyncBadge('enviando');
+    const enviados = [];
+    for (const r of filaEnvio) {
+      try {
+        const payload = {
+          data: r.data, area: r.area, eito_id: r.id,
+          mesa: r.mesa, fabrica: r.fabrica, total: r.total,
+          hora: r.hora, status: 'pendente'
+        };
+        if (r.obs) payload.obs = r.obs;
+        const { error } = await _SB.from('nado_contagens').upsert(payload, { onConflict: 'data,area,eito_id' });
+        if (!error) enviados.push(r);
+      } catch (e) { console.error('Envio erro:', e); }
+    }
+    filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
+    localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+    if (filaEnvio.length === 0 && enviados.length > 0) {
+      atualizarSyncBadge('enviado');
+      toast('Dados enviados!');
+    }
+  } finally {
+    _enviando = false;
   }
 }
 
@@ -736,13 +739,6 @@ function atualizarTotal() {
   document.getElementById('total-eito').textContent = fmtN(_valMesa + _valFabrica);
 }
 
-// Compatibilidade: gVal agora lê das variáveis internas
-function gVal(id) {
-  if (id === 'inp-mesa') return _valMesa;
-  if (id === 'inp-fabrica') return _valFabrica;
-  return 0;
-}
-
 // ── OBSERVAÇÃO toggle ──
 function toggleObs() {
   const campo = document.getElementById('obs-campo');
@@ -864,7 +860,7 @@ function confirmarEitoDefinitivo() {
   window._contandoAgora = false;
 
   // Tentar enviar imediatamente se online
-  if (navigator.onLine) enviarFila();
+  if (navigator.onLine) enviarFila().catch(() => {});
 
   // Vibrar
   if (navigator.vibrate) navigator.vibrate(100);
@@ -953,7 +949,7 @@ function desativarWakeLock() {
 // ── ONLINE/OFFLINE LISTENERS ──
 window.addEventListener('online', () => {
   atualizarSyncBadge('online');
-  if (filaEnvio.length > 0) enviarFila();
+  if (filaEnvio.length > 0) enviarFila().catch(() => {});
 });
 window.addEventListener('offline', () => atualizarSyncBadge('offline'));
 
@@ -992,7 +988,7 @@ if (navigator.onLine) sincronizarDados().then(() => { renderLista(); addBtnResum
 
 // Retry a cada 30s
 setInterval(() => {
-  if (navigator.onLine && filaEnvio.length > 0) enviarFila();
+  if (navigator.onLine && filaEnvio.length > 0) enviarFila().catch(() => {});
 }, 30000);
 
 // Service Worker
