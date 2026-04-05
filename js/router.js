@@ -39,6 +39,14 @@ function showPage(id) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+function showAjudaSec(sec) {
+  document.querySelectorAll('.ajuda-sec').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.ajuda-tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById('ajuda-' + sec);
+  if (el) el.style.display = '';
+  event.target.classList.add('active');
+}
+
 // Close modals on overlay click (delegation — works for static and dynamic modals)
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) {

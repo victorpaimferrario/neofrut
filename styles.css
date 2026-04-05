@@ -618,6 +618,14 @@
 .ac-item{padding:8px 12px;font-size:13px;cursor:pointer;transition:background .15s;}
 .ac-item:hover,.ac-item.active{background:var(--verde-bg);color:var(--forest);}
 .ac-item .ac-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+/* Ajuda */
+.ajuda-tab{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .2s;}
+.ajuda-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.ajuda-tab:hover:not(.active){background:var(--verde-bg);}
+.ajuda-titulo{font-size:14px;font-weight:800;color:var(--forest);margin:18px 0 6px 0;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.ajuda-sec p{margin:4px 0 8px 0;color:var(--text);}
+.ajuda-sec ol,.ajuda-sec ul{margin:4px 0 12px 18px;color:var(--text);}
+.ajuda-sec li{margin-bottom:4px;}
 /* Tables responsive wrapper */
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .cli-table{width:100%;border-collapse:collapse;}
