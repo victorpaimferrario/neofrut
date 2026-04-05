@@ -103,18 +103,26 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .eito-header-id{font-size:26px;font-weight:900;line-height:1}
 .eito-header-plantas{font-size:11px;opacity:.7}
 
-.campo-wrap{background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:8px 10px;margin-bottom:6px}
-.campo-label{font-size:15px;font-weight:900;color:var(--texto);text-transform:uppercase;margin-bottom:2px;display:flex;align-items:center;gap:8px}
-.campo-dot{width:12px;height:12px;border-radius:50%}
+.campos-row{display:flex;gap:8px;margin-bottom:6px}
+.campo-wrap{flex:1;background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .15s}
+.campo-wrap.ativo{border-color:var(--verde);box-shadow:0 0 0 3px rgba(26,92,26,.2)}
+.campo-wrap.ativo-fab{border-color:var(--amarelo);box-shadow:0 0 0 3px rgba(230,168,23,.2)}
+.campo-label{font-size:13px;font-weight:900;color:var(--muted);text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px}
+.campo-dot{width:10px;height:10px;border-radius:50%}
 .campo-dot.mesa{background:var(--verde)}
 .campo-dot.fabrica{background:var(--amarelo)}
-.campo-input{width:100%;font-size:44px;font-weight:900;color:var(--texto);border:none;outline:none;text-align:center;background:transparent;padding:0;-webkit-appearance:none;line-height:1.2}
-.campo-input::placeholder{color:#d1d5db}
-.campo-input:focus{color:var(--verde)}
-.campo-ajuste{display:flex;align-items:center;gap:4px;margin-top:4px}
-.btn-aj{flex:1;padding:10px 2px;border:2px solid var(--borda);border-radius:10px;background:var(--bg);font-size:17px;font-weight:900;color:var(--verde);cursor:pointer;text-align:center}
-.btn-aj:active{background:var(--verde-bg);transform:scale(.94)}
-.btn-aj.minus{color:var(--vermelho)}
+.campo-valor{font-size:40px;font-weight:900;color:var(--texto);line-height:1.1;min-height:48px;display:flex;align-items:center;justify-content:center}
+.campo-wrap.ativo .campo-valor{color:var(--verde)}
+.campo-wrap.ativo-fab .campo-valor{color:var(--amarelo)}
+.campo-valor.vazio{color:#d1d5db}
+
+/* Teclado numérico */
+.teclado{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.tecla{padding:14px 4px;border:2px solid var(--borda);border-radius:12px;background:var(--branco);font-size:26px;font-weight:900;color:var(--texto);cursor:pointer;text-align:center;transition:all .1s;-webkit-tap-highlight-color:transparent}
+.tecla:active{background:var(--verde-bg);transform:scale(.94)}
+.tecla.apagar{font-size:20px;color:var(--vermelho);background:var(--vermelho-bg);border-color:var(--vermelho)}
+.tecla.apagar:active{background:#fcc;transform:scale(.94)}
+.tecla.limpar{font-size:14px;color:var(--muted);background:var(--bg)}
 
 .total-box{background:var(--verde-bg);border:3px solid var(--verde);border-radius:12px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .total-label{font-size:14px;font-weight:800;color:var(--verde);text-transform:uppercase}
@@ -234,27 +242,29 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
     </div>
     <div class="eito-header-plantas" id="cnt-plantas"></div>
   </div>
-  <div class="campo-wrap">
-    <div class="campo-label"><span class="campo-dot mesa"></span> MESA</div>
-    <input class="campo-input" type="number" id="inp-mesa" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
-    <div class="campo-ajuste">
-      <button class="btn-aj minus" onclick="aj('mesa',-10)">-10</button>
-      <button class="btn-aj minus" onclick="aj('mesa',-1)">-1</button>
-      <button class="btn-aj" onclick="aj('mesa',1)">+1</button>
-      <button class="btn-aj" onclick="aj('mesa',10)">+10</button>
-      <button class="btn-aj" onclick="aj('mesa',100)">+100</button>
+  <div class="campos-row">
+    <div class="campo-wrap ativo" id="campo-mesa" onclick="selecionarCampo('mesa')">
+      <div class="campo-label"><span class="campo-dot mesa"></span> MESA</div>
+      <div class="campo-valor vazio" id="val-mesa">0</div>
+    </div>
+    <div class="campo-wrap" id="campo-fabrica" onclick="selecionarCampo('fabrica')">
+      <div class="campo-label"><span class="campo-dot fabrica"></span> FÁBRICA</div>
+      <div class="campo-valor vazio" id="val-fabrica">0</div>
     </div>
   </div>
-  <div class="campo-wrap">
-    <div class="campo-label"><span class="campo-dot fabrica"></span> FABRICA</div>
-    <input class="campo-input" type="number" id="inp-fabrica" inputmode="numeric" pattern="[0-9]*" placeholder="0" min="0">
-    <div class="campo-ajuste">
-      <button class="btn-aj minus" onclick="aj('fab',-10)">-10</button>
-      <button class="btn-aj minus" onclick="aj('fab',-1)">-1</button>
-      <button class="btn-aj" onclick="aj('fab',1)">+1</button>
-      <button class="btn-aj" onclick="aj('fab',10)">+10</button>
-      <button class="btn-aj" onclick="aj('fab',100)">+100</button>
-    </div>
+  <div class="teclado">
+    <button class="tecla" onclick="digitarNum('1')">1</button>
+    <button class="tecla" onclick="digitarNum('2')">2</button>
+    <button class="tecla" onclick="digitarNum('3')">3</button>
+    <button class="tecla" onclick="digitarNum('4')">4</button>
+    <button class="tecla" onclick="digitarNum('5')">5</button>
+    <button class="tecla" onclick="digitarNum('6')">6</button>
+    <button class="tecla" onclick="digitarNum('7')">7</button>
+    <button class="tecla" onclick="digitarNum('8')">8</button>
+    <button class="tecla" onclick="digitarNum('9')">9</button>
+    <button class="tecla limpar" onclick="digitarNum('C')">LIMPAR</button>
+    <button class="tecla" onclick="digitarNum('0')">0</button>
+    <button class="tecla apagar" onclick="digitarNum('⌫')">⌫</button>
   </div>
   <div class="obs-wrap">
     <button class="btn-obs-toggle" id="btn-obs-toggle" onclick="toggleObs()">+ Adicionar observação</button>
@@ -366,45 +376,45 @@ async function sincronizarDados() {
   try {
     atualizarSyncBadge('enviando');
 
-    // 1. Carregar eitos da nado_programacao (sem RLS, Jamille popula com todos os eitos)
-    // Buscar data mais recente disponível (pode ser hoje ou data anterior)
-    const { data: progAll } = await _SB.from('nado_programacao')
-      .select('area,eito_id,plantas,sugerido,dias_desde,data')
-      .order('data', { ascending: false });
-
-    if (progAll && progAll.length > 0) {
-      // Pegar dados da data mais recente
-      const dataRecente = progAll[0].data;
-      const progHoje = progAll.filter(p => p.data === dataRecente);
-
-      todosEitos = {};
-      programados = [];
-      progHoje.forEach(e => {
-        if (!todosEitos[e.area]) todosEitos[e.area] = [];
-        if (!todosEitos[e.area].find(x => x.id === e.eito_id)) {
+    // 1. Carregar TODOS os eitos da fazenda (tabela eitos — fonte primária)
+    try {
+      const { data: eitosDb } = await _SB.from('eitos').select('area,eito_id,plantas');
+      if (eitosDb && eitosDb.length > 0) {
+        todosEitos = {};
+        eitosDb.forEach(e => {
+          if (!todosEitos[e.area]) todosEitos[e.area] = [];
           todosEitos[e.area].push({ id: e.eito_id, plantas: e.plantas || 0 });
-        }
-        // Sugeridos
-        if (e.sugerido) programados.push({ area: e.area, eito_id: e.eito_id });
-        // Dias desde ultima colheita
-        if (e.dias_desde != null) {
-          ultimaColheita[chaveEito(e.area, e.eito_id)] = calcDataFromDias(e.dias_desde);
-        }
-      });
-      localStorage.setItem(SK_PROG, JSON.stringify({ data: hoje(), items: programados }));
-    } else {
-      // Fallback: tentar tabela eitos (requer auth)
-      try {
-        const { data: eitosDb } = await _SB.from('eitos').select('area,eito_id,plantas');
-        if (eitosDb && eitosDb.length > 0) {
-          todosEitos = {};
-          eitosDb.forEach(e => {
-            if (!todosEitos[e.area]) todosEitos[e.area] = [];
-            todosEitos[e.area].push({ id: e.eito_id, plantas: e.plantas || 0 });
-          });
-        }
-      } catch(e) {} // Sem auth, usa cache local
-    }
+        });
+      }
+    } catch(e) { console.warn('Falha ao carregar eitos:', e); }
+
+    // 2. Carregar colheitas para calcular dias desde última colheita
+    try {
+      const { data: colhDb } = await _SB.from('colheitas').select('area,eito_id,data').order('data', { ascending: false });
+      if (colhDb && colhDb.length > 0) {
+        // Pegar data mais recente por eito
+        colhDb.forEach(c => {
+          const k = chaveEito(c.area, c.eito_id);
+          if (!ultimaColheita[k]) ultimaColheita[k] = c.data;
+        });
+      }
+    } catch(e) { console.warn('Falha ao carregar colheitas:', e); }
+
+    // 3. Carregar sugestões da Jamille (opcional — Nado funciona sem isso)
+    programados = [];
+    try {
+      const { data: progAll } = await _SB.from('nado_programacao')
+        .select('area,eito_id,sugerido,data')
+        .order('data', { ascending: false })
+        .limit(200);
+      if (progAll && progAll.length > 0) {
+        const dataRecente = progAll[0].data;
+        progAll.filter(p => p.data === dataRecente && p.sugerido).forEach(e => {
+          programados.push({ area: e.area, eito_id: e.eito_id });
+        });
+      }
+    } catch(e) {} // Sem sugestões, Nado vê todos os eitos normalmente
+    localStorage.setItem(SK_PROG, JSON.stringify({ data: hoje(), items: programados }));
 
     // Ordenar numericamente
     Object.values(todosEitos).forEach(arr => arr.sort((a, b) => {
@@ -429,8 +439,10 @@ async function sincronizarDados() {
   }
 }
 
+let _enviando = false;
 async function enviarFila() {
-  if (filaEnvio.length === 0) return;
+  if (filaEnvio.length === 0 || _enviando) return;
+  _enviando = true;
   atualizarSyncBadge('enviando');
   const enviados = [];
   for (const r of filaEnvio) {
@@ -447,6 +459,7 @@ async function enviarFila() {
   }
   filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
   localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  _enviando = false;
   if (filaEnvio.length === 0 && enviados.length > 0) {
     atualizarSyncBadge('enviado');
     toast('Dados enviados!');
@@ -658,8 +671,11 @@ function abrirContagem(area, eito) {
   document.getElementById('cnt-area').textContent = area;
   document.getElementById('cnt-id').textContent = 'Eito ' + eito.id;
   document.getElementById('cnt-plantas').textContent = eito.plantas + ' plantas';
-  document.getElementById('inp-mesa').value = existente ? existente.mesa : '';
-  document.getElementById('inp-fabrica').value = existente ? existente.fabrica : '';
+  _valMesa = existente ? existente.mesa : 0;
+  _valFabrica = existente ? existente.fabrica : 0;
+  _campoAtivo = 'mesa';
+  selecionarCampo('mesa');
+  atualizarDisplay();
   // Reset obs
   document.getElementById('inp-obs').value = existente && existente.obs ? existente.obs : '';
   const obsAberto = !!(existente && existente.obs);
@@ -679,19 +695,52 @@ function abrirContagem(area, eito) {
   ativarWakeLock();
 }
 
-function atualizarTotal() {
-  document.getElementById('total-eito').textContent = fmtN(gVal('inp-mesa') + gVal('inp-fabrica'));
-}
-['inp-mesa','inp-fabrica'].forEach(id => {
-  document.getElementById(id).addEventListener('input', () => { atualizarTotal(); salvarRascunho(); });
-});
+// ── TECLADO NUMÉRICO ──
+let _campoAtivo = 'mesa'; // 'mesa' ou 'fabrica'
+let _valMesa = 0, _valFabrica = 0;
 
-function aj(campo, val) {
-  const id = campo === 'mesa' ? 'inp-mesa' : 'inp-fabrica';
-  const el = document.getElementById(id);
-  el.value = Math.max(0, (parseInt(el.value) || 0) + val);
+function selecionarCampo(campo) {
+  _campoAtivo = campo;
+  document.getElementById('campo-mesa').className = 'campo-wrap' + (campo === 'mesa' ? ' ativo' : '');
+  document.getElementById('campo-fabrica').className = 'campo-wrap' + (campo === 'fabrica' ? ' ativo-fab' : '');
+}
+
+function digitarNum(tecla) {
+  let val = _campoAtivo === 'mesa' ? _valMesa : _valFabrica;
+  if (tecla === 'C') {
+    val = 0;
+  } else if (tecla === '⌫') {
+    val = Math.floor(val / 10);
+  } else {
+    // Limitar a 5 dígitos (99999 cocos max)
+    if (val < 100000) val = val * 10 + parseInt(tecla);
+  }
+  if (_campoAtivo === 'mesa') _valMesa = val; else _valFabrica = val;
+  atualizarDisplay();
   atualizarTotal();
   salvarRascunho();
+  // Vibração leve no toque
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function atualizarDisplay() {
+  const elM = document.getElementById('val-mesa');
+  const elF = document.getElementById('val-fabrica');
+  elM.textContent = fmtN(_valMesa);
+  elF.textContent = fmtN(_valFabrica);
+  elM.className = 'campo-valor' + (_valMesa === 0 ? ' vazio' : '');
+  elF.className = 'campo-valor' + (_valFabrica === 0 ? ' vazio' : '');
+}
+
+function atualizarTotal() {
+  document.getElementById('total-eito').textContent = fmtN(_valMesa + _valFabrica);
+}
+
+// Compatibilidade: gVal agora lê das variáveis internas
+function gVal(id) {
+  if (id === 'inp-mesa') return _valMesa;
+  if (id === 'inp-fabrica') return _valFabrica;
+  return 0;
 }
 
 // ── OBSERVAÇÃO toggle ──
@@ -711,7 +760,7 @@ function salvarRascunho() {
   if (!eitoAtual) return;
   const rascunho = {
     area: eitoAtual.area, id: eitoAtual.id, plantas: eitoAtual.plantas,
-    mesa: gVal('inp-mesa'), fabrica: gVal('inp-fabrica'),
+    mesa: _valMesa, fabrica: _valFabrica,
     obs: (document.getElementById('inp-obs').value || '').trim(),
     timestamp: Date.now(), data: hoje()
   };
@@ -741,8 +790,9 @@ function restaurarRascunho() {
     const eito = (todosEitos[r.area] || []).find(e => e.id === r.id);
     if (!eito) { toast('Eito não encontrado'); descartarRascunho(); return; }
     abrirContagem(r.area, eito);
-    document.getElementById('inp-mesa').value = r.mesa || '';
-    document.getElementById('inp-fabrica').value = r.fabrica || '';
+    _valMesa = r.mesa || 0;
+    _valFabrica = r.fabrica || 0;
+    atualizarDisplay();
     if (r.obs) {
       document.getElementById('inp-obs').value = r.obs;
       document.getElementById('obs-campo').classList.add('aberto');
@@ -760,7 +810,7 @@ function descartarRascunho() {
 
 // ── CONFIRMAR COM REVISÃO ──
 function confirmarEito() {
-  const mesa = gVal('inp-mesa'), fab = gVal('inp-fabrica');
+  const mesa = _valMesa, fab = _valFabrica;
   if (mesa + fab === 0) { toast('Preencha mesa ou fabrica'); return; }
 
   const obs = (document.getElementById('inp-obs').value || '').trim();
@@ -790,7 +840,7 @@ function voltarParaContagem() {
 }
 
 function confirmarEitoDefinitivo() {
-  const mesa = gVal('inp-mesa'), fab = gVal('inp-fabrica');
+  const mesa = _valMesa, fab = _valFabrica;
   const obs = (document.getElementById('inp-obs').value || '').trim();
   const k = chaveEito(eitoAtual.area, eitoAtual.id);
   const agora = new Date();
@@ -922,7 +972,7 @@ function addBtnResumo() {
 
 // ── BEFOREUNLOAD ──
 window.addEventListener('beforeunload', (e) => {
-  if (window._contandoAgora && (gVal('inp-mesa') + gVal('inp-fabrica') > 0)) {
+  if (window._contandoAgora && (_valMesa + _valFabrica > 0)) {
     salvarRascunho();
     e.preventDefault();
     e.returnValue = '';
