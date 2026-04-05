@@ -409,9 +409,11 @@ function _updateContratoInfo(cliente){
     modoBox.style.display='';
     // Default: contrato se tem cota disponível
     if(disp>0){
-      document.querySelector('input[name="v-modo-venda"][value="contrato"]').checked=true;
+      const el=document.querySelector('input[name="v-modo-venda"][value="contrato"]');
+      if(el) el.checked=true;
     }else{
-      document.querySelector('input[name="v-modo-venda"][value="spot"]').checked=true;
+      const el=document.querySelector('input[name="v-modo-venda"][value="spot"]');
+      if(el) el.checked=true;
     }
     window._vContratoAtivo=contrato;
     window._vCotaDisp=disp>0?disp:0;
@@ -419,7 +421,9 @@ function _updateContratoInfo(cliente){
     onModoVendaChange();
   }else{
     infoEl.style.display='none';
-    document.querySelector('input[name="v-modo-venda"][value="spot"]').checked=true;
+    modoBox.style.display='none';
+    const spotRadio=document.querySelector('input[name="v-modo-venda"][value="spot"]');
+    if(spotRadio) spotRadio.checked=true;
     window._vContratoAtivo=null;
     window._vCotaDisp=0;
     window._vCotaValor=0;
@@ -431,7 +435,7 @@ function onModoVendaChange(){
   const modo=document.querySelector('input[name="v-modo-venda"]:checked')?.value||'spot';
   document.getElementById('v-spot-fields').style.display=(modo==='spot'||modo==='misto')?'':'none';
   document.getElementById('v-misto-fields').style.display=modo==='misto'?'':'none';
-  calcFabrica();
+  if(document.getElementById('v-campos-fabrica')?.style.display!=='none') calcFabrica();
 }
 
 function calcFabrica(){
@@ -723,6 +727,8 @@ function limparFormVenda(){
   document.getElementById('v-contrato-info').style.display='none';
   document.getElementById('v-misto-fields').style.display='none';
   document.getElementById('v-spot-fields').style.display='none';
+  const modoBox=document.getElementById('v-modo-venda-box');if(modoBox)modoBox.style.display='none';
+  const spotRadio=document.querySelector('input[name="v-modo-venda"][value="spot"]');if(spotRadio)spotRadio.checked=true;
   document.getElementById('vc-ml-badge').style.display='none';
   window._vContratoAtivo=null;window._vCotaDisp=0;window._vCotaValor=0;
   ['vc-cocos','vc-preco','vc-litro','vc-ml','vc-ml-fruto','vc-kg-fruto','vc-l-ton','vc-rl-cif','vc-frete-l','vc-rl-fob','vc-frete-coco','vc-rcoco-efet'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
@@ -1162,56 +1168,7 @@ function _popularDatalistClientes(){
   if(dl2) dl2.innerHTML = opts;
 }
 
-function acCliente(){
-  const inp=document.getElementById('v-cliente');
-  const list=document.getElementById('ac-cliente-list');
-  if(!inp||!list)return;
-  const q=(inp.value||'').trim().toUpperCase();
-  if(q.length<1){list.classList.remove('open');return;}
-  const all=window._acClientesLista||[];
-  const mapa=getMapaClientes();
-  const mapaNomes=Object.keys(mapa);
-  const merged=[...new Set([...all,...mapaNomes])].sort();
-  const filtered=merged.filter(c=>c.toUpperCase().includes(q)).slice(0,12);
-  if(!filtered.length){list.classList.remove('open');return;}
-  list.innerHTML=filtered.map((c,i)=>{
-    const info=mapa[c];
-    const sub=info?info.uf+(info.cidade&&info.cidade!=='—'?' · '+info.cidade:''):'';
-    return `<div class="ac-item${i===0?' active':''}" data-val="${c.replace(/"/g,'&quot;')}" onmousedown="acSelCliente(this)">${c}${sub?'<div class="ac-sub">'+sub+'</div>':''}</div>`;
-  }).join('');
-  list.classList.add('open');
-  window._acClienteIdx=0;
-}
-function acSelCliente(el){
-  const inp=document.getElementById('v-cliente');
-  const list=document.getElementById('ac-cliente-list');
-  inp.value=el.dataset.val;
-  list.classList.remove('open');
-  onClienteChange();
-}
-// keyboard nav for cliente autocomplete
-document.addEventListener('keydown',function(e){
-  const list=document.getElementById('ac-cliente-list');
-  if(!list||!list.classList.contains('open'))return;
-  const active=document.activeElement;
-  if(active&&active.id!=='v-cliente')return;
-  const items=list.querySelectorAll('.ac-item');
-  if(!items.length)return;
-  let idx=window._acClienteIdx||0;
-  if(e.key==='ArrowDown'){e.preventDefault();idx=Math.min(idx+1,items.length-1);}
-  else if(e.key==='ArrowUp'){e.preventDefault();idx=Math.max(idx-1,0);}
-  else if(e.key==='Enter'){e.preventDefault();acSelCliente(items[idx]);return;}
-  else if(e.key==='Escape'){list.classList.remove('open');return;}
-  else return;
-  items.forEach(i=>i.classList.remove('active'));
-  items[idx].classList.add('active');
-  items[idx].scrollIntoView({block:'nearest'});
-  window._acClienteIdx=idx;
-});
 document.addEventListener('click',function(e){
-  if(!e.target.closest('#v-cliente')&&!e.target.closest('#ac-cliente-list')){
-    const l=document.getElementById('ac-cliente-list');if(l)l.classList.remove('open');
-  }
   if(!e.target.closest('#v-cidade-destino')&&!e.target.closest('#ac-cidade-list')){
     const l=document.getElementById('ac-cidade-list');if(l)l.classList.remove('open');
   }

@@ -488,7 +488,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Campos calculados atualizam automaticamente.</div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Data</label><input class="form-input" type="date" id="v-data"></div>
-        <div class="form-group"><label class="form-label">Cliente</label><div class="ac-wrap"><input class="form-input" list="dl-clientes" type="text" id="v-cliente" placeholder="Selecione ou digite" autocomplete="off" oninput="acCliente()" onchange="onClienteChange()" onfocus="acCliente()"><datalist id="dl-clientes"></datalist><div class="ac-list" id="ac-cliente-list"></div></div></div>
+        <div class="form-group"><label class="form-label">Cliente</label><input class="form-input" list="dl-clientes" type="text" id="v-cliente" placeholder="Selecione ou digite" autocomplete="off" oninput="onClienteChange()" onchange="onClienteChange()"><datalist id="dl-clientes"></datalist></div>
         <div class="form-group"><label class="form-label">Nº NF / Recibo</label><input class="form-input" type="text" id="v-nf" placeholder="ex: 2416 ou RECIBO"></div>
         <div class="form-group" style="display:flex;gap:12px">
           <div style="flex:1"><label class="form-label">UF Destino</label><select class="form-input" id="v-uf-destino" onchange="onUfDestinoChange()"><option value="">— Selecione —</option></select></div>
