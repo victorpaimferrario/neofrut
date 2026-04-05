@@ -322,7 +322,10 @@ let wakeLock = null;
 let areasAbertas = {};    // controle de collapse
 
 // ── UTILS ──
-function hoje() { return new Date().toISOString().split('T')[0]; }
+function hoje() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function fmtData() {
   const d = new Date();
   const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
@@ -346,7 +349,7 @@ function calcDataFromDias(dias) {
   if (dias == null) return null;
   const d = new Date(); d.setHours(0,0,0,0);
   d.setDate(d.getDate() - dias);
-  return d.toISOString().split('T')[0];
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function chaveEito(area, id) { return area + '||' + id; }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -514,6 +517,8 @@ function renderLista() {
     document.getElementById('progress-wrap').style.display = 'block';
     document.getElementById('progress-txt').textContent = `${contados} contado${contados>1?'s':''}`;
     document.getElementById('progress-fill').style.width = `${Math.min(100,(contados/Math.max(1,programados.length||contados))*100)}%`;
+  } else {
+    document.getElementById('progress-wrap').style.display = 'none';
   }
 
   // Programados no topo (eitos soltos, sem card de area)
