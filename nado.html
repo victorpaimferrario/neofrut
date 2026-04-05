@@ -349,6 +349,7 @@ function calcDataFromDias(dias) {
   return d.toISOString().split('T')[0];
 }
 function chaveEito(area, id) { return area + '||' + id; }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -431,11 +432,13 @@ async function enviarFila() {
   const enviados = [];
   for (const r of filaEnvio) {
     try {
-      const { error } = await _SB.from('nado_contagens').upsert({
+      const payload = {
         data: r.data, area: r.area, eito_id: r.id,
         mesa: r.mesa, fabrica: r.fabrica, total: r.total,
         hora: r.hora, status: 'pendente'
-      }, { onConflict: 'data,area,eito_id' });
+      };
+      if (r.obs) payload.obs = r.obs;
+      const { error } = await _SB.from('nado_contagens').upsert(payload, { onConflict: 'data,area,eito_id' });
       if (!error) enviados.push(r);
     } catch (e) { console.error('Envio erro:', e); }
   }
@@ -683,6 +686,7 @@ function aj(campo, val) {
   const el = document.getElementById(id);
   el.value = Math.max(0, (parseInt(el.value) || 0) + val);
   atualizarTotal();
+  salvarRascunho();
 }
 
 // ── OBSERVAÇÃO toggle ──
@@ -766,7 +770,7 @@ function confirmarEito() {
       <div><div class="r-label">Fábrica</div><div class="r-val amar">${fmtN(fab)}</div></div>
       <div><div class="r-label">Total</div><div class="r-val">${fmtN(mesa + fab)}</div></div>
     </div>
-    ${obs ? `<div class="revisao-obs"><div class="revisao-obs-label">Observação</div>${obs}</div>` : ''}
+    ${obs ? `<div class="revisao-obs"><div class="revisao-obs-label">Observação</div>${escHtml(obs)}</div>` : ''}
   `;
 
   // Mostrar tela de revisão
@@ -825,6 +829,7 @@ function limparEito() {
   // Remover da fila de envio
   filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
   localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  localStorage.removeItem(SK_RASCUNHO);
   if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
   toast('Contagem apagada');
   voltarInicio();
@@ -864,7 +869,7 @@ function mostrarResumo() {
         <div><div class="r-label">Fabrica</div><div class="r-val amar">${fmtN(r.fabrica)}</div></div>
         <div><div class="r-label">Total</div><div class="r-val">${fmtN(r.total)}</div></div>
       </div>
-      ${r.obs ? `<div style="padding:6px 14px 10px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${r.obs}</div>` : ''}
+      ${r.obs ? `<div style="padding:6px 14px 10px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${escHtml(r.obs)}</div>` : ''}
     `;
     lista.appendChild(div);
   });
