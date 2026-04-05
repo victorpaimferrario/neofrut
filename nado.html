@@ -176,7 +176,7 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .obs-campo{display:none;background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:8px 10px}
 .obs-campo.aberto{display:block}
 .obs-campo label{font-size:13px;font-weight:800;color:var(--texto);text-transform:uppercase;margin-bottom:4px;display:block}
-.obs-campo textarea{width:100%;border:none;outline:none;font-size:15px;font-family:inherit;color:var(--texto);resize:none;min-height:60px;background:transparent}
+.obs-campo textarea{width:100%;border:none;outline:none;font-size:15px;font-family:inherit;color:var(--texto);resize:none;min-height:60px;background:transparent;-webkit-user-select:text;user-select:text}
 
 /* ════════ RASCUNHO BANNER ════════ */
 .rascunho-banner{display:none;background:var(--amarelo-bg);border:2px solid var(--amarelo);border-radius:12px;margin:10px 12px;padding:12px 14px;text-align:center}
@@ -420,7 +420,7 @@ async function sincronizarDados() {
     // 4. Enviar fila pendente
     await enviarFila();
 
-    atualizarSyncBadge('online');
+    atualizarSyncBadge(filaEnvio.length === 0 && Object.keys(resultados).length > 0 ? 'enviado' : 'online');
     return true;
   } catch (e) {
     console.error('Sync erro:', e);
