@@ -488,7 +488,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Campos calculados atualizam automaticamente.</div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Data</label><input class="form-input" type="date" id="v-data"></div>
-        <div class="form-group"><label class="form-label">Cliente</label><div class="ac-wrap"><input class="form-input" type="text" id="v-cliente" placeholder="Nome do cliente" autocomplete="off" oninput="acCliente()" onchange="onClienteChange()"><div class="ac-list" id="ac-cliente-list"></div></div></div>
+        <div class="form-group"><label class="form-label">Cliente</label><div class="ac-wrap"><input class="form-input" list="dl-clientes" type="text" id="v-cliente" placeholder="Selecione ou digite" autocomplete="off" oninput="acCliente()" onchange="onClienteChange()" onfocus="acCliente()"><datalist id="dl-clientes"></datalist><div class="ac-list" id="ac-cliente-list"></div></div></div>
         <div class="form-group"><label class="form-label">Nº NF / Recibo</label><input class="form-input" type="text" id="v-nf" placeholder="ex: 2416 ou RECIBO"></div>
         <div class="form-group" style="display:flex;gap:12px">
           <div style="flex:1"><label class="form-label">UF Destino</label><select class="form-input" id="v-uf-destino" onchange="onUfDestinoChange()"><option value="">— Selecione —</option></select></div>
@@ -587,7 +587,7 @@
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Data Depósito</label><input class="form-input" type="date" id="v-deposito"></div>
-        <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="v-status"><option value="PAGO">PAGO</option><option value="PENDENTE">PENDENTE</option></select></div>
+        <div class="form-group"><label class="form-label">Status</label><select class="form-input" id="v-status"><option value="">— Selecione —</option><option value="PAGO">PAGO</option><option value="PENDENTE">PENDENTE</option></select></div>
       </div>
       <div id="v-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-bottom:12px"></div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:0">
@@ -643,8 +643,8 @@
   <!-- CLIENTES -->
   <div class="vd-sec" id="vsec-clientes">
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-      <input type="text" id="cli-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaClientes()"
-        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1;max-width:280px">
+      <input type="text" id="cli-busca" list="dl-clientes-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaClientes()"
+        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1;max-width:280px"><datalist id="dl-clientes-busca"></datalist>
       <select id="cli-filtro-tipo" onchange="renderListaClientes()" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
         <option value="todos">Todos</option>
         <option value="mesa">Mesa</option>

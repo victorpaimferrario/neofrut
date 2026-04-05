@@ -22,6 +22,7 @@ async function initVendas(forcarReload=false){
   // popular lista de clientes para autocomplete (vendas + cadastro)
   const _nomesCadastro = Object.keys(getMapaClientes());
   window._acClientesLista=[...new Set([...db.map(v=>v.cliente),..._nomesCadastro])].sort();
+  _popularDatalistClientes();
   // popular select de UFs (todos os estados do Brasil)
   const ufSel=document.getElementById('v-uf-destino');
   if(ufSel&&ufSel.options.length<=1){
@@ -651,6 +652,7 @@ async function salvarVenda(){
   if(!cliente){erro.textContent='Informe o cliente.';erro.style.display='block';return;}
   if(qtde===0){erro.textContent='Informe a quantidade de cocos.';erro.style.display='block';return;}
   if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
+  if(!status){erro.textContent='Selecione o status (Pago ou Pendente).';erro.style.display='block';return;}
   erro.style.display='none';
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const v=parseInt(document.getElementById('va-'+a)?.value)||0;if(v>0)areas[a]=v;});
@@ -708,7 +710,7 @@ function limparFormVenda(){
   const t=document.getElementById('va-total');if(t){t.value='';t.classList.remove('filled');}
   const qb=document.getElementById('va-quebra');if(qb){qb.value='';qb.classList.remove('filled');}
   document.getElementById('v-data').value=today();
-  document.getElementById('v-status').value='PAGO';
+  document.getElementById('v-status').value='';
   document.getElementById('v-modo-litro').checked=false;
   document.getElementById('v-campos-litro').style.display='none';
   document.getElementById('v-campos-fabrica').style.display='none';
@@ -1150,6 +1152,16 @@ function importarPlanilhaVendas(input){
 }
 
 // ─────────── AUTOCOMPLETE CLIENTE ───────────
+
+function _popularDatalistClientes(){
+  const lista = window._acClientesLista || [];
+  const opts = lista.map(c => `<option value="${c.replace(/"/g,'&quot;')}">`).join('');
+  const dl1 = document.getElementById('dl-clientes');
+  const dl2 = document.getElementById('dl-clientes-busca');
+  if(dl1) dl1.innerHTML = opts;
+  if(dl2) dl2.innerHTML = opts;
+}
+
 function acCliente(){
   const inp=document.getElementById('v-cliente');
   const list=document.getElementById('ac-cliente-list');
