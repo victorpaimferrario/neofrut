@@ -156,6 +156,36 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:14px 28px;border-radius:14px;font-size:16px;font-weight:800;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
 .toast.show{opacity:1}
+
+/* ════════ TELA REVISÃO ════════ */
+#tela-revisao{display:none;padding:16px;min-height:100vh}
+.revisao-titulo{text-align:center;font-size:20px;font-weight:900;color:var(--verde);margin-bottom:16px}
+.revisao-card{background:var(--branco);border:3px solid var(--verde);border-radius:16px;padding:18px;margin-bottom:14px}
+.revisao-area{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase}
+.revisao-eito{font-size:28px;font-weight:900;color:var(--verde);margin-bottom:10px}
+.revisao-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center}
+.revisao-grid .r-label{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:2px}
+.revisao-grid .r-val{font-size:28px;font-weight:900}
+.revisao-obs{background:var(--verde-bg);border:2px solid var(--verde);border-radius:10px;padding:10px 14px;margin-top:12px;font-size:13px;color:var(--texto);line-height:1.4}
+.revisao-obs-label{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+
+/* ════════ OBSERVAÇÃO ════════ */
+.obs-wrap{margin-bottom:6px}
+.btn-obs-toggle{display:block;width:100%;padding:10px;background:var(--branco);border:2px dashed var(--borda);border-radius:10px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;text-align:center}
+.btn-obs-toggle:active{background:var(--bg)}
+.obs-campo{display:none;background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:8px 10px}
+.obs-campo.aberto{display:block}
+.obs-campo label{font-size:13px;font-weight:800;color:var(--texto);text-transform:uppercase;margin-bottom:4px;display:block}
+.obs-campo textarea{width:100%;border:none;outline:none;font-size:15px;font-family:inherit;color:var(--texto);resize:none;min-height:60px;background:transparent}
+
+/* ════════ RASCUNHO BANNER ════════ */
+.rascunho-banner{display:none;background:var(--amarelo-bg);border:2px solid var(--amarelo);border-radius:12px;margin:10px 12px;padding:12px 14px;text-align:center}
+.rascunho-banner-titulo{font-size:14px;font-weight:900;color:var(--amarelo);margin-bottom:6px}
+.rascunho-banner-info{font-size:12px;color:var(--muted);margin-bottom:10px}
+.rascunho-btns{display:flex;gap:8px}
+.rascunho-btns button{flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;border:none}
+.rascunho-btns .btn-restaurar{background:var(--amarelo);color:#fff}
+.rascunho-btns .btn-descartar{background:var(--branco);color:var(--vermelho);border:2px solid var(--vermelho)}
 </style>
 </head>
 <body>
@@ -181,6 +211,14 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 
 <!-- TELA INICIO -->
 <div id="tela-inicio">
+  <div class="rascunho-banner" id="rascunho-banner">
+    <div class="rascunho-banner-titulo">📝 Contagem não finalizada</div>
+    <div class="rascunho-banner-info" id="rascunho-info"></div>
+    <div class="rascunho-btns">
+      <button class="btn-restaurar" onclick="restaurarRascunho()">Continuar</button>
+      <button class="btn-descartar" onclick="descartarRascunho()">Descartar</button>
+    </div>
+  </div>
   <div id="lista-eitos"></div>
   <div id="sem-eitos" style="display:none;text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">
     Nenhum eito carregado.<br>Conecte ao Wi-Fi para sincronizar.
@@ -218,6 +256,13 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
       <button class="btn-aj" onclick="aj('fab',100)">+100</button>
     </div>
   </div>
+  <div class="obs-wrap">
+    <button class="btn-obs-toggle" id="btn-obs-toggle" onclick="toggleObs()">+ Adicionar observação</button>
+    <div class="obs-campo" id="obs-campo">
+      <label>Observação</label>
+      <textarea id="inp-obs" placeholder="Ex: muitos cocos no chão, coqueiro caído..." oninput="salvarRascunho()"></textarea>
+    </div>
+  </div>
   <div class="total-box">
     <span class="total-label">TOTAL</span>
     <span class="total-val" id="total-eito">0</span>
@@ -225,6 +270,14 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
   <button class="btn-grande" onclick="confirmarEito()">CONFIRMAR</button>
   <button class="btn-grande limpar" id="btn-limpar" onclick="limparEito()" style="display:none;margin-top:8px">LIMPAR CONTAGEM</button>
   <button class="btn-grande sec" onclick="voltarInicio()" style="margin-top:8px">VOLTAR</button>
+</div>
+
+<!-- TELA REVISÃO -->
+<div id="tela-revisao">
+  <div class="revisao-titulo">Confirmar contagem?</div>
+  <div class="revisao-card" id="revisao-card"></div>
+  <button class="btn-grande" onclick="confirmarEitoDefinitivo()" style="margin-bottom:10px">✅ CONFIRMAR</button>
+  <button class="btn-grande sec" onclick="voltarParaContagem()">CORRIGIR</button>
 </div>
 
 <!-- TELA RESUMO -->
@@ -590,6 +643,7 @@ function toggleArea(area) {
 // ── CONTAGEM ──
 function abrirContagem(area, eito) {
   eitoAtual = { area, ...eito };
+  window._contandoAgora = true;
   const k = chaveEito(area, eito.id);
   const existente = resultados[k];
 
@@ -598,6 +652,11 @@ function abrirContagem(area, eito) {
   document.getElementById('cnt-plantas').textContent = eito.plantas + ' plantas';
   document.getElementById('inp-mesa').value = existente ? existente.mesa : '';
   document.getElementById('inp-fabrica').value = existente ? existente.fabrica : '';
+  // Reset obs
+  document.getElementById('inp-obs').value = existente && existente.obs ? existente.obs : '';
+  const obsAberto = !!(existente && existente.obs);
+  document.getElementById('obs-campo').classList.toggle('aberto', obsAberto);
+  document.getElementById('btn-obs-toggle').style.display = obsAberto ? 'none' : 'block';
   atualizarTotal();
 
   // Mostrar botão LIMPAR só se já tem contagem
@@ -616,7 +675,7 @@ function atualizarTotal() {
   document.getElementById('total-eito').textContent = fmtN(gVal('inp-mesa') + gVal('inp-fabrica'));
 }
 ['inp-mesa','inp-fabrica'].forEach(id => {
-  document.getElementById(id).addEventListener('input', atualizarTotal);
+  document.getElementById(id).addEventListener('input', () => { atualizarTotal(); salvarRascunho(); });
 });
 
 function aj(campo, val) {
@@ -626,15 +685,110 @@ function aj(campo, val) {
   atualizarTotal();
 }
 
+// ── OBSERVAÇÃO toggle ──
+function toggleObs() {
+  const campo = document.getElementById('obs-campo');
+  const btn = document.getElementById('btn-obs-toggle');
+  const aberto = campo.classList.toggle('aberto');
+  btn.style.display = aberto ? 'none' : 'block';
+  if (aberto) document.getElementById('inp-obs').focus();
+}
+
+// ── RASCUNHO (auto-save) ──
+const SK_RASCUNHO = 'nado_rascunho';
+window._contandoAgora = false;
+
+function salvarRascunho() {
+  if (!eitoAtual) return;
+  const rascunho = {
+    area: eitoAtual.area, id: eitoAtual.id, plantas: eitoAtual.plantas,
+    mesa: gVal('inp-mesa'), fabrica: gVal('inp-fabrica'),
+    obs: (document.getElementById('inp-obs').value || '').trim(),
+    timestamp: Date.now(), data: hoje()
+  };
+  localStorage.setItem(SK_RASCUNHO, JSON.stringify(rascunho));
+}
+
+function verificarRascunho() {
+  try {
+    const r = JSON.parse(localStorage.getItem(SK_RASCUNHO));
+    if (!r || r.data !== hoje()) { localStorage.removeItem(SK_RASCUNHO); return; }
+    // Só mostrar se tem valores preenchidos
+    if ((r.mesa || 0) + (r.fabrica || 0) === 0) { localStorage.removeItem(SK_RASCUNHO); return; }
+    // Já foi confirmado?
+    const k = chaveEito(r.area, r.id);
+    if (resultados[k]) { localStorage.removeItem(SK_RASCUNHO); return; }
+    // Mostrar banner
+    document.getElementById('rascunho-info').textContent =
+      `${r.area} — Eito ${r.id}: ${r.mesa||0} mesa, ${r.fabrica||0} fáb`;
+    document.getElementById('rascunho-banner').style.display = 'block';
+  } catch(e) { localStorage.removeItem(SK_RASCUNHO); }
+}
+
+function restaurarRascunho() {
+  try {
+    const r = JSON.parse(localStorage.getItem(SK_RASCUNHO));
+    if (!r) return;
+    const eito = (todosEitos[r.area] || []).find(e => e.id === r.id);
+    if (!eito) { toast('Eito não encontrado'); descartarRascunho(); return; }
+    abrirContagem(r.area, eito);
+    document.getElementById('inp-mesa').value = r.mesa || '';
+    document.getElementById('inp-fabrica').value = r.fabrica || '';
+    if (r.obs) {
+      document.getElementById('inp-obs').value = r.obs;
+      document.getElementById('obs-campo').classList.add('aberto');
+      document.getElementById('btn-obs-toggle').style.display = 'none';
+    }
+    atualizarTotal();
+    document.getElementById('rascunho-banner').style.display = 'none';
+  } catch(e) {}
+}
+
+function descartarRascunho() {
+  localStorage.removeItem(SK_RASCUNHO);
+  document.getElementById('rascunho-banner').style.display = 'none';
+}
+
+// ── CONFIRMAR COM REVISÃO ──
 function confirmarEito() {
   const mesa = gVal('inp-mesa'), fab = gVal('inp-fabrica');
   if (mesa + fab === 0) { toast('Preencha mesa ou fabrica'); return; }
 
+  const obs = (document.getElementById('inp-obs').value || '').trim();
+
+  // Montar card de revisão
+  const card = document.getElementById('revisao-card');
+  card.innerHTML = `
+    <div class="revisao-area">${eitoAtual.area}</div>
+    <div class="revisao-eito">Eito ${eitoAtual.id}</div>
+    <div class="revisao-grid">
+      <div><div class="r-label">Mesa</div><div class="r-val verde">${fmtN(mesa)}</div></div>
+      <div><div class="r-label">Fábrica</div><div class="r-val amar">${fmtN(fab)}</div></div>
+      <div><div class="r-label">Total</div><div class="r-val">${fmtN(mesa + fab)}</div></div>
+    </div>
+    ${obs ? `<div class="revisao-obs"><div class="revisao-obs-label">Observação</div>${obs}</div>` : ''}
+  `;
+
+  // Mostrar tela de revisão
+  document.getElementById('tela-contagem').style.display = 'none';
+  document.getElementById('tela-revisao').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function voltarParaContagem() {
+  document.getElementById('tela-revisao').style.display = 'none';
+  document.getElementById('tela-contagem').style.display = 'flex';
+}
+
+function confirmarEitoDefinitivo() {
+  const mesa = gVal('inp-mesa'), fab = gVal('inp-fabrica');
+  const obs = (document.getElementById('inp-obs').value || '').trim();
   const k = chaveEito(eitoAtual.area, eitoAtual.id);
   const agora = new Date();
   const resultado = {
     area: eitoAtual.area, id: eitoAtual.id,
     mesa, fabrica: fab, total: mesa + fab,
+    obs: obs || undefined,
     data: hoje(),
     hora: agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0')
   };
@@ -646,6 +800,10 @@ function confirmarEito() {
   filaEnvio.push(resultado);
   localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
 
+  // Limpar rascunho
+  localStorage.removeItem(SK_RASCUNHO);
+  window._contandoAgora = false;
+
   // Tentar enviar imediatamente se online
   if (navigator.onLine) enviarFila();
 
@@ -653,6 +811,9 @@ function confirmarEito() {
   if (navigator.vibrate) navigator.vibrate(100);
 
   toast('Eito ' + eitoAtual.id + ' confirmado');
+
+  // Esconder revisão e voltar ao início
+  document.getElementById('tela-revisao').style.display = 'none';
   voltarInicio();
 }
 
@@ -671,8 +832,10 @@ function limparEito() {
 
 function voltarInicio() {
   desativarWakeLock();
+  window._contandoAgora = false;
   document.getElementById('tela-contagem').style.display = 'none';
   document.getElementById('tela-resumo').style.display = 'none';
+  document.getElementById('tela-revisao').style.display = 'none';
   document.getElementById('tela-inicio').style.display = 'block';
   document.querySelector('.topo').style.display = '';
   renderLista();
@@ -701,6 +864,7 @@ function mostrarResumo() {
         <div><div class="r-label">Fabrica</div><div class="r-val amar">${fmtN(r.fabrica)}</div></div>
         <div><div class="r-label">Total</div><div class="r-val">${fmtN(r.total)}</div></div>
       </div>
+      ${r.obs ? `<div style="padding:6px 14px 10px;font-size:12px;color:var(--muted)"><strong>Obs:</strong> ${r.obs}</div>` : ''}
     `;
     lista.appendChild(div);
   });
@@ -746,9 +910,19 @@ function addBtnResumo() {
   document.getElementById('lista-eitos').appendChild(btn);
 }
 
+// ── BEFOREUNLOAD ──
+window.addEventListener('beforeunload', (e) => {
+  if (window._contandoAgora && (gVal('inp-mesa') + gVal('inp-fabrica') > 0)) {
+    salvarRascunho();
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
 // ── INIT ──
 document.getElementById('topo-data').textContent = fmtData();
 carregarCache();
+verificarRascunho();
 renderLista();
 addBtnResumo();
 atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
