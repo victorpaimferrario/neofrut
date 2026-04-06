@@ -225,7 +225,7 @@ function renderProgGrade() {
     header.innerHTML = `
       <div class="prog-dia-nome">${dia.label}${isHoje ? ' <span class="prog-hoje-badge">HOJE</span>' : ''}</div>
       <div class="prog-dia-data">${dia.fmt}</div>
-      <div class="prog-dia-total">🥥 ${fmtNum(totalDia)} cocos</div>
+      <div class="prog-dia-total">🌴 ${fmtNum(totalDia)} cocos</div>
       <div class="prog-dia-barra"><div class="prog-dia-fill ${fillClass}" style="width:${pct}%"></div></div>
     `;
     col.appendChild(header);
@@ -275,7 +275,7 @@ function renderProgCard(c) {
       </span>
     </div>
     <div class="prog-card-info">
-      <span class="prog-card-qtde">🥥 ${fmtNum(c.volume_cocos)}</span>
+      <span class="prog-card-qtde">🌴 ${fmtNum(c.volume_cocos)}</span>
       <span class="prog-card-rpc">${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>
       ${receita ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(receita))}</span>` : ''}
     </div>
@@ -672,7 +672,7 @@ function progEnviarWhatsApp() {
 
   let msg = `✅ *Neofrut — Confirmação de Carga*\n\n` +
     `📅 *${nomeDia}, ${dataBr}*\n` +
-    `🥥 ${fmtNum(c.volume_cocos)} cocos`;
+    `🌴 ${fmtNum(c.volume_cocos)} cocos`;
   if (c.valor_por_coco) msg += ` · R$ ${Number(c.valor_por_coco).toFixed(2)}/coco`;
   msg += `\n🚚 ${c.tipo_veiculo || '—'}`;
   if (c.area) msg += `\n📍 Área: ${c.area}`;

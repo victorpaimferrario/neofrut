@@ -11,18 +11,18 @@ function showPage(id) {
     renderComparativo();
     renderMapa();
     renderContratosAlertas();
-  } else if (id === 'analise') {
+  } else if (id === 'programacao') {
     document.querySelectorAll('.nav-tab')[1].classList.add('active');
+    initProgramacao();
+  } else if (id === 'analise') {
+    document.querySelectorAll('.nav-tab')[2].classList.add('active');
     initAnalise();
   } else if (id === 'lancamento') {
-    document.querySelectorAll('.nav-tab')[2].classList.add('active');
+    document.querySelectorAll('.nav-tab')[3].classList.add('active');
     initLancamento();
   } else if (id === 'vendas') {
-    document.querySelectorAll('.nav-tab')[3].classList.add('active');
-    initVendas(false);
-  } else if (id === 'programacao') {
     document.querySelectorAll('.nav-tab')[4].classList.add('active');
-    initProgramacao();
+    initVendas(false);
   } else if (id === 'mercados') {
     document.querySelectorAll('.nav-tab')[5].classList.add('active');
     if (!window._mercadosIniciado) {
