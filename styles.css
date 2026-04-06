@@ -588,8 +588,20 @@
 
     /* Modais full-screen no mobile (todos, não só programação) */
     .modal-overlay { padding: 0; align-items: flex-start; }
-    .modal { max-width: 100% !important; width: 100vw; min-height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; padding: 20px 18px; }
-    .modal-box { max-width: 100% !important; width: 100vw; min-height: 100vh; max-height: 100vh; border-radius: 0; margin: 0; padding: 20px 18px; }
+    .modal { max-width: 100% !important; width: 100vw; min-height: 100dvh; max-height: 100dvh; border-radius: 0; margin: 0; padding: 20px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px) + 80px); }
+    .modal-box { max-width: 100% !important; width: 100vw; min-height: 100dvh; max-height: 100dvh; border-radius: 0; margin: 0; padding: 20px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px) + 80px); }
+
+    /* Side panel e area-drawer: full-width no mobile + safe-area */
+    .side-panel { width: 100vw !important; right: -100vw; padding-right: env(safe-area-inset-right, 0px); padding-left: env(safe-area-inset-left, 0px); }
+    .area-drawer { width: 100vw !important; right: -100vw; padding-right: env(safe-area-inset-right, 0px); padding-left: env(safe-area-inset-left, 0px); }
+
+    /* Mapa-table: remover min-width forçado no mobile */
+    .mapa-table { min-width: 520px; }
+    .mapa-table th, .mapa-table td { padding: 8px 6px; font-size: 11px; }
+    .mapa-table td { font-size: 12px; }
+
+    /* Toast: acima da bottom-bar, z-index maior */
+    .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 12px; left: 12px; max-width: none; z-index: 400; }
 
     /* Headers de página */
     .dash-header { margin-bottom: 16px; }
