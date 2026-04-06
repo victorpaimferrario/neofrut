@@ -842,9 +842,11 @@ async function salvarProgCarga() {
       showToast('Carga agendada');
     }
     closeModal('prog-modal-overlay');
-    // Atualizar rpc_historico do cliente
+    // Atualizar rpc_historico do cliente (fire-and-forget, não bloqueia UI)
     if (valor && _progClienteSel?.id) {
-      _SB.from('clientes').update({ rpc_historico: valor }).eq('id', _progClienteSel.id).then(() => {});
+      _SB.from('clientes').update({ rpc_historico: valor }).eq('id', _progClienteSel.id)
+        .then(r => { if (r && r.error) console.warn('Falha ao atualizar rpc_historico:', r.error); })
+        .catch(err => console.warn('Erro ao atualizar rpc_historico:', err));
     }
     await carregarProgramacao(_progSemanaInicio);
   } catch(e) {

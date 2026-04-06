@@ -286,7 +286,9 @@ function navPInput(e, currentId) {
     }
   }
   if (nextIdx === undefined || nextIdx >= _allInputs.length) nextIdx = 0;
-  const nextEl = document.getElementById(_allInputs[nextIdx].id);
+  const nextRef = _allInputs[nextIdx];
+  if (!nextRef) return;
+  const nextEl = document.getElementById(nextRef.id);
   if (nextEl) { nextEl.focus(); nextEl.select(); }
 }
 
