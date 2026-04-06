@@ -21,46 +21,24 @@ let _progProvidenciarCaminhao = false;
 let _progDragId = null;
 
 // ── FERIADOS NACIONAIS + SERGIPE ──
-function _progFeriados(ano) {
-  // Fixos nacionais
-  const fixos = [
-    `${ano}-01-01`, // Confraternização
-    `${ano}-04-21`, // Tiradentes
-    `${ano}-05-01`, // Trabalho
-    `${ano}-09-07`, // Independência
-    `${ano}-10-12`, // N. S. Aparecida
-    `${ano}-11-02`, // Finados
-    `${ano}-11-15`, // Proclamação
-    `${ano}-12-25`, // Natal
-  ];
-  // Sergipe estadual
-  const sergipe = [
-    `${ano}-07-08`, // Emancipação de Sergipe
-  ];
-  // Páscoa (Meeus/Jones/Butcher)
+function _progPascoa(ano) {
   const a=ano%19, b=Math.floor(ano/100), c=ano%100;
   const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
   const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
   const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
   const m=Math.floor((a+11*h+22*l)/451);
   const mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
-  const pascoa = new Date(ano, mes-1, dia);
-  // Móveis baseados na Páscoa
+  return new Date(ano, mes-1, dia);
+}
+
+function _progFeriadosDoAno(ano) {
+  const pascoa = _progPascoa(ano);
   const carnaval = new Date(pascoa); carnaval.setDate(pascoa.getDate()-47);
   const sextaSanta = new Date(pascoa); sextaSanta.setDate(pascoa.getDate()-2);
   const corpusChristi = new Date(pascoa); corpusChristi.setDate(pascoa.getDate()+60);
-  const moveis = [carnaval, sextaSanta, corpusChristi].map(d => _progDataISO(d));
-  return new Set([...fixos, ...sergipe, ...moveis]);
-}
-let _progFeriadosCache = {};
-function _progIsFeriado(dataStr) {
-  const ano = parseInt(dataStr.slice(0,4));
-  if (!_progFeriadosCache[ano]) _progFeriadosCache[ano] = _progFeriados(ano);
-  return _progFeriadosCache[ano].has(dataStr);
-}
-function _progNomeFeriado(dataStr) {
-  const ano = parseInt(dataStr.slice(0,4));
-  const nomes = {
+
+  // Mapa: dataISO → nome
+  const mapa = {
     [`${ano}-01-01`]: 'Confraternização Universal',
     [`${ano}-04-21`]: 'Tiradentes',
     [`${ano}-05-01`]: 'Dia do Trabalho',
@@ -70,23 +48,23 @@ function _progNomeFeriado(dataStr) {
     [`${ano}-11-15`]: 'Proclamação da República',
     [`${ano}-12-25`]: 'Natal',
     [`${ano}-07-08`]: 'Emancipação de Sergipe',
+    [_progDataISO(carnaval)]: 'Carnaval',
+    [_progDataISO(sextaSanta)]: 'Sexta-feira Santa',
+    [_progDataISO(corpusChristi)]: 'Corpus Christi',
   };
-  if (nomes[dataStr]) return nomes[dataStr];
-  // Móveis
-  const a=ano%19, b=Math.floor(ano/100), c=ano%100;
-  const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
-  const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
-  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
-  const m=Math.floor((a+11*h+22*l)/451);
-  const mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
-  const pascoa = new Date(ano, mes-1, dia);
-  const carnaval = new Date(pascoa); carnaval.setDate(pascoa.getDate()-47);
-  const sextaSanta = new Date(pascoa); sextaSanta.setDate(pascoa.getDate()-2);
-  const corpusChristi = new Date(pascoa); corpusChristi.setDate(pascoa.getDate()+60);
-  if (dataStr === _progDataISO(carnaval)) return 'Carnaval';
-  if (dataStr === _progDataISO(sextaSanta)) return 'Sexta-feira Santa';
-  if (dataStr === _progDataISO(corpusChristi)) return 'Corpus Christi';
-  return 'Feriado';
+  return mapa;
+}
+
+let _progFeriadosCache = {};
+function _progGetFeriados(ano) {
+  if (!_progFeriadosCache[ano]) _progFeriadosCache[ano] = _progFeriadosDoAno(ano);
+  return _progFeriadosCache[ano];
+}
+function _progIsFeriado(dataStr) {
+  return !!_progGetFeriados(parseInt(dataStr.slice(0,4)))[dataStr];
+}
+function _progNomeFeriado(dataStr) {
+  return _progGetFeriados(parseInt(dataStr.slice(0,4)))[dataStr] || 'Feriado';
 }
 
 // ── UTILS DATAS (sem bug UTC) ──
@@ -800,7 +778,7 @@ function _progCadastrarNovoCliente(nome) {
     // Restaurar z-index original
     panel.style.zIndex = '';
     overlay.style.zIndex = '';
-    await _progLoadClientes();
+    await carregarClientesProg();
     const novo = _progClientes.find(c => c.nome === nomeBusca);
     if (novo) _progSelecionarCliente(novo);
     window._progOnClienteSalvo = null;
@@ -846,13 +824,12 @@ async function progBuscarHistorico() {
   resultados.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>';
 
   try {
-    let query = _SB.from('programacao').select('*')
+    const { data, error } = await _SB.from('programacao').select('*')
       .gte('dia_entrega', de)
       .lte('dia_entrega', ate)
       .neq('status', 'cancelado')
-      .order('dia_entrega', { ascending: false });
-
-    const { data, error } = await query;
+      .order('dia_entrega', { ascending: false })
+      .limit(1000);
     if (error) throw error;
 
     let cargas = data || [];
