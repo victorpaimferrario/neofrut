@@ -443,7 +443,7 @@ function _progRenderListaClientes(q) {
   lista.innerHTML = '';
 
   if (filtrados.length === 0 && q.length > 0) {
-    // Nenhum cliente encontrado — botão cadastrar
+    // Nenhum cliente encontrado — botão cadastrar via painel lateral
     const item = document.createElement('div');
     item.className = 'prog-cliente-item prog-cliente-novo';
     item.innerHTML = `
@@ -453,14 +453,7 @@ function _progRenderListaClientes(q) {
       </div>
       <span style="font-size:16px">+</span>
     `;
-    item.onclick = () => {
-      closeModal('prog-modal-overlay');
-      showPage('gestao');
-      // Abrir modal de cadastro se existir
-      setTimeout(() => {
-        if (typeof abrirCadastroCliente === 'function') abrirCadastroCliente(q);
-      }, 300);
-    };
+    item.onclick = () => _progCadastrarNovoCliente(q);
     lista.appendChild(item);
     return;
   }
@@ -685,6 +678,32 @@ function progEnviarWhatsApp() {
   } else {
     navigator.clipboard.writeText(msg).then(() => showToast('Mensagem copiada'));
   }
+}
+
+// ── CADASTRAR NOVO CLIENTE VIA PAINEL LATERAL ──
+function _progCadastrarNovoCliente(nome) {
+  // Fecha lista de clientes
+  document.getElementById('prog-lista-clientes')?.classList.remove('open');
+
+  // Abre painel lateral de cadastro (reusa o existente do sistema)
+  window._cliPanelNome = null;
+  _loadClienteForm(null);
+  document.getElementById('cli-title').textContent = 'Novo Cliente';
+  document.getElementById('cli-sub').textContent = '';
+  document.getElementById('cli-kpis').innerHTML = '';
+  document.getElementById('cli-hist').innerHTML = '';
+  if (nome) document.getElementById('cli-nome').value = nome.toUpperCase();
+  switchCliTab('editar');
+  document.getElementById('cli-panel').classList.add('open');
+  document.getElementById('cli-overlay').classList.add('open');
+
+  // Callback: quando salvar, recarregar clientes e selecionar o novo
+  window._progOnClienteSalvo = async () => {
+    await _progLoadClientes();
+    const novo = _progClientes.find(c => c.nome === nome.toUpperCase());
+    if (novo) _progSelecionarCliente(novo);
+    window._progOnClienteSalvo = null;
+  };
 }
 
 // ── FECHAR LISTA CLIENTES AO CLICAR FORA ──

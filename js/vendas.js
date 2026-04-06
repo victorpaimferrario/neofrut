@@ -1424,6 +1424,8 @@ async function salvarCliente() {
     closeClientePanel();
     renderListaClientes();
     showToast('✓ Cliente salvo — ' + nome);
+    // Callback da programação (se cadastrou cliente a partir da aba programação)
+    if (typeof window._progOnClienteSalvo === 'function') window._progOnClienteSalvo();
   }
 }
 
