@@ -694,13 +694,23 @@ function _progCadastrarNovoCliente(nome) {
   document.getElementById('cli-hist').innerHTML = '';
   if (nome) document.getElementById('cli-nome').value = nome.toUpperCase();
   switchCliTab('editar');
-  document.getElementById('cli-panel').classList.add('open');
-  document.getElementById('cli-overlay').classList.add('open');
+
+  // Elevar z-index do painel para ficar acima do modal da programação (z-index 400)
+  const panel = document.getElementById('cli-panel');
+  const overlay = document.getElementById('cli-overlay');
+  panel.style.zIndex = '500';
+  overlay.style.zIndex = '499';
+  panel.classList.add('open');
+  overlay.classList.add('open');
 
   // Callback: quando salvar, recarregar clientes e selecionar o novo
+  const nomeBusca = (nome || '').toUpperCase();
   window._progOnClienteSalvo = async () => {
+    // Restaurar z-index original
+    panel.style.zIndex = '';
+    overlay.style.zIndex = '';
     await _progLoadClientes();
-    const novo = _progClientes.find(c => c.nome === nome.toUpperCase());
+    const novo = _progClientes.find(c => c.nome === nomeBusca);
     if (novo) _progSelecionarCliente(novo);
     window._progOnClienteSalvo = null;
   };

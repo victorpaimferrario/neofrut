@@ -602,8 +602,14 @@ async function marcarPagoPainel(id){
 }
 
 function closeClientePanel(){
-  document.getElementById('cli-panel').classList.remove('open');
-  document.getElementById('cli-overlay').classList.remove('open');
+  const panel = document.getElementById('cli-panel');
+  const overlay = document.getElementById('cli-overlay');
+  panel.classList.remove('open');
+  overlay.classList.remove('open');
+  // Restaurar z-index caso tenha sido elevado pela programação
+  panel.style.zIndex = '';
+  overlay.style.zIndex = '';
+  if (window._progOnClienteSalvo) window._progOnClienteSalvo = null;
 }
 
 
