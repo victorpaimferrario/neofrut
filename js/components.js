@@ -477,6 +477,8 @@ function _loadClienteForm(nome){
   if(freteTon)freteTon.value=c.frete_por_ton||'';
   const distKm=document.getElementById('cli-distancia');
   if(distKm)distKm.value=c.distancia_km||'';
+  const lpc=document.getElementById('cli-litros-por-coco');
+  if(lpc)lpc.value=c.litros_por_coco||'';
 }
 
 function openClientePanel(cliente, tab){

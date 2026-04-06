@@ -16,6 +16,7 @@ let _progVeiculoSel = null;
 let _progAreaSel = null;
 let _progEditandoId = null;
 let _progProvidenciarCaminhao = false;
+let _progFreteMode = 'total'; // 'total' ou 'percoco'
 
 // ── DRAG & DROP ──
 let _progDragId = null;
@@ -133,6 +134,34 @@ function _progGetValor() {
   return _progParseValor(el.dataset.digits || el.value);
 }
 
+// ── FRETE HELPERS ──
+function _progOnFreteInput(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = _progFormatValor(digits);
+  el.dataset.digits = digits;
+  _progAtualizarPreview();
+}
+function _progGetFreteInput() {
+  const el = document.getElementById('prog-inp-frete');
+  if (!el) return 0;
+  return _progParseValor(el.dataset.digits || el.value);
+}
+function _progCalcFreteTotal() {
+  const val = _progGetFreteInput();
+  if (!val) return 0;
+  if (_progFreteMode === 'percoco') {
+    const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+    return val * qtde;
+  }
+  return val;
+}
+function _progToggleFreteMode() {
+  _progFreteMode = _progFreteMode === 'total' ? 'percoco' : 'total';
+  document.getElementById('prog-frete-unit').textContent = _progFreteMode === 'total' ? 'R$ total' : 'R$/coco';
+  document.getElementById('prog-frete-toggle').textContent = _progFreteMode === 'total' ? '⇄ R$/coco' : '⇄ R$ total';
+  _progAtualizarPreview();
+}
+
 // ── INIT ──
 function initProgramacao() {
   _progSemanaInicio = getSegundaDaSemana();
@@ -172,7 +201,7 @@ async function carregarClientesProg() {
   try {
     const { data, error } = await _SB
       .from('clientes')
-      .select('id,nome,uf,cidade,tipo,veiculo_padrao,rpc_historico,telefone')
+      .select('id,nome,uf,cidade,tipo,veiculo_padrao,rpc_historico,telefone,litros_por_coco')
       .eq('status', 'ativo')
       .order('nome');
     if (error) throw error;
@@ -204,12 +233,14 @@ function renderProgramacao() {
 // ── KPIs ──
 function renderProgKPIs() {
   const totalCocos = _progSemana.reduce((s, c) => s + c.volume_cocos, 0);
-  const totalReceita = _progSemana.reduce((s, c) => s + (c.volume_cocos * (c.valor_por_coco || 0)), 0);
+  const totalReceitaBruta = _progSemana.reduce((s, c) => s + (c.volume_cocos * (c.valor_por_coco || 0)), 0);
+  const totalFrete = _progSemana.reduce((s, c) => s + (c.frete_total || 0), 0);
+  const totalReceita = totalReceitaBruta - totalFrete;
   const semCaminhao = _progSemana.filter(c => c.providenciar_caminhao && c.caminhao_status === 'pendente' && c.status !== 'cancelado').length;
-  const confirmadas = _progSemana.filter(c => c.status === 'confirmado').length;
+  const confirmadas = _progSemana.filter(c => c.status === 'confirmado' || c.status === 'entregue').length;
 
   document.getElementById('prog-kpi-cocos').textContent = fmtNum(totalCocos);
-  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtNum(Math.round(totalReceita));
+  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtNum(Math.round(totalReceita)) + (totalFrete > 0 ? ' (líq.)' : '');
   document.getElementById('prog-kpi-caminhao').textContent = semCaminhao;
   document.getElementById('prog-kpi-status').textContent = `${confirmadas} / ${_progSemana.length}`;
 }
@@ -308,7 +339,9 @@ function renderProgCard(c) {
   });
   card.addEventListener('dragend', () => card.classList.remove('prog-dragging'));
 
-  const receita = c.valor_por_coco ? c.volume_cocos * c.valor_por_coco : null;
+  const receitaBruta = c.valor_por_coco ? c.volume_cocos * c.valor_por_coco : null;
+  const frete = c.frete_total || 0;
+  const receitaLiq = receitaBruta ? receitaBruta - frete : null;
   const precisaCaminhao = c.providenciar_caminhao && c.caminhao_status === 'pendente';
 
   const cli = _progClientes.find(x => x.id === c.cliente_id);
@@ -327,8 +360,9 @@ function renderProgCard(c) {
     <div class="prog-card-info">
       <span class="prog-card-qtde">🌴 ${fmtNum(c.volume_cocos)}</span>
       <span class="prog-card-rpc">${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>
-      ${receita ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(receita))}</span>` : ''}
+      ${receitaLiq != null ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(receitaLiq))}</span>` : ''}
     </div>
+    ${frete > 0 ? `<div style="font-size:9px;color:var(--vermelho);font-family:var(--font-mono);margin-top:-2px">frete: R$ ${fmtNum(Math.round(frete))}</div>` : ''}
     <div class="prog-card-badges">
       ${c.tipo_veiculo ? `<span class="prog-badge prog-badge-veiculo">${escapeHtml(c.tipo_veiculo)}</span>` : ''}
       ${c.area ? `<span class="prog-badge prog-badge-area">${escapeHtml(c.area)}</span>` : ''}
@@ -390,6 +424,12 @@ function abrirModalProg() {
   document.getElementById('prog-inp-obs').style.display = 'none';
   document.getElementById('prog-inp-motorista').value = '';
   document.getElementById('prog-receita-preview').style.display = 'none';
+  // Reset frete
+  const freteEl = document.getElementById('prog-inp-frete');
+  if (freteEl) { freteEl.value = ''; freteEl.dataset.digits = ''; }
+  const campoFrete = document.getElementById('prog-campo-frete');
+  if (campoFrete) campoFrete.style.display = 'none';
+  _progFreteMode = 'total';
   document.getElementById('prog-btn-salvar').textContent = '✓ Agendar carga';
   document.getElementById('prog-acoes-editar').style.display = 'none';
 
@@ -398,6 +438,8 @@ function abrirModalProg() {
   _progResetVeiculoBtns();
   _progResetAreaBtns();
   _progResetCaminhaoBtns();
+  const rpcWrap = document.getElementById('prog-rpc-historico');
+  if (rpcWrap) { rpcWrap.style.display = 'none'; rpcWrap.innerHTML = ''; }
 
   openModal('prog-modal-overlay');
 }
@@ -434,6 +476,20 @@ function abrirModalProgEditar(id) {
   valorEl.dataset.digits = digits;
   valorEl.value = _progFormatValor(digits);
 
+  // Frete
+  _progFreteMode = 'total';
+  const freteEl = document.getElementById('prog-inp-frete');
+  const campoFrete = document.getElementById('prog-campo-frete');
+  if (freteEl && c.frete_total) {
+    const fd = _progValorToDigits(c.frete_total);
+    freteEl.dataset.digits = fd;
+    freteEl.value = _progFormatValor(fd);
+    if (campoFrete) campoFrete.style.display = '';
+  } else if (freteEl) {
+    freteEl.value = ''; freteEl.dataset.digits = '';
+    if (campoFrete) campoFrete.style.display = c.valor_por_coco ? '' : 'none';
+  }
+
   _progAreaSel = c.area;
   _progResetAreaBtns();
   if (c.area) {
@@ -462,13 +518,67 @@ function abrirModalProgEditar(id) {
   const btnStatus = document.getElementById('prog-btn-status');
   if (c.status === 'pendente') {
     btnStatus.textContent = '✓ Confirmar carga';
+    btnStatus.style.cssText = '';
     btnStatus.onclick = () => _progAtualizarStatus(id, 'confirmado');
-  } else {
-    btnStatus.textContent = '↩ Voltar para pendente';
-    btnStatus.onclick = () => _progAtualizarStatus(id, 'pendente');
+  } else if (c.status === 'confirmado') {
+    btnStatus.textContent = '✓✓ Marcar como Entregue';
+    btnStatus.style.cssText = 'background:var(--forest);color:#fff;border-color:var(--forest)';
+    btnStatus.onclick = () => _progAtualizarStatus(id, 'entregue');
+  } else if (c.status === 'entregue') {
+    btnStatus.textContent = '↩ Voltar para confirmado';
+    btnStatus.style.cssText = '';
+    btnStatus.onclick = () => _progAtualizarStatus(id, 'confirmado');
   }
 
+  // Botão Registrar Venda (visível para confirmado/entregue)
+  const btnVenda = document.getElementById('prog-btn-registrar-venda');
+  if (btnVenda) btnVenda.style.display = (c.status === 'confirmado' || c.status === 'entregue') ? 'block' : 'none';
+
   openModal('prog-modal-overlay');
+}
+
+// ── REGISTRAR VENDA A PARTIR DA CARGA ──
+function progRegistrarVenda() {
+  if (!_progEditandoId) return;
+  const c = _progSemana.find(x => x.id === _progEditandoId);
+  if (!c) return;
+  const cli = _progClientes.find(x => x.id === c.cliente_id);
+
+  // Guardar ID para vincular após salvar venda
+  window._progVendaLinkId = _progEditandoId;
+
+  closeModal('prog-modal-overlay');
+  showPage('vendas');
+  showVendasTab('nova');
+
+  // Preencher formulário de nova venda após o DOM atualizar
+  setTimeout(() => {
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    setVal('v-data', c.dia_entrega);
+    setVal('v-cliente', c.cliente_nome);
+    // Mapear área para campo de cocos
+    const areaMap = { 'A1':'va-a1','A2':'va-a2','C':'va-c','D':'va-d','MAMÃO DE CIMA':'va-mdc','MAMÃO DE BAIXO':'va-mdb','MARACUJÁ':'va-ma' };
+    const areaField = c.area ? areaMap[c.area] : null;
+    if (areaField) setVal(areaField, c.volume_cocos);
+    else setVal('va-a1', c.volume_cocos); // fallback: campo A1
+    // Total e frete
+    if (c.valor_por_coco && c.volume_cocos) {
+      const total = c.volume_cocos * c.valor_por_coco;
+      setVal('v-total', Math.round(total));
+    }
+    if (c.frete_total) setVal('v-frete', Math.round(c.frete_total));
+    // UF e cidade do cliente
+    if (cli?.uf) {
+      setVal('v-uf-destino', cli.uf);
+      // Trigger change para carregar cidades
+      const ufSel = document.getElementById('v-uf-destino');
+      if (ufSel) ufSel.dispatchEvent(new Event('change'));
+      setTimeout(() => setVal('v-cidade-destino', cli.cidade || ''), 500);
+    }
+    // Recalcular campos
+    if (typeof calcularVenda === 'function') calcularVenda();
+    showToast('Dados da carga preenchidos — confira e salve');
+  }, 300);
 }
 
 // ── MODAL: HELPERS ──
@@ -557,6 +667,45 @@ function _progSelecionarCliente(c) {
     }
   }
   _progAtualizarPreview();
+  // Carregar histórico de preços
+  _progCarregarHistoricoPrecos(c.id);
+}
+
+async function _progCarregarHistoricoPrecos(clienteId) {
+  const wrap = document.getElementById('prog-rpc-historico');
+  if (!wrap) return;
+  wrap.style.display = 'none';
+  wrap.innerHTML = '';
+  try {
+    const { data } = await _SB.from('programacao')
+      .select('valor_por_coco,dia_entrega')
+      .eq('cliente_id', clienteId)
+      .not('valor_por_coco', 'is', null)
+      .neq('status', 'cancelado')
+      .order('dia_entrega', { ascending: false })
+      .limit(20);
+    if (!data || !data.length) return;
+    const seen = new Set();
+    const precos = [];
+    for (const r of data) {
+      const v = Number(r.valor_por_coco);
+      if (v > 0 && !seen.has(v)) { seen.add(v); precos.push(v); }
+      if (precos.length >= 5) break;
+    }
+    if (!precos.length) return;
+    wrap.innerHTML = '<span style="font-size:10px;color:var(--muted);font-weight:700">Últimos:</span> ' +
+      precos.map(p => `<span class="prog-rpc-chip" onclick="_progPreencherValor(${p})">R$ ${p.toFixed(2)}</span>`).join(' ');
+    wrap.style.display = 'flex';
+  } catch(e) { /* silencioso */ }
+}
+
+function _progPreencherValor(valor) {
+  const el = document.getElementById('prog-inp-valor');
+  if (!el) return;
+  const digits = _progValorToDigits(valor);
+  el.dataset.digits = digits;
+  el.value = _progFormatValor(digits);
+  _progAtualizarPreview();
 }
 
 function _progResetVeiculoBtns() {
@@ -599,12 +748,27 @@ function _progAtualizarPreview() {
   const preview = document.getElementById('prog-receita-preview');
   if (qtde === 0 && valor === 0) { preview.style.display = 'none'; return; }
   preview.style.display = 'block';
-  const litros = Math.round(qtde / LITROS_POR_COCO);
+  const lpc = _progClienteSel?.litros_por_coco || LITROS_POR_COCO;
+  const litros = Math.round(qtde / lpc);
   const receita = qtde * valor;
+  const freteTotal = _progCalcFreteTotal();
+  const liquida = receita - freteTotal;
   document.getElementById('prog-prev-cocos').textContent = fmtNum(qtde) + ' cocos';
-  document.getElementById('prog-prev-litros').textContent = fmtNum(litros) + ' L';
+  document.getElementById('prog-prev-litros').textContent = fmtNum(litros) + ' L' + (lpc !== LITROS_POR_COCO ? ' (' + lpc.toFixed(1) + '/coco)' : '');
   document.getElementById('prog-prev-receita').textContent = valor > 0 ? 'R$ ' + fmtNum(Math.round(receita)) : '—';
   document.getElementById('prog-prev-rpc').textContent = valor > 0 ? 'R$ ' + valor.toFixed(2) + '/coco' : '—';
+  // Frete e líquida
+  const freteRow = document.getElementById('prog-prev-frete-row');
+  const liqRow = document.getElementById('prog-prev-liquida-row');
+  if (freteRow) freteRow.style.display = freteTotal > 0 ? '' : 'none';
+  if (liqRow) liqRow.style.display = freteTotal > 0 ? '' : 'none';
+  if (freteTotal > 0) {
+    document.getElementById('prog-prev-frete').textContent = '- R$ ' + fmtNum(Math.round(freteTotal));
+    document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(liquida));
+  }
+  // Mostrar campo frete quando valor preenchido
+  const campoFrete = document.getElementById('prog-campo-frete');
+  if (campoFrete) campoFrete.style.display = valor > 0 ? '' : 'none';
 }
 
 function progToggleObs() {
@@ -630,6 +794,18 @@ async function salvarProgCarga() {
     if (!confirm(`${_progNomeFeriado(_progDiaSel)} — Tem certeza que vai carregar em feriado?`)) return;
   }
 
+  // Verificar duplicata (mesmo cliente + mesmo dia)
+  const dup = _progSemana.find(x =>
+    x.cliente_id === _progClienteSel.id &&
+    x.dia_entrega === _progDiaSel &&
+    x.id !== _progEditandoId &&
+    x.status !== 'cancelado'
+  );
+  if (dup) {
+    const diaFmt = _progDataCurta(new Date(_progDiaSel + 'T12:00:00'));
+    if (!confirm(`Já existe uma carga para ${_progClienteSel.nome} no dia ${diaFmt}.\nDeseja agendar outra?`)) return;
+  }
+
   const valor = _progGetValor() || null;
   const obs = document.getElementById('prog-inp-obs').value.trim() || null;
   const motorista = document.getElementById('prog-inp-motorista').value.trim() || null;
@@ -641,6 +817,7 @@ async function salvarProgCarga() {
     cliente_nome: _progClienteSel.nome,
     volume_cocos: qtde,
     valor_por_coco: valor,
+    frete_total: _progCalcFreteTotal() || null,
     tipo_veiculo: _progVeiculoSel,
     area: _progAreaSel,
     providenciar_caminhao: _progProvidenciarCaminhao,
@@ -664,6 +841,10 @@ async function salvarProgCarga() {
       showToast('Carga agendada');
     }
     closeModal('prog-modal-overlay');
+    // Atualizar rpc_historico do cliente
+    if (valor && _progClienteSel?.id) {
+      _SB.from('clientes').update({ rpc_historico: valor }).eq('id', _progClienteSel.id).then(() => {});
+    }
     await carregarProgramacao(_progSemanaInicio);
   } catch(e) {
     console.error('Erro ao salvar carga:', e);
@@ -679,7 +860,8 @@ async function _progAtualizarStatus(id, novoStatus) {
       .eq('id', id);
     if (error) throw error;
     closeModal('prog-modal-overlay');
-    showToast(novoStatus === 'confirmado' ? 'Carga confirmada' : 'Status atualizado');
+    const msgs = { confirmado: 'Carga confirmada ✓', entregue: 'Carga entregue ✓✓', pendente: 'Voltou para pendente' };
+    showToast(msgs[novoStatus] || 'Status atualizado');
     await carregarProgramacao(_progSemanaInicio);
   } catch(e) {
     showToast('Erro: ' + (e.message || e));
@@ -753,6 +935,7 @@ function progEnviarWhatsApp() {
     `📅 *${nomeDia}, ${dataBr}*\n` +
     `🌴 ${fmtNum(c.volume_cocos)} cocos`;
   if (c.valor_por_coco) msg += ` · R$ ${Number(c.valor_por_coco).toFixed(2)}/coco`;
+  if (c.frete_total) msg += `\n💰 Frete: R$ ${fmtNum(Math.round(c.frete_total))}`;
   msg += `\n🚚 ${c.tipo_veiculo || '—'}`;
   if (c.area) msg += `\n📍 Área: ${c.area}`;
   if (c.obs) msg += `\n\n📝 ${c.obs}`;

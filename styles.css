@@ -617,6 +617,8 @@
   .prog-st-confirmado { background:var(--verde-bg); color:var(--forest); border:1px solid var(--verde-border); }
   .prog-st-pendente { background:var(--amarelo-bg); color:var(--amarelo); border:1px solid var(--amarelo-border); }
   .prog-st-entregue { background:#eff6ff; color:#1d4ed8; border:1px solid #93c5fd; }
+  .prog-rpc-chip { padding:3px 10px; border-radius:12px; font-size:11px; font-family:var(--font-mono); font-weight:600; background:var(--surface2); border:1px solid var(--border); color:var(--muted); cursor:pointer; transition:all 0.12s; }
+  .prog-rpc-chip:hover { background:var(--verde-bg); color:var(--forest); border-color:var(--verde-border); }
   .prog-st-cancelado { background:#f3f4f6; color:var(--muted); }
 
   /* Badges */

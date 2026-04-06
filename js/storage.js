@@ -250,8 +250,9 @@ async function salvarVendaSupabase(v) {
     contrato_id: v.contratoId||null,
     frete_por_ton: v.fretePorTon||null
   };
-  const { error } = await _SB.from('vendas').upsert(row);
-  if(error) { console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
+  const { data, error } = await _SB.from('vendas').upsert(row).select();
+  if(error) { console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); return null; }
+  return data && data[0];
 }
 
 async function excluirVendaSupabase(id) {
@@ -336,6 +337,7 @@ async function salvarClienteSupabase(c) {
     status: c.status || 'ativo',
     frete_por_ton: c.frete_por_ton || null,
     distancia_km: c.distancia_km || null,
+    litros_por_coco: c.litros_por_coco || null,
     atualizado_em: new Date().toISOString()
   };
   if (c.id) row.id = c.id;

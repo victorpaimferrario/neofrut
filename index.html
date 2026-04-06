@@ -498,6 +498,19 @@
         </div>
       </div>
     </div>
+    <div id="prog-rpc-historico" style="display:none;flex-wrap:wrap;gap:6px;margin-top:-4px;margin-bottom:12px"></div>
+
+    <!-- Frete -->
+    <div class="prog-campo" id="prog-campo-frete" style="display:none">
+      <label>Frete <span style="font-weight:400;font-size:10px;color:var(--muted)">(se o valor/coco já inclui frete)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="position:relative;flex:1">
+          <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-frete" placeholder="0,00" oninput="_progOnFreteInput(this)" autocomplete="off">
+          <span id="prog-frete-unit" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">R$ total</span>
+        </div>
+        <button type="button" id="prog-frete-toggle" onclick="_progToggleFreteMode()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:10px;cursor:pointer;white-space:nowrap;color:var(--muted);font-family:var(--font-mono)">⇄ R$/coco</button>
+      </div>
+    </div>
 
     <!-- Área -->
     <div class="prog-campo">
@@ -542,6 +555,8 @@
       <div class="prog-receita-linha"><span>Litros estimados (÷2,3)</span><span id="prog-prev-litros">—</span></div>
       <div class="prog-receita-linha"><span>Receita bruta</span><span id="prog-prev-receita">—</span></div>
       <div class="prog-receita-linha prog-receita-total"><span>R$/coco efetivo</span><span id="prog-prev-rpc">—</span></div>
+      <div class="prog-receita-linha" id="prog-prev-frete-row" style="display:none;color:var(--vermelho)"><span>Frete</span><span id="prog-prev-frete">—</span></div>
+      <div class="prog-receita-linha prog-receita-total" id="prog-prev-liquida-row" style="display:none;color:var(--forest)"><span>Receita líquida</span><span id="prog-prev-liquida">—</span></div>
     </div>
 
     <!-- Obs -->
@@ -557,6 +572,7 @@
       <button class="btn btn-outline" onclick="progEnviarWhatsApp()" type="button" style="flex:1;font-size:11px;padding:8px">📱 WhatsApp</button>
       <button class="btn" onclick="progCancelarCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:var(--vermelho);color:#fff">✕ Cancelar</button>
       <button class="btn" onclick="progExcluirCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:#7f1d1d;color:#fff">🗑 Excluir</button>
+      <button class="btn" id="prog-btn-registrar-venda" onclick="progRegistrarVenda()" type="button" style="display:none;width:100%;font-size:12px;padding:10px;background:var(--forest);color:#fff;font-weight:800;margin-top:4px">📋 Registrar Venda a partir desta carga</button>
     </div>
 
     <button class="btn btn-primary" id="prog-btn-salvar" onclick="salvarProgCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">✓ Agendar carga</button>
@@ -1196,6 +1212,10 @@
           <input class="form-input" type="number" min="0" id="cli-distancia" placeholder="ex: 120">
         </div>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Litros por coco (padrão: 2,3)</label>
+      <input class="form-input" type="number" min="1" max="5" step="0.1" id="cli-litros-por-coco" placeholder="2.3">
     </div>
     <div class="form-group" style="margin-bottom:10px">
       <label class="form-label">Observações</label>

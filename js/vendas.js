@@ -700,7 +700,18 @@ async function salvarVenda(){
   }
   db.push(venda);
   saveVendas(db);
-  await salvarVendaSupabase(db[db.length-1]);
+  const vendaSalva = await salvarVendaSupabase(db[db.length-1]);
+  // Vincular à programação se veio de lá
+  if (window._progVendaLinkId && vendaSalva?.id) {
+    try {
+      await _SB.from('programacao').update({
+        venda_id: vendaSalva.id,
+        status: 'entregue',
+        updated_at: new Date().toISOString()
+      }).eq('id', window._progVendaLinkId);
+    } catch(e) { console.error('Erro ao vincular programação:', e); }
+    window._progVendaLinkId = null;
+  }
   limparFormVenda();
   showVendasTab('lista');
   showToast('✓ Venda registrada — '+fmtNum(qtde)+' cocos · '+fmtR(total));
@@ -1412,7 +1423,8 @@ async function salvarCliente() {
     tipo: document.getElementById('cli-tipo').value,
     status: document.getElementById('cli-status').value,
     frete_por_ton: parseFloat(document.getElementById('cli-frete-ton')?.value)||null,
-    distancia_km: parseInt(document.getElementById('cli-distancia')?.value)||null
+    distancia_km: parseInt(document.getElementById('cli-distancia')?.value)||null,
+    litros_por_coco: parseFloat(document.getElementById('cli-litros-por-coco')?.value)||null
   };
 
   const saved = await salvarClienteSupabase(cliente);
