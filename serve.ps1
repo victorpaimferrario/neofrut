@@ -30,10 +30,12 @@ while ($listener.IsListening) {
         $ctx.Response.ContentType = $mime
         $ctx.Response.StatusCode = 200
         $bytes = [System.IO.File]::ReadAllBytes($filePath)
+        $ctx.Response.ContentLength64 = $bytes.Length
         $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
     } else {
         $ctx.Response.StatusCode = 404
         $bytes = [System.Text.Encoding]::UTF8.GetBytes('Not Found')
+        $ctx.Response.ContentLength64 = $bytes.Length
         $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
     }
     $ctx.Response.Close()

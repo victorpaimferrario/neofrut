@@ -1207,6 +1207,7 @@ function acCidade(){
 function acSelCidade(el){
   const inp=document.getElementById('v-cidade-destino');
   const list=document.getElementById('ac-cidade-list');
+  if(!inp||!list)return;
   inp.value=el.dataset.val;
   list.classList.remove('open');
 }

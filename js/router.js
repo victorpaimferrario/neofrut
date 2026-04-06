@@ -39,15 +39,16 @@ function showPage(id) {
   }
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { const el=document.getElementById(id); if(el) el.classList.add('open'); }
+function closeModal(id) { const el=document.getElementById(id); if(el) el.classList.remove('open'); }
 
-function showAjudaSec(sec) {
+function showAjudaSec(sec, evt) {
   document.querySelectorAll('.ajuda-sec').forEach(s => s.style.display = 'none');
   document.querySelectorAll('.ajuda-tab').forEach(t => t.classList.remove('active'));
   const el = document.getElementById('ajuda-' + sec);
   if (el) el.style.display = '';
-  event.target.classList.add('active');
+  const btn = evt ? evt.target : (event ? event.target : null);
+  if (btn) btn.classList.add('active');
 }
 
 // Close modals on overlay click (delegation — works for static and dynamic modals)
@@ -63,6 +64,7 @@ document.addEventListener('click', e => {
 
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if(!t) return;
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }

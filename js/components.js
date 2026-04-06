@@ -140,6 +140,7 @@ function openAreaDrawer(area, filtro) {
   currentFilter = filtro || 'todos';
   document.getElementById('drawer-area-title').textContent = area;
   const eitos = DB[area];
+  if(!eitos) { showToast('⚠ Área não encontrada'); return; }
   const plantas = eitos.reduce((s,e)=>s+e.plantas,0);
   document.getElementById('drawer-area-meta').textContent =
     `${eitos.length} eitos · ${fmtNum(plantas)} plantas`;
@@ -287,6 +288,7 @@ function editarColheitaSidePanel(area, eitoId, idx){
   const eito = DB[area]?.find(e=>e.id===eitoId);
   if(!eito||!eito.historico) return;
   const h = eito.historico[idx];
+  if(!h) return;
   // abrir modal de colheita preenchido
   currentArea = area;
   currentEitoId = eitoId;

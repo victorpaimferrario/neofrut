@@ -256,7 +256,7 @@ async function salvarVendaSupabase(v) {
 
 async function excluirVendaSupabase(id) {
   const { error } = await _SB.from('vendas').delete().eq('id', id);
-  if(error) { console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); }
+  if(error) { console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao excluir — tente novamente'); }
 }
 
 // ─── NADO CONTADOR ───
