@@ -47,6 +47,28 @@
   </div>
 </nav>
 
+<!-- Bottom Tab Bar (mobile only) -->
+<div class="mobile-bottom-bar" id="mobile-bottom-bar">
+  <button class="mob-tab active" onclick="showPage('dashboard')" data-page="dashboard">
+    <span class="mob-tab-icon">📊</span><span class="mob-tab-label">Painel</span>
+  </button>
+  <button class="mob-tab" onclick="showPage('programacao')" data-page="programacao">
+    <span class="mob-tab-icon">📦</span><span class="mob-tab-label">Programação</span>
+  </button>
+  <button class="mob-tab" onclick="showPage('analise')" data-page="analise">
+    <span class="mob-tab-icon">📈</span><span class="mob-tab-label">Análise</span>
+  </button>
+  <button class="mob-tab" onclick="showPage('lancamento')" data-page="lancamento">
+    <span class="mob-tab-icon">✏️</span><span class="mob-tab-label">Lançar</span>
+  </button>
+  <button class="mob-tab" onclick="showPage('vendas')" data-page="vendas">
+    <span class="mob-tab-icon">💰</span><span class="mob-tab-label">Vendas</span>
+  </button>
+  <button class="mob-tab" onclick="showPage('mercados')" data-page="mercados">
+    <span class="mob-tab-icon">🎯</span><span class="mob-tab-label">Estratégia</span>
+  </button>
+</div>
+
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
   <div class="dash-header">

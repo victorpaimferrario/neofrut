@@ -4,6 +4,10 @@ function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  // Sync mobile bottom bar
+  document.querySelectorAll('.mob-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.page === id);
+  });
   if (id === 'dashboard') {
     document.querySelector('.nav-tab').classList.add('active');
     renderDashboard();
