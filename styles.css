@@ -566,7 +566,7 @@
 
   /* KPIs */
   .prog-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
-  .prog-kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 16px; }
+  .prog-kpi { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:13px 16px; text-align:center; }
   .prog-kpi-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:5px; }
   .prog-kpi-val { font-size:20px; font-weight:900; font-family:var(--font-mono); line-height:1; margin-bottom:2px; }
   .prog-kpi-sub { font-size:10px; color:var(--muted); }

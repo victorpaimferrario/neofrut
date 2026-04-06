@@ -240,7 +240,7 @@ function renderProgKPIs() {
   const confirmadas = _progSemana.filter(c => c.status === 'confirmado' || c.status === 'entregue').length;
 
   document.getElementById('prog-kpi-cocos').textContent = fmtNum(totalCocos);
-  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtNum(Math.round(totalReceita)) + (totalFrete > 0 ? ' (líq.)' : '');
+  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtNum(Math.round(totalReceita));
   document.getElementById('prog-kpi-caminhao').textContent = semCaminhao;
   document.getElementById('prog-kpi-status').textContent = `${confirmadas} / ${_progSemana.length}`;
 }
