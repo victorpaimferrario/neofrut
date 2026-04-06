@@ -355,16 +355,16 @@
   </div>
 
   <!-- Header com navegação de semana -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+  <div class="prog-header-nav" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-outline" onclick="navegarSemana(-1)" style="padding:6px 10px;font-size:14px">←</button>
+      <button class="btn btn-outline" onclick="navegarSemana(-1)" style="padding:6px 10px;font-size:14px;min-height:44px">←</button>
       <span id="prog-semana-label" style="font-size:13px;font-weight:700;font-family:var(--font-mono)"></span>
-      <button class="btn btn-outline" onclick="navegarSemana(1)" style="padding:6px 10px;font-size:14px">→</button>
-      <input type="date" id="prog-saltar-data" onchange="progSaltarParaData()" style="padding:5px 8px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--text);background:var(--surface);cursor:pointer" title="Saltar para semana">
+      <button class="btn btn-outline" onclick="navegarSemana(1)" style="padding:6px 10px;font-size:14px;min-height:44px">→</button>
+      <input type="date" id="prog-saltar-data" onchange="progSaltarParaData()" style="padding:5px 8px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--text);background:var(--surface);cursor:pointer;min-height:44px" title="Saltar para semana">
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" onclick="progToggleHistorico()" style="font-size:12px;padding:8px 14px">📋 Histórico</button>
-      <button class="btn btn-primary" onclick="abrirModalProg()" style="font-size:12px;padding:8px 16px">+ Carga</button>
+    <div class="prog-header-actions" style="display:flex;gap:8px">
+      <button class="btn btn-outline" onclick="progToggleHistorico()" style="font-size:12px;padding:8px 14px;min-height:44px">📋 Histórico</button>
+      <button class="btn btn-primary prog-btn-add-desktop" onclick="abrirModalProg()" style="font-size:12px;padding:8px 16px;min-height:44px">+ Carga</button>
     </div>
   </div>
 
@@ -409,20 +409,20 @@
         <div style="font-size:14px;font-weight:800;color:var(--forest)">📋 Histórico de Cargas</div>
         <button onclick="progToggleHistorico()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted)">×</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
-        <div style="display:flex;flex-direction:column;gap:3px">
+      <div class="prog-hist-filtros" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px">
           <label style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted)">De</label>
-          <input type="date" id="prog-hist-de" class="prog-inp" style="width:auto;padding:7px 10px;font-size:12px">
+          <input type="date" id="prog-hist-de" class="prog-inp" style="width:100%;padding:7px 10px;font-size:12px">
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px">
           <label style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted)">Até</label>
-          <input type="date" id="prog-hist-ate" class="prog-inp" style="width:auto;padding:7px 10px;font-size:12px">
+          <input type="date" id="prog-hist-ate" class="prog-inp" style="width:100%;padding:7px 10px;font-size:12px">
         </div>
-        <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px">
           <label style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted)">Cliente</label>
-          <input type="text" id="prog-hist-cliente" class="prog-inp" placeholder="Todos" style="width:160px;padding:7px 10px;font-size:12px">
+          <input type="text" id="prog-hist-cliente" class="prog-inp" placeholder="Todos" style="width:100%;padding:7px 10px;font-size:12px">
         </div>
-        <button class="btn btn-primary" onclick="progBuscarHistorico()" style="padding:7px 16px;font-size:12px">Buscar</button>
+        <button class="btn btn-primary" onclick="progBuscarHistorico()" style="padding:7px 16px;font-size:12px;min-height:44px;flex-shrink:0">Buscar</button>
       </div>
       <div id="prog-hist-kpis" class="prog-kpis" style="margin-bottom:14px"></div>
       <div id="prog-hist-resultados"></div>
@@ -431,6 +431,9 @@
 
   <!-- Grade semanal -->
   <div class="prog-grade" id="prog-grade"></div>
+
+  <!-- FAB: Floating Action Button for mobile -->
+  <button class="prog-fab" id="prog-fab" onclick="abrirModalProg()" title="Nova carga">+</button>
 </div>
 
 <!-- MODAL: Nova/Editar Carga -->

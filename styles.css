@@ -706,15 +706,73 @@
   .prog-receita-linha.prog-receita-total { border-top:1px solid var(--border); margin-top:4px; padding-top:6px; font-weight:800; font-size:13px; }
   .prog-receita-linha.prog-receita-total span:last-child { color:#1d4ed8; }
 
-  /* Responsivo */
+  /* ── FAB (Floating Action Button) ── */
+  .prog-fab { display:none; position:fixed; bottom:24px; right:24px; z-index:90; width:56px; height:56px; border-radius:50%; background:var(--forest); color:#fff; border:none; font-size:28px; font-weight:800; cursor:pointer; box-shadow:0 4px 16px rgba(26,92,26,.35); align-items:center; justify-content:center; transition:transform .15s,box-shadow .15s; }
+  .prog-fab:active { transform:scale(.92); box-shadow:0 2px 8px rgba(26,92,26,.25); }
+
+  /* ── Responsivo: Tablet (≤900px) ── */
   @media (max-width:900px) {
     .prog-grade { grid-template-columns:repeat(3,1fr); }
     .prog-kpis { grid-template-columns:repeat(2,1fr); }
   }
+
+  /* ── Responsivo: Mobile (≤600px) ── */
   @media (max-width:600px) {
+    /* Grade: single column with all days */
     .prog-grade { grid-template-columns:1fr; }
+
+    /* FAB visible */
+    .prog-fab { display:flex; }
+
+    /* Header: stack vertically */
+    .prog-header-nav { flex-direction:column !important; align-items:stretch !important; gap:8px !important; }
+    .prog-header-nav > div { justify-content:center; }
+    .prog-header-actions { width:100%; justify-content:stretch !important; }
+    .prog-header-actions .btn { flex:1; text-align:center; }
+    /* Hide desktop "+ Carga" button on mobile (FAB replaces it) */
+    .prog-header-actions .prog-btn-add-desktop { display:none; }
+
+    /* KPIs: 2 columns */
+    .prog-kpis { grid-template-columns:repeat(2,1fr); gap:8px; }
+    .prog-kpi { padding:10px 12px; }
+    .prog-kpi-val { font-size:18px; }
+    .prog-kpi-label { font-size:8px; }
+
+    /* Legenda: smaller */
+    .prog-legenda { gap:8px; margin-bottom:12px; }
+    .prog-leg-item { font-size:9px; }
+
+    /* Cards: larger touch targets */
+    .prog-card { padding:14px 16px; }
+    .prog-card-cliente { font-size:14px; }
+    .prog-card-qtde { font-size:15px; }
+    .prog-card-rpc { font-size:11px; }
+    .prog-card-receita { font-size:11px; }
+    .prog-badge { font-size:10px; padding:4px 8px; min-height:28px; display:inline-flex; align-items:center; }
+    .prog-st { font-size:9px; padding:4px 8px; }
+    .prog-btn-add { padding:14px; font-size:13px; min-height:48px; }
+
+    /* Modal: full-screen on mobile */
+    #prog-modal-overlay .modal { max-width:100% !important; width:100vw; min-height:100vh; border-radius:0; margin:0; }
     .prog-dias-btns { flex-wrap:wrap; }
-    .prog-dia-btn { min-width:calc(33% - 4px); }
+    .prog-dia-btn { min-width:calc(33% - 4px); min-height:44px; font-size:12px; padding:10px 6px; }
+    .prog-veiculo-btn { padding:12px 8px; min-height:70px; }
+    .prog-area-btn { padding:10px 14px; font-size:12px; min-height:44px; }
+    .prog-caminhao-btn { padding:14px; min-height:52px; }
+    .prog-inp { padding:12px 14px; font-size:14px; min-height:44px; }
+
+    /* Edit action buttons: 2-column grid instead of tiny flex:1 */
+    #prog-acoes-editar { display:grid !important; grid-template-columns:1fr 1fr; gap:8px !important; }
+    #prog-acoes-editar .btn { font-size:12px !important; padding:12px 8px !important; min-height:44px; }
+    #prog-acoes-editar #prog-btn-registrar-venda { grid-column:1 / -1; }
+
+    /* Histórico: responsive filters */
+    .prog-hist-filtros { flex-direction:column !important; }
+    .prog-hist-filtros input[type="text"] { width:100% !important; }
+    .prog-hist-filtros input[type="date"] { width:100% !important; }
+    .prog-hist-carga { padding:12px 14px; }
+    .prog-hist-carga-cliente { font-size:13px; }
+    .prog-hist-carga-info { font-size:11px; }
   }
 
 /* ── MERCADOS ── */

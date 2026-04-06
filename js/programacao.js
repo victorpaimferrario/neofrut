@@ -321,6 +321,7 @@ function renderProgGrade() {
 
     grade.appendChild(col);
   });
+
 }
 
 // ── CARD DE CARGA ──
