@@ -1,34 +1,35 @@
 // ─────────── ROUTER ───────────
 function showPage(id) {
   localStorage.setItem('neofrut_aba_ativa', id);
+  const pageEl = document.getElementById('page-' + id);
+  if (!pageEl) { console.warn('showPage: página não encontrada:', id); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + id).classList.add('active');
+  pageEl.classList.add('active');
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   // Sync mobile bottom bar
   document.querySelectorAll('.mob-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.page === id);
   });
+  // Ativa a nav-tab correspondente via data-page (resiliente a reordenação)
+  const navTab = document.querySelector('.nav-tab[data-page="' + id + '"]');
+  if (navTab) navTab.classList.add('active');
+
   if (id === 'dashboard') {
-    document.querySelector('.nav-tab').classList.add('active');
+    if (!navTab) document.querySelector('.nav-tab')?.classList.add('active');
     renderDashboard();
     renderProjecao();
     renderComparativo();
     renderMapa();
     renderContratosAlertas();
   } else if (id === 'programacao') {
-    document.querySelectorAll('.nav-tab')[1].classList.add('active');
     initProgramacao();
   } else if (id === 'analise') {
-    document.querySelectorAll('.nav-tab')[2].classList.add('active');
     initAnalise();
   } else if (id === 'lancamento') {
-    document.querySelectorAll('.nav-tab')[3].classList.add('active');
     initLancamento();
   } else if (id === 'vendas') {
-    document.querySelectorAll('.nav-tab')[4].classList.add('active');
     initVendas(false);
   } else if (id === 'mercados') {
-    document.querySelectorAll('.nav-tab')[5].classList.add('active');
     if (!window._mercadosIniciado) {
       window._mercadosIniciado = true;
       initMercados();
@@ -38,7 +39,6 @@ function showPage(id) {
       showPage('dashboard');
       return;
     }
-    document.querySelectorAll('.nav-tab')[6].classList.add('active');
     initGestao();
   }
 }

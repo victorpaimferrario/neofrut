@@ -19,9 +19,11 @@ function renderAreaBtnsGestao(areaAtiva) {
   const wrap = document.getElementById('gestao-area-btns');
   if (!wrap) return;
   window._gestaoAreaAtiva = areaAtiva;
-  wrap.innerHTML = Object.keys(DB).map(a =>
-    `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaGestao('${a}')">${NOMES_CURTOS[a]||a}</button>`
-  ).join('');
+  wrap.innerHTML = Object.keys(DB).map(a => {
+    const aJs = String(a).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const label = NOMES_CURTOS[a] || a;
+    return `<button class="area-btn ${areaAtiva===a?'ativo':''}" onclick="selecionarAreaGestao('${aJs}')">${escapeHtml(label)}</button>`;
+  }).join('');
 }
 
 function selecionarAreaGestao(area) {

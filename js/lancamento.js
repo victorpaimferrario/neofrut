@@ -474,18 +474,23 @@ function abrirRevisao() {
 let _confirmandoLanc = false;
 async function confirmarLancamento() {
   if (_confirmandoLanc) return;
+  // Validar ANTES de travar o flag, para permitir novas tentativas
+  const data = document.getElementById('lanc-data').value;
+  const cliente = document.getElementById('revisao-cliente').value;
+  if (!cliente) {
+    document.getElementById('revisao-cliente-erro').style.display = 'block';
+    document.getElementById('revisao-cliente').focus();
+    return;
+  }
+  const lotes = getLancamentos();
+  if (!lotes || !lotes.length) {
+    showToast('Nenhum eito para lançar');
+    return;
+  }
   _confirmandoLanc = true;
   const btn = document.querySelector('#modal-revisao .btn-green');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
   try {
-    const data = document.getElementById('lanc-data').value;
-    const cliente = document.getElementById('revisao-cliente').value;
-    if (!cliente) {
-      document.getElementById('revisao-cliente-erro').style.display = 'block';
-      document.getElementById('revisao-cliente').focus();
-      return;
-    }
-    const lotes = getLancamentos();
     const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
     let count = 0;
     const parcialMerges = []; // {area, eitoId, oldId} para deletar do Supabase

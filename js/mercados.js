@@ -59,7 +59,7 @@ function renderRanking(){
   lista.forEach(([uf,v],i)=>{
     const isFab = v.fabrica===true;
     const rowBg = isFab ? '#fffbea' : '';
-    const nomeMostrar = isFab ? '🏭 '+(v.nome_fab||uf.replace('FAB_','')) : (NOMES_UF[uf]||uf);
+    const nomeMostrar = escapeHtml(isFab ? '🏭 '+(v.nome_fab||uf.replace('FAB_','')) : (NOMES_UF[uf]||uf));
     const ufMostrar = isFab ? 'FÁBRICA' : uf;
     const tr=document.createElement('tr');
     tr.style.cssText='border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;'+(rowBg?'background:'+rowBg+';':'');
@@ -170,7 +170,7 @@ function abrirModalEstado(uf){
     const inativo = diasSemComprar > 60;
     const bgInativo = inativo ? 'background:#fff5f5;' : '';
     tr.style.cssText = 'border-bottom:1px solid var(--border);'+bgInativo;
-    tr.innerHTML='<td style="padding:8px;font-size:12px;font-weight:700;color:var(--text)">'+cli
+    tr.innerHTML='<td style="padding:8px;font-size:12px;font-weight:700;color:var(--text)">'+escapeHtml(cli)
       +(inativo?'<span style="margin-left:6px;font-size:9px;font-weight:700;background:#fde8ea;color:var(--vermelho);padding:2px 5px;border-radius:4px">⚠️ +'+diasSemComprar+'d</span>':'')
       +'</td>'
       +'<td style="padding:8px;font-size:12px;font-family:var(--font-mono)">'+fmtN(cv.cocos)+'</td>'

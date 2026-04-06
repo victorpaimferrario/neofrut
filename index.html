@@ -32,13 +32,13 @@
 <nav>
   <div class="nav-brand"><img src="logo.png" style="height:36px;width:auto;vertical-align:middle"></div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('dashboard')">PAINEL GERAL</button>
-    <button class="nav-tab" onclick="showPage('programacao')">📦 PROGRAMAÇÃO</button>
-    <button class="nav-tab" onclick="showPage('analise')">ANÁLISE</button>
-    <button class="nav-tab" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
-    <button class="nav-tab" onclick="showPage('vendas')">💰 VENDAS</button>
-    <button class="nav-tab" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
-    <button class="nav-tab" id="nav-gestao" onclick="showPage('gestao')" style="display:none">⚙️ GESTÃO</button>
+    <button class="nav-tab active" data-page="dashboard" onclick="showPage('dashboard')">PAINEL GERAL</button>
+    <button class="nav-tab" data-page="programacao" onclick="showPage('programacao')">📦 PROGRAMAÇÃO</button>
+    <button class="nav-tab" data-page="analise" onclick="showPage('analise')">ANÁLISE</button>
+    <button class="nav-tab" data-page="lancamento" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
+    <button class="nav-tab" data-page="vendas" onclick="showPage('vendas')">💰 VENDAS</button>
+    <button class="nav-tab" data-page="mercados" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
+    <button class="nav-tab" data-page="gestao" id="nav-gestao" onclick="showPage('gestao')" style="display:none">⚙️ GESTÃO</button>
   </div>
   <div class="nav-actions">
     <button onclick="openModal('modal-ajuda')" style="background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:800;color:var(--accent);font-family:var(--font-main);display:flex;align-items:center;justify-content:center" title="Ajuda do sistema">?</button>

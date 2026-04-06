@@ -161,7 +161,7 @@ function renderVendasPainel(){
         div.style.cursor='pointer';
         div.title='Ver histórico de '+n;
         div.innerHTML='<span class="vrank-pos">'+(i+1)+'</span>'
-          +'<span class="vrank-nome">'+n+'</span>'
+          +'<span class="vrank-nome">'+escapeHtml(n)+'</span>'
           +'<div class="vrank-bar" style="width:'+w+'px"></div>'
           +'<span class="vrank-val" style="min-width:70px">'+fmtNum(d.c)+'</span>'
           +'<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);min-width:32px;text-align:right">'+pct+'%</span>'
@@ -824,8 +824,8 @@ function renderVendasLista(){
     tr.dataset.cli=v.cliente;
     tr.innerHTML=
       '<td style="font-family:var(--font-mono);white-space:nowrap">'+d+'/'+m+'/'+y+'</td>'
-     +'<td style="font-weight:700;color:var(--forest)">'+v.cliente+'</td>'
-     +'<td style="font-family:var(--font-mono);color:var(--muted)">'+v.nf+'</td>'
+     +'<td style="font-weight:700;color:var(--forest)">'+escapeHtml(v.cliente)+'</td>'
+     +'<td style="font-family:var(--font-mono);color:var(--muted)">'+escapeHtml(v.nf)+'</td>'
      +'<td style="font-family:var(--font-mono)">'+fmtNum(v.qtde)+'</td>'
      +'<td style="font-family:var(--font-mono)">'+fmtR(v.total)+'</td>'
      +'<td style="font-family:var(--font-mono);color:var(--muted)">'+(v.frete>0?fmtR(v.frete):'—')+'</td>'
@@ -1335,8 +1335,10 @@ function renderListaClientes() {
       : '';
 
     // Badge pendente com dados reais
+    const nomeJsSafe = String(c.nome).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const nomeHtmlSafe = escapeHtml(c.nome);
     const pendBadge = vc.pendente > 0
-      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--amarelo-bg);color:#854d0e;cursor:pointer" onclick="event.stopPropagation();filtrarVendasPendentesCliente(\'' + c.nome.replace(/'/g, "\\'") + '\')" title="Clique para ver detalhes">⚠ ' + vc.pendente + ' pendente' + (vc.pendente > 1 ? 's' : '') + ' · ' + fmtNum(vc.pendCocos) + ' cocos · ' + fmtR(vc.pendValor) + '</span>'
+      ? ' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;background:var(--amarelo-bg);color:#854d0e;cursor:pointer" onclick="event.stopPropagation();filtrarVendasPendentesCliente(\'' + nomeJsSafe + '\')" title="Clique para ver detalhes">⚠ ' + vc.pendente + ' pendente' + (vc.pendente > 1 ? 's' : '') + ' · ' + fmtNum(vc.pendCocos) + ' cocos · ' + fmtR(vc.pendValor) + '</span>'
       : '';
 
     // Dias sem compra
@@ -1346,14 +1348,14 @@ function renderListaClientes() {
       else if (diasSemCompra > 30) diasBadge = '<span style="font-size:9px;color:#854d0e;font-weight:700">' + diasSemCompra + 'd sem compra</span>';
     }
 
-    const tel = c.telefone ? '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">📱 ' + c.telefone + '</span>' : '';
-    const loc = (c.cidade && c.uf) ? '<span style="font-size:11px;color:var(--muted)">' + c.cidade + '/' + c.uf + '</span>' : (c.uf ? '<span style="font-size:11px;color:var(--muted)">' + c.uf + '</span>' : '');
+    const tel = c.telefone ? '<span style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">📱 ' + escapeHtml(c.telefone) + '</span>' : '';
+    const loc = (c.cidade && c.uf) ? '<span style="font-size:11px;color:var(--muted)">' + escapeHtml(c.cidade) + '/' + escapeHtml(c.uf) + '</span>' : (c.uf ? '<span style="font-size:11px;color:var(--muted)">' + escapeHtml(c.uf) + '</span>' : '');
 
     html += `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;${inativo ? 'opacity:0.6;' : ''}cursor:pointer" onclick="openClientePanel('${c.nome.replace(/'/g, "\\'")}')">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;${inativo ? 'opacity:0.6;' : ''}cursor:pointer" onclick="openClientePanel('${nomeJsSafe}')">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:14px;font-weight:800;color:var(--text)">${c.nome}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--text)">${nomeHtmlSafe}</span>
           ${tipoBadge}${statusBadge}${pendBadge}
         </div>
         ${diasBadge}

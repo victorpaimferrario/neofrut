@@ -169,13 +169,16 @@ function closeAreaDrawer() {
 function openModalColheita(eitoId) {
   currentEitoId = eitoId;
   const eito = eitoId ? DB[currentArea].find(e=>e.id===eitoId) : null;
+  const modalEl = document.getElementById('modal-colheita');
+  // Reset completo de estado anterior (evita reuso de editIdx entre aberturas)
+  delete modalEl.dataset.editIdx;
   document.getElementById('modal-title').textContent = eitoId ? `Colheita — Eito ${eitoId}` : `Registrar Colheita`;
   document.getElementById('modal-sub').textContent = `${currentArea}${eitoId ? ` · Eito ${eitoId} · ${eito?.plantas??0} plantas` : ' · informe o eito abaixo'}`;
   document.getElementById('inp-data').value = today();
   document.getElementById('inp-mesa').value = '';
   document.getElementById('inp-fabrica').value = '';
   document.getElementById('total-preview').textContent = '0';
-  document.getElementById('modal-colheita').classList.add('open');
+  modalEl.classList.add('open');
 }
 function calcTotal() {
   const m = parseInt(document.getElementById('inp-mesa').value)||0;
@@ -192,8 +195,12 @@ async function salvarColheita() {
 
   const reg = { data, total, mesa, fabrica };
   const modalEl = document.getElementById('modal-colheita');
-  const editIdx = modalEl.dataset.editIdx !== undefined && modalEl.dataset.editIdx !== '' ? parseInt(modalEl.dataset.editIdx) : -1;
+  const editIdxRaw = modalEl.dataset.editIdx;
+  const editIdx = (editIdxRaw !== undefined && editIdxRaw !== '') ? parseInt(editIdxRaw) : -1;
   delete modalEl.dataset.editIdx;
+  if (editIdxRaw !== undefined && editIdxRaw !== '' && (isNaN(editIdx) || editIdx < 0)) {
+    alert('Erro: índice de edição inválido.'); return;
+  }
 
   if (currentEitoId) {
     const eito = DB[currentArea].find(e=>e.id===currentEitoId);
