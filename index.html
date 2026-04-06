@@ -36,6 +36,7 @@
     <button class="nav-tab" onclick="showPage('analise')">ANÁLISE</button>
     <button class="nav-tab" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
     <button class="nav-tab" onclick="showPage('vendas')">💰 VENDAS</button>
+    <button class="nav-tab" onclick="showPage('programacao')">📦 PROGRAMAÇÃO</button>
     <button class="nav-tab" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
     <button class="nav-tab" id="nav-gestao" onclick="showPage('gestao')" style="display:none">⚙️ GESTÃO</button>
   </div>
@@ -344,6 +345,189 @@
 </div>
 
 
+
+<!-- PROGRAMAÇÃO DE CARGAS -->
+<div class="page" id="page-programacao">
+  <div class="dash-header">
+    <div class="hoje-badge">PROGRAMAÇÃO DE CARGAS</div>
+    <h1>Programação Semanal</h1>
+    <p>Agendamentos da semana · intenção de venda · atualizado em tempo real</p>
+  </div>
+
+  <!-- Header com navegação de semana -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-outline" onclick="navegarSemana(-1)" style="padding:6px 10px;font-size:14px">←</button>
+      <span id="prog-semana-label" style="font-size:13px;font-weight:700;font-family:var(--font-mono)"></span>
+      <button class="btn btn-outline" onclick="navegarSemana(1)" style="padding:6px 10px;font-size:14px">→</button>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalProg()" style="font-size:12px;padding:8px 16px">+ Carga</button>
+  </div>
+
+  <!-- Alertas -->
+  <div id="prog-alertas" class="prog-alertas"></div>
+
+  <!-- KPIs -->
+  <div class="prog-kpis">
+    <div class="prog-kpi">
+      <div class="prog-kpi-label">📦 Total agendado</div>
+      <div class="prog-kpi-val prog-kpi-verde" id="prog-kpi-cocos">—</div>
+      <div class="prog-kpi-sub">cocos esta semana</div>
+    </div>
+    <div class="prog-kpi">
+      <div class="prog-kpi-label">💰 Receita prevista</div>
+      <div class="prog-kpi-val prog-kpi-azul" id="prog-kpi-receita">—</div>
+      <div class="prog-kpi-sub">se todas as cargas saírem</div>
+    </div>
+    <div class="prog-kpi">
+      <div class="prog-kpi-label">🚛 Sem caminhão</div>
+      <div class="prog-kpi-val prog-kpi-vermelho" id="prog-kpi-caminhao">—</div>
+      <div class="prog-kpi-sub">cargas precisam de frete</div>
+    </div>
+    <div class="prog-kpi">
+      <div class="prog-kpi-label">✅ Confirmadas</div>
+      <div class="prog-kpi-val prog-kpi-amarelo" id="prog-kpi-status">—</div>
+      <div class="prog-kpi-sub">cargas da semana</div>
+    </div>
+  </div>
+
+  <!-- Legenda -->
+  <div class="prog-legenda">
+    <div class="prog-leg-item"><div class="prog-leg-dot" style="background:var(--verde-border)"></div> Confirmado</div>
+    <div class="prog-leg-item"><div class="prog-leg-dot" style="background:var(--amarelo-border)"></div> Pendente</div>
+    <div class="prog-leg-item"><div class="prog-leg-dot" style="background:var(--vermelho-border)"></div> Sem caminhão</div>
+  </div>
+
+  <!-- Grade semanal -->
+  <div class="prog-grade" id="prog-grade"></div>
+</div>
+
+<!-- MODAL: Nova/Editar Carga -->
+<div class="modal-overlay" id="prog-modal-overlay">
+<div class="modal" style="max-width:480px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--border)">
+    <div style="font-size:15px;font-weight:800;color:var(--forest)" id="prog-modal-titulo">+ Nova Carga</div>
+    <button onclick="closeModal('prog-modal-overlay')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1">×</button>
+  </div>
+  <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto">
+
+    <!-- Cliente -->
+    <div class="prog-campo">
+      <label>Cliente</label>
+      <div class="prog-cliente-search">
+        <input type="text" class="prog-inp" placeholder="Buscar cliente..." id="prog-inp-cliente"
+          oninput="_progRenderListaClientes(this.value);document.getElementById('prog-lista-clientes').classList.add('open')"
+          onfocus="document.getElementById('prog-lista-clientes').classList.add('open')" autocomplete="off">
+        <div class="prog-cliente-lista" id="prog-lista-clientes"></div>
+      </div>
+    </div>
+
+    <!-- Dia -->
+    <div class="prog-campo">
+      <label>Dia de saída</label>
+      <div class="prog-dias-btns" id="prog-dias-btns"></div>
+    </div>
+
+    <!-- Veículo -->
+    <div class="prog-campo">
+      <label>Veículo</label>
+      <div class="prog-veiculo-btns">
+        <div class="prog-veiculo-btn" data-veiculo="truck" onclick="progSelVeiculo('truck',this)">
+          <div style="font-size:20px">🚚</div>
+          <div style="font-size:10px;font-weight:800">TRUCK</div>
+          <div style="font-size:9px;color:var(--muted)">8–9k cocos</div>
+        </div>
+        <div class="prog-veiculo-btn" data-veiculo="bitruck" onclick="progSelVeiculo('bitruck',this)">
+          <div style="font-size:20px">🚛</div>
+          <div style="font-size:10px;font-weight:800">BITRUCK</div>
+          <div style="font-size:9px;color:var(--muted)">10–11k cocos</div>
+        </div>
+        <div class="prog-veiculo-btn" data-veiculo="carreta" onclick="progSelVeiculo('carreta',this)">
+          <div style="font-size:20px">🚜</div>
+          <div style="font-size:10px;font-weight:800">CARRETA</div>
+          <div style="font-size:9px;color:var(--muted)">15–17k cocos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Qtde e Valor -->
+    <div class="prog-campo">
+      <label>Quantidade e Valor</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="position:relative">
+          <input class="prog-inp" type="number" id="prog-inp-qtde" placeholder="Cocos" oninput="_progAtualizarPreview()">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">cocos</span>
+        </div>
+        <div style="position:relative">
+          <input class="prog-inp" type="number" id="prog-inp-valor" placeholder="0.00" step="0.01" oninput="_progAtualizarPreview()">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">R$/coco</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Área -->
+    <div class="prog-campo">
+      <label>Área da fazenda</label>
+      <div class="prog-area-btns">
+        <div class="prog-area-btn" data-area="A1" onclick="progSelArea('A1',this)">A1</div>
+        <div class="prog-area-btn" data-area="A2" onclick="progSelArea('A2',this)">A2</div>
+        <div class="prog-area-btn" data-area="C" onclick="progSelArea('C',this)">C</div>
+        <div class="prog-area-btn" data-area="D" onclick="progSelArea('D',this)">D</div>
+        <div class="prog-area-btn" data-area="MAMÃO DE CIMA" onclick="progSelArea('MAMÃO DE CIMA',this)">MD CIMA</div>
+        <div class="prog-area-btn" data-area="MAMÃO DE BAIXO" onclick="progSelArea('MAMÃO DE BAIXO',this)">MD BAIXO</div>
+        <div class="prog-area-btn" data-area="MARACUJÁ" onclick="progSelArea('MARACUJÁ',this)">MARACUJÁ</div>
+        <div class="prog-area-btn" data-area="MISTO" onclick="progSelArea('MISTO',this)">Misto</div>
+      </div>
+    </div>
+
+    <!-- Providenciar caminhão -->
+    <div class="prog-campo">
+      <label>Precisa providenciar caminhão?</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="prog-caminhao-btn sel" id="prog-caminhao-nao" onclick="progSelCaminhao(false)" type="button">
+          <div style="font-size:12px;font-weight:800;color:var(--verde)">NÃO</div>
+          <div style="font-size:9px;color:var(--muted)">Cliente resolve</div>
+        </button>
+        <button class="prog-caminhao-btn" id="prog-caminhao-sim" onclick="progSelCaminhao(true)" type="button">
+          <div style="font-size:12px;font-weight:800;color:var(--vermelho)">SIM</div>
+          <div style="font-size:9px;color:var(--muted)">Precisamos arranjar</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Placa -->
+    <div class="prog-campo">
+      <label>Placa do caminhão (opcional)</label>
+      <input class="prog-inp" type="text" id="prog-inp-placa" placeholder="ABC-1D23" style="text-transform:uppercase">
+    </div>
+
+    <!-- Preview receita -->
+    <div class="prog-receita-preview" id="prog-receita-preview" style="display:none">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px">📊 Resumo desta carga</div>
+      <div class="prog-receita-linha"><span>Cocos</span><span id="prog-prev-cocos">—</span></div>
+      <div class="prog-receita-linha"><span>Litros estimados (÷2,3)</span><span id="prog-prev-litros">—</span></div>
+      <div class="prog-receita-linha"><span>Receita bruta</span><span id="prog-prev-receita">—</span></div>
+      <div class="prog-receita-linha prog-receita-total"><span>R$/coco efetivo</span><span id="prog-prev-rpc">—</span></div>
+    </div>
+
+    <!-- Obs -->
+    <div class="prog-campo">
+      <span style="font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline" onclick="progToggleObs()">+ Adicionar observação</span>
+      <textarea class="prog-inp" id="prog-inp-obs" placeholder="Ex: cliente paga após NF, conferir BRIX..." rows="2" style="display:none;resize:none;margin-top:6px"></textarea>
+    </div>
+
+    <!-- Ações de edição (só aparece ao editar) -->
+    <div id="prog-acoes-editar" style="display:none;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-outline" id="prog-btn-status" type="button" style="flex:1;font-size:11px;padding:8px">✓ Confirmar</button>
+      <button class="btn btn-outline" onclick="progConfirmarCaminhao()" type="button" style="flex:1;font-size:11px;padding:8px">🚛 Caminhão OK</button>
+      <button class="btn btn-outline" onclick="progEnviarWhatsApp()" type="button" style="flex:1;font-size:11px;padding:8px">📱 WhatsApp</button>
+      <button class="btn" onclick="progCancelarCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:var(--vermelho);color:#fff">✕ Cancelar</button>
+    </div>
+
+    <button class="btn btn-primary" id="prog-btn-salvar" onclick="salvarProgCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">✓ Agendar carga</button>
+  </div>
+</div>
+</div>
 
 <!-- GESTÃO -->
 <div class="page" id="page-gestao">
@@ -826,6 +1010,7 @@
 <script src="js/vendas.js?v=1775340018"></script>
 <script src="js/gestao.js?v=1775340018"></script>
 <script src="js/mercados.js?v=1775340018"></script>
+<script src="js/programacao.js?v=1775340018"></script>
 <script src="js/router.js?v=1775340018"></script>
 <script src="js/app.js?v=1775340018"></script>
 <script src="js/auth.js?v=1773813587"></script>

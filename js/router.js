@@ -20,8 +20,11 @@ function showPage(id) {
   } else if (id === 'vendas') {
     document.querySelectorAll('.nav-tab')[3].classList.add('active');
     initVendas(false);
-  } else if (id === 'mercados') {
+  } else if (id === 'programacao') {
     document.querySelectorAll('.nav-tab')[4].classList.add('active');
+    initProgramacao();
+  } else if (id === 'mercados') {
+    document.querySelectorAll('.nav-tab')[5].classList.add('active');
     if (!window._mercadosIniciado) {
       window._mercadosIniciado = true;
       initMercados();
@@ -31,7 +34,7 @@ function showPage(id) {
       showPage('dashboard');
       return;
     }
-    document.querySelectorAll('.nav-tab')[5].classList.add('active');
+    document.querySelectorAll('.nav-tab')[6].classList.add('active');
     initGestao();
   }
 }

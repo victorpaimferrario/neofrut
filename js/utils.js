@@ -79,5 +79,8 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+/** Formata número grande com sufixo k (ex: 8500 → "9k", 119000 → "119k") */
+function fmtK(n) { if (n == null || n === 0) return '0'; return n >= 1000 ? Math.round(n/1000) + 'k' : String(Math.round(n)); }
+
 // Mercados uses fmtN for large numbers
 function fmtN(n) { return n >= 1000000 ? (n/1000000).toFixed(1).replace('.',',') + ' M' : n.toLocaleString('pt-BR'); }
