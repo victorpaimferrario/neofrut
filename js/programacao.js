@@ -20,6 +20,75 @@ let _progProvidenciarCaminhao = false;
 // ── DRAG & DROP ──
 let _progDragId = null;
 
+// ── FERIADOS NACIONAIS + SERGIPE ──
+function _progFeriados(ano) {
+  // Fixos nacionais
+  const fixos = [
+    `${ano}-01-01`, // Confraternização
+    `${ano}-04-21`, // Tiradentes
+    `${ano}-05-01`, // Trabalho
+    `${ano}-09-07`, // Independência
+    `${ano}-10-12`, // N. S. Aparecida
+    `${ano}-11-02`, // Finados
+    `${ano}-11-15`, // Proclamação
+    `${ano}-12-25`, // Natal
+  ];
+  // Sergipe estadual
+  const sergipe = [
+    `${ano}-07-08`, // Emancipação de Sergipe
+  ];
+  // Páscoa (Meeus/Jones/Butcher)
+  const a=ano%19, b=Math.floor(ano/100), c=ano%100;
+  const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
+  const pascoa = new Date(ano, mes-1, dia);
+  // Móveis baseados na Páscoa
+  const carnaval = new Date(pascoa); carnaval.setDate(pascoa.getDate()-47);
+  const sextaSanta = new Date(pascoa); sextaSanta.setDate(pascoa.getDate()-2);
+  const corpusChristi = new Date(pascoa); corpusChristi.setDate(pascoa.getDate()+60);
+  const moveis = [carnaval, sextaSanta, corpusChristi].map(d => _progDataISO(d));
+  return new Set([...fixos, ...sergipe, ...moveis]);
+}
+let _progFeriadosCache = {};
+function _progIsFeriado(dataStr) {
+  const ano = parseInt(dataStr.slice(0,4));
+  if (!_progFeriadosCache[ano]) _progFeriadosCache[ano] = _progFeriados(ano);
+  return _progFeriadosCache[ano].has(dataStr);
+}
+function _progNomeFeriado(dataStr) {
+  const ano = parseInt(dataStr.slice(0,4));
+  const nomes = {
+    [`${ano}-01-01`]: 'Confraternização Universal',
+    [`${ano}-04-21`]: 'Tiradentes',
+    [`${ano}-05-01`]: 'Dia do Trabalho',
+    [`${ano}-09-07`]: 'Independência do Brasil',
+    [`${ano}-10-12`]: 'N. S. Aparecida',
+    [`${ano}-11-02`]: 'Finados',
+    [`${ano}-11-15`]: 'Proclamação da República',
+    [`${ano}-12-25`]: 'Natal',
+    [`${ano}-07-08`]: 'Emancipação de Sergipe',
+  };
+  if (nomes[dataStr]) return nomes[dataStr];
+  // Móveis
+  const a=ano%19, b=Math.floor(ano/100), c=ano%100;
+  const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
+  const pascoa = new Date(ano, mes-1, dia);
+  const carnaval = new Date(pascoa); carnaval.setDate(pascoa.getDate()-47);
+  const sextaSanta = new Date(pascoa); sextaSanta.setDate(pascoa.getDate()-2);
+  const corpusChristi = new Date(pascoa); corpusChristi.setDate(pascoa.getDate()+60);
+  if (dataStr === _progDataISO(carnaval)) return 'Carnaval';
+  if (dataStr === _progDataISO(sextaSanta)) return 'Sexta-feira Santa';
+  if (dataStr === _progDataISO(corpusChristi)) return 'Corpus Christi';
+  return 'Feriado';
+}
+
 // ── UTILS DATAS (sem bug UTC) ──
 function _progDataISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -219,12 +288,15 @@ function renderProgGrade() {
     const pct = Math.min(100, totalDia / CAP_DIA * 100);
     const fillClass = pct >= 100 ? 'over' : pct >= 70 ? 'cheio' : '';
     const isHoje = dia.dataStr === hoje;
+    const feriado = _progIsFeriado(dia.dataStr);
+    const isSab = dia.label === 'Sáb';
 
     const header = document.createElement('div');
-    header.className = 'prog-dia-header' + (isHoje ? ' prog-dia-hoje' : '');
+    header.className = 'prog-dia-header' + (isHoje ? ' prog-dia-hoje' : '') + (feriado ? ' prog-dia-feriado' : '') + (isSab && !feriado ? ' prog-dia-sabado' : '');
     header.innerHTML = `
-      <div class="prog-dia-nome">${dia.label}${isHoje ? ' <span class="prog-hoje-badge">HOJE</span>' : ''}</div>
+      <div class="prog-dia-nome">${dia.label}${isHoje ? ' <span class="prog-hoje-badge">HOJE</span>' : ''}${feriado ? ' <span class="prog-feriado-badge">FERIADO</span>' : ''}</div>
       <div class="prog-dia-data">${dia.fmt}</div>
+      ${feriado ? `<div class="prog-dia-feriado-nome">${_progNomeFeriado(dia.dataStr)}</div>` : ''}
       <div class="prog-dia-total">🌴 ${fmtNum(totalDia)} cocos</div>
       <div class="prog-dia-barra"><div class="prog-dia-fill ${fillClass}" style="width:${pct}%"></div></div>
     `;
@@ -295,6 +367,14 @@ async function _progDropCard(novoDia) {
   if (!_progDragId) return;
   const carga = _progSemana.find(c => c.id === _progDragId);
   if (!carga || carga.dia_entrega === novoDia) { _progDragId = null; return; }
+
+  const diaObj = new Date(novoDia + 'T12:00:00');
+  if (diaObj.getDay() === 6) {
+    if (!confirm('Sábado selecionado. Tem certeza que vai carregar no sábado?')) { _progDragId = null; return; }
+  }
+  if (_progIsFeriado(novoDia)) {
+    if (!confirm(`${_progNomeFeriado(novoDia)} — Tem certeza que vai carregar em feriado?`)) { _progDragId = null; return; }
+  }
 
   try {
     const { error } = await _SB.from('programacao')
@@ -421,9 +501,10 @@ function _progRenderDiasBtns() {
   dias.forEach(dia => {
     const total = _progSemana.filter(c => c.dia_entrega === dia.dataStr).reduce((s, c) => s + c.volume_cocos, 0);
     const cheio = total / CAP_DIA >= 0.7;
+    const feriado = _progIsFeriado(dia.dataStr);
     const btn = document.createElement('button');
-    btn.className = `prog-dia-btn${cheio ? ' cheio' : ''}${_progDiaSel === dia.dataStr ? ' sel' : ''}`;
-    btn.innerHTML = `<div>${dia.label}</div><div style="font-size:8px;margin-top:2px">${fmtNum(total)}</div>`;
+    btn.className = `prog-dia-btn${cheio ? ' cheio' : ''}${_progDiaSel === dia.dataStr ? ' sel' : ''}${feriado ? ' prog-dia-btn-feriado' : ''}`;
+    btn.innerHTML = `<div>${dia.label}${feriado ? ' 🔴' : ''}</div><div style="font-size:8px;margin-top:2px">${fmtNum(total)}</div>`;
     btn.onclick = () => _progSelecionarDia(dia.dataStr);
     wrap.appendChild(btn);
   });
@@ -560,6 +641,16 @@ async function salvarProgCarga() {
   if (!_progDiaSel) { showToast('Selecione o dia'); return; }
   const qtde = parseInt(document.getElementById('prog-inp-qtde').value);
   if (!qtde || qtde <= 0) { showToast('Informe a quantidade'); return; }
+
+  // Confirmar sábado
+  const diaSelecionado = new Date(_progDiaSel + 'T12:00:00');
+  if (diaSelecionado.getDay() === 6) {
+    if (!confirm('Sábado selecionado. Tem certeza que vai carregar no sábado?')) return;
+  }
+  // Alertar feriado
+  if (_progIsFeriado(_progDiaSel)) {
+    if (!confirm(`${_progNomeFeriado(_progDiaSel)} — Tem certeza que vai carregar em feriado?`)) return;
+  }
 
   const valor = _progGetValor() || null;
   const obs = document.getElementById('prog-inp-obs').value.trim() || null;
@@ -714,6 +805,154 @@ function _progCadastrarNovoCliente(nome) {
     if (novo) _progSelecionarCliente(novo);
     window._progOnClienteSalvo = null;
   };
+}
+
+// ── SALTAR PARA DATA ──
+function progSaltarParaData() {
+  const input = document.getElementById('prog-saltar-data');
+  if (!input.value) return;
+  const data = new Date(input.value + 'T12:00:00');
+  _progSemanaInicio = getSegundaDaSemana(data);
+  document.getElementById('prog-semana-label').textContent = getSemanaLabel(_progSemanaInicio);
+  carregarProgramacao(_progSemanaInicio);
+}
+
+// ── HISTÓRICO DE CARGAS ──
+let _progHistAberto = false;
+
+function progToggleHistorico() {
+  const sec = document.getElementById('prog-historico');
+  _progHistAberto = !_progHistAberto;
+  sec.style.display = _progHistAberto ? 'block' : 'none';
+  if (_progHistAberto) {
+    // Default: últimos 30 dias
+    const hoje = new Date();
+    const inicio = new Date(hoje);
+    inicio.setDate(hoje.getDate() - 30);
+    document.getElementById('prog-hist-de').value = _progDataISO(inicio);
+    document.getElementById('prog-hist-ate').value = _progDataISO(hoje);
+    progBuscarHistorico();
+  }
+}
+
+async function progBuscarHistorico() {
+  const de = document.getElementById('prog-hist-de').value;
+  const ate = document.getElementById('prog-hist-ate').value;
+  const clienteFiltro = document.getElementById('prog-hist-cliente').value.trim().toLowerCase();
+  if (!de || !ate) { showToast('Selecione o período'); return; }
+
+  const resultados = document.getElementById('prog-hist-resultados');
+  const kpis = document.getElementById('prog-hist-kpis');
+  resultados.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Carregando...</div>';
+
+  try {
+    let query = _SB.from('programacao').select('*')
+      .gte('dia_entrega', de)
+      .lte('dia_entrega', ate)
+      .neq('status', 'cancelado')
+      .order('dia_entrega', { ascending: false });
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    let cargas = data || [];
+    if (clienteFiltro) {
+      cargas = cargas.filter(c => (c.cliente_nome || '').toLowerCase().includes(clienteFiltro));
+    }
+
+    // KPIs do período
+    const totalCocos = cargas.reduce((s, c) => s + (c.volume_cocos || 0), 0);
+    const totalReceita = cargas.reduce((s, c) => s + ((c.volume_cocos || 0) * (c.valor_por_coco || 0)), 0);
+    const totalCargas = cargas.length;
+    const clientesUnicos = new Set(cargas.map(c => c.cliente_nome)).size;
+
+    kpis.innerHTML = `
+      <div class="prog-kpi">
+        <div class="prog-kpi-label">🌴 Total cocos</div>
+        <div class="prog-kpi-val prog-kpi-verde">${fmtNum(totalCocos)}</div>
+        <div class="prog-kpi-sub">${totalCargas} cargas no período</div>
+      </div>
+      <div class="prog-kpi">
+        <div class="prog-kpi-label">💰 Receita total</div>
+        <div class="prog-kpi-val prog-kpi-azul">R$ ${fmtNum(Math.round(totalReceita))}</div>
+        <div class="prog-kpi-sub">${clientesUnicos} clientes</div>
+      </div>
+      <div class="prog-kpi">
+        <div class="prog-kpi-label">📊 Média/carga</div>
+        <div class="prog-kpi-val" style="color:var(--text)">${totalCargas ? fmtNum(Math.round(totalCocos / totalCargas)) : '0'}</div>
+        <div class="prog-kpi-sub">cocos por carga</div>
+      </div>
+      <div class="prog-kpi">
+        <div class="prog-kpi-label">📅 Média/dia útil</div>
+        <div class="prog-kpi-val" style="color:var(--text)">${_progMediaDiasUteis(cargas, de, ate)}</div>
+        <div class="prog-kpi-sub">cocos por dia útil</div>
+      </div>
+    `;
+
+    // Lista de cargas
+    if (cargas.length === 0) {
+      resultados.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Nenhuma carga encontrada no período</div>';
+      return;
+    }
+
+    // Agrupar por dia
+    const porDia = {};
+    cargas.forEach(c => {
+      if (!porDia[c.dia_entrega]) porDia[c.dia_entrega] = [];
+      porDia[c.dia_entrega].push(c);
+    });
+
+    let html = '';
+    Object.keys(porDia).sort((a, b) => b.localeCompare(a)).forEach(dia => {
+      const dObj = new Date(dia + 'T12:00:00');
+      const nomeDia = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][dObj.getDay()];
+      const dataBr = String(dObj.getDate()).padStart(2,'0') + '/' + String(dObj.getMonth()+1).padStart(2,'0') + '/' + dObj.getFullYear();
+      const cargasDia = porDia[dia];
+      const totalDia = cargasDia.reduce((s, c) => s + (c.volume_cocos || 0), 0);
+      const feriado = _progIsFeriado(dia);
+
+      html += `<div class="prog-hist-dia${feriado ? ' prog-hist-dia-feriado' : ''}">`;
+      html += `<div class="prog-hist-dia-header">`;
+      html += `<span class="prog-hist-dia-nome">${nomeDia}, ${dataBr}${feriado ? ' · <span class="prog-feriado-badge">FERIADO</span>' : ''}</span>`;
+      html += `<span class="prog-hist-dia-total">🌴 ${fmtNum(totalDia)} · ${cargasDia.length} carga${cargasDia.length > 1 ? 's' : ''}</span>`;
+      html += `</div>`;
+
+      cargasDia.forEach(c => {
+        const receita = (c.volume_cocos || 0) * (c.valor_por_coco || 0);
+        html += `<div class="prog-hist-carga">`;
+        html += `<div class="prog-hist-carga-cliente">${escapeHtml(c.cliente_nome)}</div>`;
+        html += `<div class="prog-hist-carga-info">`;
+        html += `<span>🌴 ${fmtNum(c.volume_cocos)}</span>`;
+        html += `<span>${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>`;
+        if (receita) html += `<span style="color:#1d4ed8;font-weight:700">R$ ${fmtNum(Math.round(receita))}</span>`;
+        if (c.tipo_veiculo) html += `<span class="prog-badge prog-badge-veiculo">${escapeHtml(c.tipo_veiculo)}</span>`;
+        html += `<span class="prog-st prog-st-${c.status}">${c.status}</span>`;
+        html += `</div></div>`;
+      });
+
+      html += `</div>`;
+    });
+
+    resultados.innerHTML = html;
+  } catch(e) {
+    console.error('Erro no histórico:', e);
+    resultados.innerHTML = `<div style="text-align:center;padding:20px;color:var(--vermelho)">Erro: ${e.message}</div>`;
+  }
+}
+
+function _progMediaDiasUteis(cargas, de, ate) {
+  if (cargas.length === 0) return '0';
+  const totalCocos = cargas.reduce((s, c) => s + (c.volume_cocos || 0), 0);
+  // Contar dias úteis (seg-sex, excluindo feriados)
+  let dias = 0;
+  const d = new Date(de + 'T12:00:00');
+  const fim = new Date(ate + 'T12:00:00');
+  while (d <= fim) {
+    const dow = d.getDay();
+    if (dow >= 1 && dow <= 5 && !_progIsFeriado(_progDataISO(d))) dias++;
+    d.setDate(d.getDate() + 1);
+  }
+  return dias > 0 ? fmtNum(Math.round(totalCocos / dias)) : fmtNum(totalCocos);
 }
 
 // ── FECHAR LISTA CLIENTES AO CLICAR FORA ──
