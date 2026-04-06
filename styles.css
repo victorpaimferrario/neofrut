@@ -626,6 +626,14 @@
   .prog-badge-sem-caminhao { background:var(--vermelho-bg); color:var(--vermelho); border:1px solid var(--vermelho-border); }
   .prog-badge-caminhao-ok { background:var(--verde-bg); color:var(--forest); border:1px solid var(--verde-border); }
 
+  /* Hoje */
+  .prog-dia-hoje { border:2px solid var(--forest); background:var(--verde-bg); }
+  .prog-hoje-badge { font-size:8px; background:var(--forest); color:#fff; padding:1px 5px; border-radius:4px; vertical-align:middle; margin-left:3px; }
+
+  /* Drag & Drop */
+  .prog-dragging { opacity:.4; transform:rotate(2deg); }
+  .prog-drag-over { background:var(--verde-bg); border-radius:10px; outline:2px dashed var(--forest); outline-offset:-2px; }
+
   /* Botão adicionar */
   .prog-btn-add { background:transparent; border:2px dashed var(--border); border-radius:10px; padding:10px; width:100%; cursor:pointer; color:var(--muted); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .15s; font-family:var(--font-main); }
   .prog-btn-add:hover { border-color:var(--forest); color:var(--forest); background:var(--verde-bg); }
@@ -642,6 +650,8 @@
   .prog-cliente-lista.open { display:block; }
   .prog-cliente-item { padding:9px 14px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; transition:background .1s; }
   .prog-cliente-item:hover { background:var(--verde-bg); }
+  .prog-cliente-novo { background:var(--amarelo-bg); border-top:1px solid var(--amarelo-border); }
+  .prog-cliente-novo:hover { background:var(--amarelo-bg); }
   .prog-cliente-item-nome { font-size:13px; font-weight:700; color:var(--text); }
   .prog-cliente-item-sub { font-size:10px; color:var(--muted); }
   .prog-cliente-item-uf { font-size:10px; font-weight:700; font-family:var(--font-mono); color:var(--forest); }

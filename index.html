@@ -433,19 +433,19 @@
       <label>Veículo</label>
       <div class="prog-veiculo-btns">
         <div class="prog-veiculo-btn" data-veiculo="truck" onclick="progSelVeiculo('truck',this)">
-          <div style="font-size:20px">🚚</div>
+          <img src="img/truck.webp" alt="Truck" style="width:48px;height:32px;object-fit:contain;border-radius:4px">
           <div style="font-size:10px;font-weight:800">TRUCK</div>
-          <div style="font-size:9px;color:var(--muted)">8–9k cocos</div>
+          <div style="font-size:9px;color:var(--muted)">8–9 mil</div>
         </div>
         <div class="prog-veiculo-btn" data-veiculo="bitruck" onclick="progSelVeiculo('bitruck',this)">
-          <div style="font-size:20px">🚛</div>
+          <img src="img/bitruck.webp" alt="Bitruck" style="width:48px;height:32px;object-fit:contain;border-radius:4px">
           <div style="font-size:10px;font-weight:800">BITRUCK</div>
-          <div style="font-size:9px;color:var(--muted)">10–11k cocos</div>
+          <div style="font-size:9px;color:var(--muted)">10–11 mil</div>
         </div>
         <div class="prog-veiculo-btn" data-veiculo="carreta" onclick="progSelVeiculo('carreta',this)">
-          <div style="font-size:20px">🚜</div>
+          <img src="img/carreta.webp" alt="Carreta" style="width:48px;height:32px;object-fit:contain;border-radius:4px" onerror="this.outerHTML='<div style=font-size:20px>🚛</div>'">
           <div style="font-size:10px;font-weight:800">CARRETA</div>
-          <div style="font-size:9px;color:var(--muted)">15–17k cocos</div>
+          <div style="font-size:9px;color:var(--muted)">15–17 mil</div>
         </div>
       </div>
     </div>
@@ -459,7 +459,7 @@
           <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">cocos</span>
         </div>
         <div style="position:relative">
-          <input class="prog-inp" type="number" id="prog-inp-valor" placeholder="0.00" step="0.01" oninput="_progAtualizarPreview()">
+          <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-valor" placeholder="0,00" oninput="_progOnValorInput(this)" autocomplete="off">
           <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">R$/coco</span>
         </div>
       </div>
@@ -495,10 +495,10 @@
       </div>
     </div>
 
-    <!-- Placa -->
+    <!-- Motorista -->
     <div class="prog-campo">
-      <label>Placa do caminhão (opcional)</label>
-      <input class="prog-inp" type="text" id="prog-inp-placa" placeholder="ABC-1D23" style="text-transform:uppercase">
+      <label>Motorista (opcional)</label>
+      <input class="prog-inp" type="text" id="prog-inp-motorista" placeholder="Nome do caminhoneiro">
     </div>
 
     <!-- Preview receita -->

@@ -17,12 +17,19 @@ let _progAreaSel = null;
 let _progEditandoId = null;
 let _progProvidenciarCaminhao = false;
 
+// ── DRAG & DROP ──
+let _progDragId = null;
+
 // ── UTILS DATAS (sem bug UTC) ──
 function _progDataISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function _progDataCurta(d) {
   return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+}
+function _progHoje() {
+  const d = new Date();
+  return _progDataISO(d);
 }
 
 function getSegundaDaSemana(data) {
@@ -49,6 +56,34 @@ function getDiasDaSemana(seg) {
     dias.push({ label: nomes[i], data: d, dataStr: _progDataISO(d), fmt: _progDataCurta(d) });
   }
   return dias;
+}
+
+// ── VALOR COM VÍRGULA (3+ dígitos) ──
+function _progFormatValor(digits) {
+  if (!digits) return '';
+  if (digits.length >= 3) return digits.slice(0, -2) + ',' + digits.slice(-2);
+  return digits;
+}
+function _progParseValor(str) {
+  const digits = (str || '').replace(/\D/g, '');
+  if (!digits) return 0;
+  if (digits.length >= 3) return parseInt(digits.slice(0, -2)) + parseInt(digits.slice(-2)) / 100;
+  return parseInt(digits);
+}
+function _progValorToDigits(n) {
+  if (n == null || n === 0) return '';
+  const s = Number(n).toFixed(2);
+  return s.replace('.', '');
+}
+function _progOnValorInput(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = _progFormatValor(digits);
+  el.dataset.digits = digits;
+  _progAtualizarPreview();
+}
+function _progGetValor() {
+  const el = document.getElementById('prog-inp-valor');
+  return _progParseValor(el.dataset.digits || el.value);
 }
 
 // ── INIT ──
@@ -82,7 +117,6 @@ async function carregarProgramacao(segDate) {
     console.warn('Programação offline:', e.message);
   }
 
-  // Carregar clientes
   await carregarClientesProg();
   renderProgramacao();
 }
@@ -128,7 +162,7 @@ function renderProgKPIs() {
   const confirmadas = _progSemana.filter(c => c.status === 'confirmado').length;
 
   document.getElementById('prog-kpi-cocos').textContent = fmtNum(totalCocos);
-  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtK(totalReceita);
+  document.getElementById('prog-kpi-receita').textContent = 'R$ ' + fmtNum(Math.round(totalReceita));
   document.getElementById('prog-kpi-caminhao').textContent = semCaminhao;
   document.getElementById('prog-kpi-status').textContent = `${confirmadas} / ${_progSemana.length}`;
 }
@@ -139,7 +173,6 @@ function renderProgAlertas() {
   if (!wrap) return;
   wrap.innerHTML = '';
 
-  // Cargas que precisam de caminhão
   const pendentes = _progSemana.filter(c => c.providenciar_caminhao && c.caminhao_status === 'pendente' && c.status !== 'cancelado');
   if (pendentes.length > 0) {
     const dias = getDiasDaSemana(_progSemanaInicio);
@@ -150,7 +183,6 @@ function renderProgAlertas() {
     wrap.innerHTML += `<div class="prog-alerta prog-alerta-erro">🚛 ${pendentes.length} carga${pendentes.length > 1 ? 's' : ''} sem caminhão — ${escapeHtml(nomes)}. Providenciar frete.</div>`;
   }
 
-  // Dias sobrecarregados
   const dias = getDiasDaSemana(_progSemanaInicio);
   dias.forEach(dia => {
     const total = _progSemana.filter(c => c.dia_entrega === dia.dataStr).reduce((s, c) => s + c.volume_cocos, 0);
@@ -167,10 +199,17 @@ function renderProgGrade() {
   grade.innerHTML = '';
 
   const dias = getDiasDaSemana(_progSemanaInicio);
+  const hoje = _progHoje();
 
   dias.forEach(dia => {
     const col = document.createElement('div');
     col.className = 'prog-dia-col';
+    col.dataset.data = dia.dataStr;
+
+    // Drag & drop: aceitar cards
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('prog-drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('prog-drag-over'));
+    col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('prog-drag-over'); _progDropCard(dia.dataStr); });
 
     const cargasDia = _progSemana
       .filter(c => c.dia_entrega === dia.dataStr)
@@ -179,22 +218,20 @@ function renderProgGrade() {
     const totalDia = cargasDia.reduce((s, c) => s + c.volume_cocos, 0);
     const pct = Math.min(100, totalDia / CAP_DIA * 100);
     const fillClass = pct >= 100 ? 'over' : pct >= 70 ? 'cheio' : '';
+    const isHoje = dia.dataStr === hoje;
 
-    // Header do dia
     const header = document.createElement('div');
-    header.className = 'prog-dia-header';
+    header.className = 'prog-dia-header' + (isHoje ? ' prog-dia-hoje' : '');
     header.innerHTML = `
-      <div class="prog-dia-nome">${dia.label}</div>
+      <div class="prog-dia-nome">${dia.label}${isHoje ? ' <span class="prog-hoje-badge">HOJE</span>' : ''}</div>
       <div class="prog-dia-data">${dia.fmt}</div>
-      <div class="prog-dia-total">${fmtK(totalDia)} cocos</div>
+      <div class="prog-dia-total">🥥 ${fmtNum(totalDia)} cocos</div>
       <div class="prog-dia-barra"><div class="prog-dia-fill ${fillClass}" style="width:${pct}%"></div></div>
     `;
     col.appendChild(header);
 
-    // Cards de carga
     cargasDia.forEach(c => col.appendChild(renderProgCard(c)));
 
-    // Botão adicionar
     const btnAdd = document.createElement('button');
     btnAdd.className = 'prog-btn-add';
     btnAdd.innerHTML = '<span>+</span> Adicionar carga';
@@ -209,12 +246,21 @@ function renderProgGrade() {
 function renderProgCard(c) {
   const card = document.createElement('div');
   card.className = `prog-card prog-card-${c.status}`;
+  card.draggable = true;
+  card.dataset.id = c.id;
   card.onclick = () => abrirModalProgEditar(c.id);
+
+  // Drag & drop
+  card.addEventListener('dragstart', e => {
+    _progDragId = c.id;
+    card.classList.add('prog-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', () => card.classList.remove('prog-dragging'));
 
   const receita = c.valor_por_coco ? c.volume_cocos * c.valor_por_coco : null;
   const precisaCaminhao = c.providenciar_caminhao && c.caminhao_status === 'pendente';
 
-  // Buscar UF/cidade do cliente
   const cli = _progClientes.find(x => x.id === c.cliente_id);
   const ufCidade = cli ? `${cli.uf} · ${cli.cidade}` : '';
 
@@ -229,9 +275,9 @@ function renderProgCard(c) {
       </span>
     </div>
     <div class="prog-card-info">
-      <span class="prog-card-qtde">${fmtK(c.volume_cocos)}</span>
-      <span class="prog-card-rpc">${c.valor_por_coco ? 'R$' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>
-      ${receita ? `<span class="prog-card-receita">${fmtK(receita)}</span>` : ''}
+      <span class="prog-card-qtde">🥥 ${fmtNum(c.volume_cocos)}</span>
+      <span class="prog-card-rpc">${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>
+      ${receita ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(receita))}</span>` : ''}
     </div>
     <div class="prog-card-badges">
       ${c.tipo_veiculo ? `<span class="prog-badge prog-badge-veiculo">${escapeHtml(c.tipo_veiculo)}</span>` : ''}
@@ -242,6 +288,29 @@ function renderProgCard(c) {
     ${c.obs ? `<div class="prog-card-obs">${escapeHtml(c.obs)}</div>` : ''}
   `;
   return card;
+}
+
+// ── DRAG & DROP: MOVER CARGA ──
+async function _progDropCard(novoDia) {
+  if (!_progDragId) return;
+  const carga = _progSemana.find(c => c.id === _progDragId);
+  if (!carga || carga.dia_entrega === novoDia) { _progDragId = null; return; }
+
+  try {
+    const { error } = await _SB.from('programacao')
+      .update({
+        dia_entrega: novoDia,
+        semana_inicio: _progDataISO(getSegundaDaSemana(new Date(novoDia + 'T12:00:00'))),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', _progDragId);
+    if (error) throw error;
+    showToast(`${carga.cliente_nome} movido`);
+    await carregarProgramacao(_progSemanaInicio);
+  } catch(e) {
+    showToast('Erro ao mover: ' + (e.message || e));
+  }
+  _progDragId = null;
 }
 
 // ── MODAL: ABRIR NOVA CARGA ──
@@ -256,13 +325,14 @@ function abrirModalProg() {
   document.getElementById('prog-modal-titulo').textContent = '+ Nova Carga';
   document.getElementById('prog-inp-cliente').value = '';
   document.getElementById('prog-inp-qtde').value = '';
-  document.getElementById('prog-inp-valor').value = '';
+  const valorEl = document.getElementById('prog-inp-valor');
+  valorEl.value = '';
+  valorEl.dataset.digits = '';
   document.getElementById('prog-inp-obs').value = '';
   document.getElementById('prog-inp-obs').style.display = 'none';
-  document.getElementById('prog-inp-placa').value = '';
+  document.getElementById('prog-inp-motorista').value = '';
   document.getElementById('prog-receita-preview').style.display = 'none';
   document.getElementById('prog-btn-salvar').textContent = '✓ Agendar carga';
-  // Esconder botões de ação de edição
   document.getElementById('prog-acoes-editar').style.display = 'none';
 
   _progRenderDiasBtns();
@@ -283,7 +353,6 @@ function abrirModalProgEditar(id) {
   document.getElementById('prog-modal-titulo').textContent = 'Editar Carga';
   document.getElementById('prog-btn-salvar').textContent = '✓ Salvar alterações';
 
-  // Preencher campos
   const cli = _progClientes.find(x => x.id === c.cliente_id);
   _progClienteSel = cli || { id: c.cliente_id, nome: c.cliente_nome };
   document.getElementById('prog-inp-cliente').value = cli ? `${cli.nome} — ${cli.cidade}/${cli.uf}` : c.cliente_nome;
@@ -300,7 +369,12 @@ function abrirModalProgEditar(id) {
   }
 
   document.getElementById('prog-inp-qtde').value = c.volume_cocos || '';
-  document.getElementById('prog-inp-valor').value = c.valor_por_coco || '';
+
+  // Valor: converter para formato com vírgula
+  const valorEl = document.getElementById('prog-inp-valor');
+  const digits = _progValorToDigits(c.valor_por_coco);
+  valorEl.dataset.digits = digits;
+  valorEl.value = _progFormatValor(digits);
 
   _progAreaSel = c.area;
   _progResetAreaBtns();
@@ -313,7 +387,7 @@ function abrirModalProgEditar(id) {
   _progProvidenciarCaminhao = !!c.providenciar_caminhao;
   _progResetCaminhaoBtns();
 
-  document.getElementById('prog-inp-placa').value = c.placa || '';
+  document.getElementById('prog-inp-motorista').value = c.motorista || '';
 
   if (c.obs) {
     document.getElementById('prog-inp-obs').value = c.obs;
@@ -325,10 +399,8 @@ function abrirModalProgEditar(id) {
 
   _progAtualizarPreview();
 
-  // Mostrar botões de ação
   const acoes = document.getElementById('prog-acoes-editar');
   acoes.style.display = 'flex';
-  // Botão status
   const btnStatus = document.getElementById('prog-btn-status');
   if (c.status === 'pendente') {
     btnStatus.textContent = '✓ Confirmar carga';
@@ -351,7 +423,7 @@ function _progRenderDiasBtns() {
     const cheio = total / CAP_DIA >= 0.7;
     const btn = document.createElement('button');
     btn.className = `prog-dia-btn${cheio ? ' cheio' : ''}${_progDiaSel === dia.dataStr ? ' sel' : ''}`;
-    btn.innerHTML = `<div>${dia.label}</div><div style="font-size:8px;margin-top:2px">${fmtK(total)}</div>`;
+    btn.innerHTML = `<div>${dia.label}</div><div style="font-size:8px;margin-top:2px">${fmtNum(total)}</div>`;
     btn.onclick = () => _progSelecionarDia(dia.dataStr);
     wrap.appendChild(btn);
   });
@@ -369,6 +441,30 @@ function _progRenderListaClientes(q) {
     (c.cidade || '').toLowerCase().includes(q.toLowerCase())
   ).slice(0, 8);
   lista.innerHTML = '';
+
+  if (filtrados.length === 0 && q.length > 0) {
+    // Nenhum cliente encontrado — botão cadastrar
+    const item = document.createElement('div');
+    item.className = 'prog-cliente-item prog-cliente-novo';
+    item.innerHTML = `
+      <div>
+        <div class="prog-cliente-item-nome">Nenhum cliente encontrado</div>
+        <div class="prog-cliente-item-sub">Clique para cadastrar "${escapeHtml(q)}"</div>
+      </div>
+      <span style="font-size:16px">+</span>
+    `;
+    item.onclick = () => {
+      closeModal('prog-modal-overlay');
+      showPage('gestao');
+      // Abrir modal de cadastro se existir
+      setTimeout(() => {
+        if (typeof abrirCadastroCliente === 'function') abrirCadastroCliente(q);
+      }, 300);
+    };
+    lista.appendChild(item);
+    return;
+  }
+
   filtrados.forEach(c => {
     const item = document.createElement('div');
     item.className = 'prog-cliente-item';
@@ -389,21 +485,24 @@ function _progSelecionarCliente(c) {
   document.getElementById('prog-inp-cliente').value = `${c.nome} — ${c.cidade || ''}/${c.uf || ''}`;
   document.getElementById('prog-lista-clientes').classList.remove('open');
 
-  // Auto-preenchimento
   if (c.veiculo_padrao) {
     _progVeiculoSel = c.veiculo_padrao;
     _progResetVeiculoBtns();
     document.querySelectorAll('.prog-veiculo-btn').forEach(b => {
       if (b.dataset.veiculo === c.veiculo_padrao) b.classList.add('sel');
     });
-    // Sugerir qtde
     const sugestao = { truck: 8500, bitruck: 10500, carreta: 16000 };
     if (!document.getElementById('prog-inp-qtde').value) {
       document.getElementById('prog-inp-qtde').value = sugestao[c.veiculo_padrao] || '';
     }
   }
-  if (c.rpc_historico && !document.getElementById('prog-inp-valor').value) {
-    document.getElementById('prog-inp-valor').value = Number(c.rpc_historico).toFixed(2);
+  if (c.rpc_historico) {
+    const valorEl = document.getElementById('prog-inp-valor');
+    if (!valorEl.dataset.digits) {
+      const digits = _progValorToDigits(c.rpc_historico);
+      valorEl.dataset.digits = digits;
+      valorEl.value = _progFormatValor(digits);
+    }
   }
   _progAtualizarPreview();
 }
@@ -444,7 +543,7 @@ function progSelCaminhao(val) {
 
 function _progAtualizarPreview() {
   const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
-  const valor = parseFloat(document.getElementById('prog-inp-valor').value) || 0;
+  const valor = _progGetValor();
   const preview = document.getElementById('prog-receita-preview');
   if (qtde === 0 && valor === 0) { preview.style.display = 'none'; return; }
   preview.style.display = 'block';
@@ -452,7 +551,7 @@ function _progAtualizarPreview() {
   const receita = qtde * valor;
   document.getElementById('prog-prev-cocos').textContent = fmtNum(qtde) + ' cocos';
   document.getElementById('prog-prev-litros').textContent = fmtNum(litros) + ' L';
-  document.getElementById('prog-prev-receita').textContent = valor > 0 ? fmtR(receita) : '—';
+  document.getElementById('prog-prev-receita').textContent = valor > 0 ? 'R$ ' + fmtNum(Math.round(receita)) : '—';
   document.getElementById('prog-prev-rpc').textContent = valor > 0 ? 'R$ ' + valor.toFixed(2) + '/coco' : '—';
 }
 
@@ -462,12 +561,6 @@ function progToggleObs() {
   if (el.style.display === 'block') el.focus();
 }
 
-function sugerirVeiculo(qtde) {
-  if (qtde <= 9000) return 'truck';
-  if (qtde <= 11000) return 'bitruck';
-  return 'carreta';
-}
-
 // ── SALVAR CARGA ──
 async function salvarProgCarga() {
   if (!_progClienteSel) { showToast('Selecione um cliente'); return; }
@@ -475,9 +568,9 @@ async function salvarProgCarga() {
   const qtde = parseInt(document.getElementById('prog-inp-qtde').value);
   if (!qtde || qtde <= 0) { showToast('Informe a quantidade'); return; }
 
-  const valor = parseFloat(document.getElementById('prog-inp-valor').value) || null;
+  const valor = _progGetValor() || null;
   const obs = document.getElementById('prog-inp-obs').value.trim() || null;
-  const placa = document.getElementById('prog-inp-placa').value.trim() || null;
+  const motorista = document.getElementById('prog-inp-motorista').value.trim() || null;
 
   const payload = {
     dia_entrega: _progDiaSel,
@@ -490,21 +583,18 @@ async function salvarProgCarga() {
     area: _progAreaSel,
     providenciar_caminhao: _progProvidenciarCaminhao,
     caminhao_status: _progProvidenciarCaminhao ? 'pendente' : null,
-    placa: placa,
+    motorista: motorista,
     obs: obs,
     updated_at: new Date().toISOString()
   };
 
   try {
     if (_progEditandoId) {
-      // UPDATE
       const { error } = await _SB.from('programacao').update(payload).eq('id', _progEditandoId);
       if (error) throw error;
       showToast('Carga atualizada');
     } else {
-      // INSERT
       payload.status = 'pendente';
-      // Pegar email do usuário logado
       const { data: { session } } = await _SB.auth.getSession();
       payload.agendado_por = session?.user?.email || 'desconhecido';
       const { error } = await _SB.from('programacao').insert(payload);
@@ -554,10 +644,10 @@ async function progCancelarCarga() {
 // ── CONFIRMAR CAMINHÃO ──
 async function progConfirmarCaminhao() {
   if (!_progEditandoId) return;
-  const placa = document.getElementById('prog-inp-placa').value.trim();
+  const motorista = document.getElementById('prog-inp-motorista').value.trim();
   try {
     const { error } = await _SB.from('programacao')
-      .update({ caminhao_status: 'confirmado', placa: placa || null, updated_at: new Date().toISOString() })
+      .update({ caminhao_status: 'confirmado', motorista: motorista || null, updated_at: new Date().toISOString() })
       .eq('id', _progEditandoId);
     if (error) throw error;
     closeModal('prog-modal-overlay');
@@ -583,7 +673,7 @@ function progEnviarWhatsApp() {
   let msg = `✅ *Neofrut — Confirmação de Carga*\n\n` +
     `📅 *${nomeDia}, ${dataBr}*\n` +
     `🥥 ${fmtNum(c.volume_cocos)} cocos`;
-  if (c.valor_por_coco) msg += ` · R$${Number(c.valor_por_coco).toFixed(2)}/coco`;
+  if (c.valor_por_coco) msg += ` · R$ ${Number(c.valor_por_coco).toFixed(2)}/coco`;
   msg += `\n🚚 ${c.tipo_veiculo || '—'}`;
   if (c.area) msg += `\n📍 Área: ${c.area}`;
   if (c.obs) msg += `\n\n📝 ${c.obs}`;
@@ -593,7 +683,6 @@ function progEnviarWhatsApp() {
     const fone = tel.replace(/\D/g, '');
     window.open(`https://wa.me/55${fone}?text=${encoded}`, '_blank');
   } else {
-    // Copiar mensagem
     navigator.clipboard.writeText(msg).then(() => showToast('Mensagem copiada'));
   }
 }
