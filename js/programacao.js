@@ -233,9 +233,9 @@ function renderProgramacao() {
 // ── KPIs ──
 function renderProgKPIs() {
   const totalCocos = _progSemana.reduce((s, c) => s + c.volume_cocos, 0);
-  const totalReceitaBruta = _progSemana.reduce((s, c) => s + (c.volume_cocos * (c.valor_por_coco || 0)), 0);
+  const totalReceitaCoco = _progSemana.reduce((s, c) => s + (c.volume_cocos * (c.valor_por_coco || 0)), 0);
   const totalFrete = _progSemana.reduce((s, c) => s + (c.frete_total || 0), 0);
-  const totalReceita = totalReceitaBruta - totalFrete;
+  const totalReceita = totalReceitaCoco + totalFrete;
   const semCaminhao = _progSemana.filter(c => c.providenciar_caminhao && c.caminhao_status === 'pendente' && c.status !== 'cancelado').length;
   const confirmadas = _progSemana.filter(c => c.status === 'confirmado' || c.status === 'entregue').length;
 
@@ -339,9 +339,9 @@ function renderProgCard(c) {
   });
   card.addEventListener('dragend', () => card.classList.remove('prog-dragging'));
 
-  const receitaBruta = c.valor_por_coco ? c.volume_cocos * c.valor_por_coco : null;
+  const receitaCoco = c.valor_por_coco ? c.volume_cocos * c.valor_por_coco : null;
   const frete = c.frete_total || 0;
-  const receitaLiq = receitaBruta ? receitaBruta - frete : null;
+  const totalNF = receitaCoco ? receitaCoco + frete : null;
   const precisaCaminhao = c.providenciar_caminhao && c.caminhao_status === 'pendente';
 
   const cli = _progClientes.find(x => x.id === c.cliente_id);
@@ -360,9 +360,9 @@ function renderProgCard(c) {
     <div class="prog-card-info">
       <span class="prog-card-qtde">🌴 ${fmtNum(c.volume_cocos)}</span>
       <span class="prog-card-rpc">${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>
-      ${receitaLiq != null ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(receitaLiq))}</span>` : ''}
+      ${totalNF != null ? `<span class="prog-card-receita">R$ ${fmtNum(Math.round(totalNF))}</span>` : ''}
     </div>
-    ${frete > 0 ? `<div style="font-size:9px;color:var(--vermelho);font-family:var(--font-mono);margin-top:-2px">frete: R$ ${fmtNum(Math.round(frete))}</div>` : ''}
+    ${frete > 0 ? `<div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:-2px">coco: R$ ${fmtNum(Math.round(receitaCoco))} + frete: R$ ${fmtNum(Math.round(frete))}</div>` : ''}
     <div class="prog-card-badges">
       ${c.tipo_veiculo ? `<span class="prog-badge prog-badge-veiculo">${escapeHtml(c.tipo_veiculo)}</span>` : ''}
       ${c.area ? `<span class="prog-badge prog-badge-area">${escapeHtml(c.area)}</span>` : ''}
@@ -752,7 +752,7 @@ function _progAtualizarPreview() {
   const litros = Math.round(qtde / lpc);
   const receita = qtde * valor;
   const freteTotal = _progCalcFreteTotal();
-  const liquida = receita - freteTotal;
+  const totalNF = receita + freteTotal;
   document.getElementById('prog-prev-cocos').textContent = fmtNum(qtde) + ' cocos';
   document.getElementById('prog-prev-litros').textContent = fmtNum(litros) + ' L' + (lpc !== LITROS_POR_COCO ? ' (' + lpc.toFixed(1) + '/coco)' : '');
   document.getElementById('prog-prev-receita').textContent = valor > 0 ? 'R$ ' + fmtNum(Math.round(receita)) : '—';
@@ -763,8 +763,8 @@ function _progAtualizarPreview() {
   if (freteRow) freteRow.style.display = freteTotal > 0 ? '' : 'none';
   if (liqRow) liqRow.style.display = freteTotal > 0 ? '' : 'none';
   if (freteTotal > 0) {
-    document.getElementById('prog-prev-frete').textContent = '- R$ ' + fmtNum(Math.round(freteTotal));
-    document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(liquida));
+    document.getElementById('prog-prev-frete').textContent = '+ R$ ' + fmtNum(Math.round(freteTotal));
+    document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(totalNF));
   }
   // Mostrar campo frete quando valor preenchido
   const campoFrete = document.getElementById('prog-campo-frete');
@@ -1039,7 +1039,7 @@ async function progBuscarHistorico() {
 
     // KPIs do período
     const totalCocos = cargas.reduce((s, c) => s + (c.volume_cocos || 0), 0);
-    const totalReceita = cargas.reduce((s, c) => s + ((c.volume_cocos || 0) * (c.valor_por_coco || 0)), 0);
+    const totalReceita = cargas.reduce((s, c) => s + ((c.volume_cocos || 0) * (c.valor_por_coco || 0)) + (c.frete_total || 0), 0);
     const totalCargas = cargas.length;
     const clientesUnicos = new Set(cargas.map(c => c.cliente_nome)).size;
 
@@ -1095,13 +1095,16 @@ async function progBuscarHistorico() {
       html += `</div>`;
 
       cargasDia.forEach(c => {
-        const receita = (c.volume_cocos || 0) * (c.valor_por_coco || 0);
+        const receitaCoco = (c.volume_cocos || 0) * (c.valor_por_coco || 0);
+        const freteHist = c.frete_total || 0;
+        const totalNFHist = receitaCoco + freteHist;
         html += `<div class="prog-hist-carga">`;
         html += `<div class="prog-hist-carga-cliente">${escapeHtml(c.cliente_nome)}</div>`;
         html += `<div class="prog-hist-carga-info">`;
         html += `<span>🌴 ${fmtNum(c.volume_cocos)}</span>`;
         html += `<span>${c.valor_por_coco ? 'R$ ' + Number(c.valor_por_coco).toFixed(2) : 'fábrica'}</span>`;
-        if (receita) html += `<span style="color:#1d4ed8;font-weight:700">R$ ${fmtNum(Math.round(receita))}</span>`;
+        if (totalNFHist) html += `<span style="color:#1d4ed8;font-weight:700">R$ ${fmtNum(Math.round(totalNFHist))}</span>`;
+        if (freteHist > 0) html += `<span style="color:var(--muted);font-size:9px">(frete: R$ ${fmtNum(Math.round(freteHist))})</span>`;
         if (c.tipo_veiculo) html += `<span class="prog-badge prog-badge-veiculo">${escapeHtml(c.tipo_veiculo)}</span>`;
         html += `<span class="prog-st prog-st-${c.status}">${c.status}</span>`;
         html += `</div></div>`;
