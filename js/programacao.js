@@ -703,6 +703,23 @@ async function progCancelarCarga() {
   }
 }
 
+// ── EXCLUIR CARGA (permanente) ──
+async function progExcluirCarga() {
+  if (!_progEditandoId) return;
+  if (!confirm('Excluir esta carga permanentemente? Esta ação não pode ser desfeita.')) return;
+  try {
+    const { error } = await _SB.from('programacao')
+      .delete()
+      .eq('id', _progEditandoId);
+    if (error) throw error;
+    closeModal('prog-modal-overlay');
+    showToast('Carga excluída');
+    await carregarProgramacao(_progSemanaInicio);
+  } catch(e) {
+    showToast('Erro ao excluir: ' + (e.message || e));
+  }
+}
+
 // ── CONFIRMAR CAMINHÃO ──
 async function progConfirmarCaminhao() {
   if (!_progEditandoId) return;
