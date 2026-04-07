@@ -97,14 +97,14 @@ function renderDashboard() {
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="abrirColhidosMes()" title="Ver colhidos do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--forest)" onclick="abrirColhidosAno()" title="Ver colhidos por área no ano"><div class="kpi-label">🌴 Colhidos ${anoStr}</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(colhidosAno)}</div><div class="kpi-sub">todas as áreas</div></div>
     <div class="kpi" style="text-align:center"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
-    <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda))}"><div class="kpi-label">Fr/Pl/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda))}">${fppFazenda}</div><div class="kpi-sub">meta: 300</div></div>
+    <div class="kpi" style="text-align:center;border-color:${corFpp(parseFloat(fppFazenda)||0)}"><div class="kpi-label">Fr/Pl/${anoStr}</div><div class="kpi-value" style="color:${corFpp(parseFloat(fppFazenda)||0)}">${fppFazenda}</div><div class="kpi-sub">meta: 300</div></div>
   `;
 
   const grid = document.getElementById('areas-grid');
-  grid.innerHTML = '';
   const areasOrdenadas = ORDEM_AREAS.filter(a=>DB[a]).map(a=>[a,DB[a]]);
   // incluir áreas que existam em DB mas não estejam na ordem definida
   Object.keys(DB).forEach(a=>{if(!ORDEM_AREAS.includes(a))areasOrdenadas.push([a,DB[a]]);});
+  const areaCardsHtml = [];
   for (const [area, eitos] of areasOrdenadas) {
     let v=0,a=0,r=0,c=0,s=0,cocos=0,plantas=0;
     let maisAntiga = null, maisRecente = null;
@@ -155,7 +155,7 @@ function renderDashboard() {
     const badgeVencido = (r-c) > 0 ? `<span class="urgente-tag">${r-c} VENCIDO${(r-c)>1?'S':''}</span>` : '';
     const urgente = r > 0 ? `${badgeCritico}${badgeVencido}${projecaoVencidos>0?'<span style="font-size:10px;font-family:var(--font-mono);color:var(--vermelho);font-weight:700">≈ '+fmtNum(projecaoVencidos)+' cocos</span>':''}` : '';
 
-    grid.innerHTML += `
+    areaCardsHtml.push(`
       <div class="area-card" onclick="openArea('${area}')">
         <div class="area-card-header">
           <div>
@@ -186,8 +186,9 @@ function renderDashboard() {
           <div class="area-stat" title="Frutos por planta no ano ${anoStr} — meta: 300"><div class="area-stat-val" style="color:${corFpp(fppArea[area])}">${fppArea[area]!==null?Math.round(fppArea[area]):'—'}</div><div class="area-stat-label">Fr/Pl/${anoStr}</div></div>
           <div class="area-stat" title="Total de frutos colhidos nesta área em ${anoStr}"><div class="area-stat-val" style="color:var(--teal)">${fmtNum(colhidosAnoArea[area]||0)}</div><div class="area-stat-label">Colhidos ${anoStr}</div></div>
         </div>
-      </div>`;
+      </div>`);
   }
+  grid.innerHTML = areaCardsHtml.join('');
 }
 
 function abrirColhidosPeriodo(periodo) {

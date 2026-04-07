@@ -84,3 +84,27 @@ function fmtK(n) { if (n == null || n === 0) return '0'; return n >= 1000 ? Math
 
 // Mercados uses fmtN for large numbers
 function fmtN(n) { return n >= 1000000 ? (n/1000000).toFixed(1).replace('.',',') + ' M' : n.toLocaleString('pt-BR'); }
+
+/**
+ * Debounce: retorna versão da função que espera `wait`ms de silêncio antes de executar.
+ * Cada invocação reinicia o timer. Útil para inputs de busca evitando re-render por tecla.
+ */
+function debounce(fn, wait) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+/**
+ * Wrapper para usar em oninput="..." inline. Mantém uma instância debounced por nome.
+ * Uso: oninput="debounceCall('renderVendasLista', 200)"
+ */
+const _debouncedFns = {};
+function debounceCall(fnName, wait) {
+  if (!_debouncedFns[fnName]) {
+    _debouncedFns[fnName] = debounce(() => { try { window[fnName](); } catch(e) { console.error(e); } }, wait || 200);
+  }
+  _debouncedFns[fnName]();
+}

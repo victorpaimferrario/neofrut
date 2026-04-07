@@ -1645,15 +1645,16 @@ function abrirNovoContrato(){
   document.getElementById('ctr-dist').value=cli?.distancia_km||'';
   // Gerar linhas da tabela de cotas
   const tbody=document.getElementById('ctr-cotas-body');
-  tbody.innerHTML='';
+  const linhas=[];
   for(let m=1;m<=12;m++){
     const mm=String(m).padStart(2,'0');
-    tbody.innerHTML+=`<tr>
+    linhas.push(`<tr>
       <td>${MESES_NOME[m-1]}</td>
       <td><input type="number" min="0" class="form-input ctr-litros" data-mes="${mm}" placeholder="0" oninput="ctrCalcTotal()" style="width:100px"></td>
       <td><input type="number" min="0" step="0.01" class="form-input ctr-preco" data-mes="${mm}" placeholder="0.00" oninput="ctrCalcTotal()" style="width:90px"></td>
-    </tr>`;
+    </tr>`);
   }
+  tbody.innerHTML=linhas.join('');
   delete document.getElementById('ctr-cliente').dataset.editId;
   openModal('modal-contrato');
 }
@@ -1673,16 +1674,17 @@ function abrirEditarContrato(id){
   document.getElementById('ctr-dist').value=c.distanciaKm||'';
   document.getElementById('ctr-obs').value=c.observacoes||'';
   const tbody=document.getElementById('ctr-cotas-body');
-  tbody.innerHTML='';
+  const linhasEdit=[];
   for(let m=1;m<=12;m++){
     const mm=String(m).padStart(2,'0');
     const cota=c.cotas[mm]||{};
-    tbody.innerHTML+=`<tr>
+    linhasEdit.push(`<tr>
       <td>${MESES_NOME[m-1]}</td>
       <td><input type="number" min="0" class="form-input ctr-litros" data-mes="${mm}" value="${cota.litros||''}" placeholder="0" oninput="ctrCalcTotal()" style="width:100px"></td>
       <td><input type="number" min="0" step="0.01" class="form-input ctr-preco" data-mes="${mm}" value="${cota.valor_litro||''}" placeholder="0.00" oninput="ctrCalcTotal()" style="width:90px"></td>
-    </tr>`;
+    </tr>`);
   }
+  tbody.innerHTML=linhasEdit.join('');
   ctrCalcTotal();
   openModal('modal-contrato');
 }

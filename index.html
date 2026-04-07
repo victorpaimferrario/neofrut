@@ -143,7 +143,7 @@
   </div>
   <!-- RANKING ÁREAS -->
   <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <input type="text" id="analise-busca" placeholder="🔍 Buscar eito... (ex: 83, 01/02)" oninput="renderAnalise()"
+    <input type="text" id="analise-busca" placeholder="🔍 Buscar eito... (ex: 83, 01/02)" oninput="debounceCall('renderAnalise', 180)"
       style="padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1">
     <span id="analise-busca-count" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)"></span>
   </div>
@@ -344,7 +344,7 @@
       <button class="filter-btn f-amarelo" onclick="setFilter('amarelo')">🟡 Atenção</button>
       <button class="filter-btn f-verde" onclick="setFilter('verde')">🟢 OK</button>
       <button class="filter-btn" onclick="setFilter('sem')">Sem colheita</button>
-      <input class="search-input" type="text" placeholder="Buscar eito..." id="search-eito" oninput="renderAreaTable()">
+      <input class="search-input" type="text" placeholder="Buscar eito..." id="search-eito" oninput="debounceCall('renderAreaTable', 150)">
     </div>
     <div style="overflow-x:auto"><table class="eitos-table" style="width:100%;min-width:600px">
       <thead>
@@ -862,7 +862,7 @@
   <!-- LISTA -->
   <div class="vd-sec" id="vsec-lista">
     <div class="vfiltros">
-      <input type="text" id="vl-busca" placeholder="🔍 Buscar cliente..." oninput="renderVendasLista()">
+      <input type="text" id="vl-busca" placeholder="🔍 Buscar cliente..." oninput="debounceCall('renderVendasLista', 200)">
       <div class="area-btn-group" id="vl-anos-btns"></div>
       <div class="area-btn-group" id="vl-meses-btns"></div>
       <select id="vl-status" onchange="renderVendasLista()">
@@ -893,7 +893,7 @@
   <!-- PENDENTES -->
   <div class="vd-sec" id="vsec-pendentes">
     <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <input type="text" id="vp-busca" placeholder="🔍 Buscar cliente..." oninput="renderVendasPendentes()"
+      <input type="text" id="vp-busca" placeholder="🔍 Buscar cliente..." oninput="debounceCall('renderVendasPendentes', 200)"
         style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1;max-width:280px">
       <div class="area-btn-group" id="vp-anos-btns"></div>
       <div class="area-btn-group" id="vp-meses-btns"></div>
@@ -905,7 +905,7 @@
   <!-- CLIENTES -->
   <div class="vd-sec" id="vsec-clientes">
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
-      <input type="text" id="cli-busca" list="dl-clientes-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaClientes()"
+      <input type="text" id="cli-busca" list="dl-clientes-busca" placeholder="🔍 Buscar cliente..." oninput="debounceCall('renderListaClientes', 200)"
         style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;min-width:0;flex:1;max-width:280px"><datalist id="dl-clientes-busca"></datalist>
       <select id="cli-filtro-tipo" onchange="renderListaClientes()" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
         <option value="todos">Todos</option>
@@ -1117,7 +1117,7 @@
       <button onclick="closeModal('modal-todos-clientes')" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted)">✕</button>
     </div>
     <div class="modal-sub" id="todos-clientes-sub"></div>
-    <input type="text" id="todos-clientes-busca" placeholder="🔍 Buscar cliente..." oninput="renderTodosClientes()"
+    <input type="text" id="todos-clientes-busca" placeholder="🔍 Buscar cliente..." oninput="debounceCall('renderTodosClientes', 200)"
       style="margin:12px 0;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--font-mono);font-size:13px;width:100%;box-sizing:border-box">
     <div id="todos-clientes-lista" style="overflow-y:auto;flex:1"></div>
   </div>
