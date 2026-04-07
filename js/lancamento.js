@@ -1034,7 +1034,7 @@ async function confirmarContagemNado() {
       const mergedFab = (pend.fabrica || 0) + fab;
       // Remover parcial antigo
       if (pend._id) {
-        try { await _SB.from('colheitas').delete().eq('id', pend._id); } catch(e) {}
+        try { await _SB.from('colheitas').delete().eq('id', pend._id); } catch(e) { console.warn('Erro ao deletar parcial Nado:', e); }
       }
       eito.historico = eito.historico.filter(h => h !== pend);
       eito.historico.push({ data, total: mergedTotal, mesa: mergedMesa, fabrica: mergedFab, cliente, lancamento_id: lancId });

@@ -630,15 +630,12 @@ function onClienteChange(){
   _checkFabricaMode();
 }
 
+let _salvandoVenda = false;
 async function salvarVenda(){
+  if (_salvandoVenda) return;
   // tratar edição — remover original se estiver editando
   const _dataEl=document.getElementById('v-data');
   const _editandoId=parseInt(_dataEl?.dataset.editandoId||'0');
-  if(_editandoId){
-    const _db=loadVendas();
-    saveVendas(_db.filter(v=>v.id!==_editandoId));
-    delete _dataEl.dataset.editandoId;
-  }
   const data=document.getElementById('v-data').value;
   const cliente=(document.getElementById('v-cliente').value||'').trim().toUpperCase();
   const nf=(document.getElementById('v-nf').value||'RECIBO').trim().toUpperCase()||'RECIBO';
@@ -658,6 +655,17 @@ async function salvarVenda(){
   if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
   if(!status){erro.textContent='Selecione o status (Pago ou Pendente).';erro.style.display='block';return;}
   erro.style.display='none';
+  // Após validação: travar contra double-click
+  _salvandoVenda = true;
+  const _btnSalvar = document.querySelector('button[onclick="salvarVenda()"]');
+  if (_btnSalvar) { _btnSalvar.disabled = true; _btnSalvar.dataset.origText = _btnSalvar.textContent; _btnSalvar.textContent = '⏳ Salvando...'; }
+  try {
+  // Aplicar deleção da venda original (se editando) só agora, depois da validação
+  if(_editandoId){
+    const _db=loadVendas();
+    saveVendas(_db.filter(v=>v.id!==_editandoId));
+    delete _dataEl.dataset.editandoId;
+  }
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const v=parseInt(document.getElementById('va-'+a)?.value)||0;if(v>0)areas[a]=v;});
   const quebra=parseInt(document.getElementById('va-quebra')?.value)||0;
@@ -716,6 +724,10 @@ async function salvarVenda(){
   showVendasTab('lista');
   showToast('✓ Venda registrada — '+fmtNum(qtde)+' cocos · '+fmtR(total));
   await initVendas();
+  } finally {
+    _salvandoVenda = false;
+    if (_btnSalvar) { _btnSalvar.disabled = false; _btnSalvar.textContent = _btnSalvar.dataset.origText || 'Salvar'; }
+  }
 }
 
 function limparFormVenda(){
@@ -1055,7 +1067,9 @@ function calcEditVenda(){
   if(r&&t>0)r.value=(t-f).toFixed(2);
 }
 
+let _salvandoEditVenda = false;
 async function salvarEditVenda(){
+  if (_salvandoEditVenda) return;
   const id=window._editVendaId;if(!id)return;
   const db=loadVendas();
   const idx=db.findIndex(x=>x.id===id);if(idx<0)return;
@@ -1070,6 +1084,10 @@ async function salvarEditVenda(){
   if(qtde===0){erro.textContent='Informe a quantidade.';erro.style.display='block';return;}
   if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
   erro.style.display='none';
+  _salvandoEditVenda = true;
+  const _btnEv = document.querySelector('button[onclick="salvarEditVenda()"]');
+  if (_btnEv) { _btnEv.disabled = true; _btnEv.dataset.origText = _btnEv.textContent; _btnEv.textContent = '⏳ Salvando...'; }
+  try {
   // atualizar campos
   v.data=data;
   v.cliente=cliente;
@@ -1091,6 +1109,10 @@ async function salvarEditVenda(){
   closeEditVendaPanel();
   renderVendasLista();renderVendasPendentes();renderVendasPainel();
   showToast('✓ Venda de '+v.cliente+' atualizada');
+  } finally {
+    _salvandoEditVenda = false;
+    if (_btnEv) { _btnEv.disabled = false; _btnEv.textContent = _btnEv.dataset.origText || 'Salvar'; }
+  }
 }
 
 async function excluirVenda(id){
@@ -1389,7 +1411,9 @@ function abrirFormCliente(nome) {
   }
 }
 
+let _salvandoCliente = false;
 async function salvarCliente() {
+  if (_salvandoCliente) return;
   const nome = document.getElementById('cli-nome').value.trim().toUpperCase();
   const erro = document.getElementById('cli-erro');
 
@@ -1410,6 +1434,10 @@ async function salvarCliente() {
     return;
   }
 
+  _salvandoCliente = true;
+  const _btnCli = document.querySelector('button[onclick="salvarCliente()"]');
+  if (_btnCli) { _btnCli.disabled = true; _btnCli.dataset.origText = _btnCli.textContent; _btnCli.textContent = '⏳ Salvando...'; }
+  try {
   const cliente = {
     id,
     nome,
@@ -1441,6 +1469,10 @@ async function salvarCliente() {
     showToast('✓ Cliente salvo — ' + nome);
     // Callback da programação (se cadastrou cliente a partir da aba programação)
     if (typeof window._progOnClienteSalvo === 'function') window._progOnClienteSalvo();
+  }
+  } finally {
+    _salvandoCliente = false;
+    if (_btnCli) { _btnCli.disabled = false; _btnCli.textContent = _btnCli.dataset.origText || 'Salvar'; }
   }
 }
 
@@ -1719,9 +1751,16 @@ function ctrVerao5(){
   ctrCalcTotal();
 }
 
+let _salvandoContrato = false;
 async function salvarContrato(){
+  if (_salvandoContrato) return;
   const cliente=document.getElementById('ctr-cliente').value;
+  if (!cliente) { showToast('Selecione um cliente'); return; }
   const editId=parseInt(document.getElementById('ctr-cliente').dataset.editId)||0;
+  _salvandoContrato = true;
+  const _btnCtr = document.querySelector('button[onclick="salvarContrato()"]');
+  if (_btnCtr) { _btnCtr.disabled = true; _btnCtr.dataset.origText = _btnCtr.textContent; _btnCtr.textContent = '⏳ Salvando...'; }
+  try {
   const ano=parseInt(document.getElementById('ctr-ano').value)||new Date().getFullYear();
   const cotas={};
   document.querySelectorAll('.ctr-litros').forEach(el=>{
@@ -1747,6 +1786,10 @@ async function salvarContrato(){
   showToast('✓ Contrato salvo — '+cliente+' '+ano);
   // Atualizar aba contrato se painel está aberto
   if(window._cliPanelNome===cliente)renderContratoTab(cliente);
+  } finally {
+    _salvandoContrato = false;
+    if (_btnCtr) { _btnCtr.disabled = false; _btnCtr.textContent = _btnCtr.dataset.origText || 'Salvar'; }
+  }
 }
 
 function renderContratoTab(cliente){
