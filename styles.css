@@ -447,16 +447,15 @@
   @media (max-width: 600px) {
     .side-panel { width: 100vw !important; right: -100vw !important; }
     .side-panel.open { right: 0 !important; }
-    /* Top nav: compact — hide tabs and actions, keep brand */
-    nav { padding: 0 12px; justify-content:center; }
+    /* Top nav: compact — hide tabs and actions, keep brand + safe-area lateral para notch */
+    nav { padding: 0 calc(12px + env(safe-area-inset-left, 0px)) 0 calc(12px + env(safe-area-inset-right, 0px)); justify-content:center; }
     .nav-tabs { display:none; }
     .nav-actions { display:none; }
     .nav-brand { margin-right:0; }
     /* Bottom bar: show */
     .mobile-bottom-bar { display:flex; }
-    /* Page padding: add bottom space for bottom bar */
-    .page { padding-bottom:72px; }
-    .page { padding: 12px; }
+    /* Page padding: add bottom space for bottom bar + safe-area inferior */
+    .page { padding: 12px 12px calc(80px + env(safe-area-inset-bottom, 0px)) 12px; }
     .kpi-grid { grid-template-columns: repeat(3, 1fr); }
     .areas-grid { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
@@ -473,11 +472,11 @@
     /* Mercados */
     .clima-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .clima-card { overflow: hidden; }
-    .dias-table th { font-size: 6px !important; padding: 1px 0 !important; }
-    .dias-table td { padding: 1px 0 !important; }
-    .dia-emoji { font-size: 12px !important; }
-    .dia-temp { font-size: 8px !important; }
-    .dia-mm { font-size: 6px !important; }
+    .dias-table th { font-size: 9px !important; padding: 2px 1px !important; }
+    .dias-table td { padding: 2px 1px !important; }
+    .dia-emoji { font-size: 13px !important; }
+    .dia-temp { font-size: 10px !important; }
+    .dia-mm { font-size: 9px !important; }
     .card-cidade { font-size: 11px !important; }
     .card-badge { font-size: 8px !important; padding: 2px 4px !important; margin: 4px 6px 2px !important; }
     .card-header { padding: 6px 6px 4px !important; }
@@ -573,8 +572,8 @@
     .dia-emoji { font-size: 16px !important; }
     .dia-temp { font-size: 10px !important; }
     .dia-mm { font-size: 9px !important; }
-    .dias-table th { font-size: 8px !important; padding: 2px 0 !important; }
-    .dias-table td { padding: 2px 0 !important; }
+    .dias-table th { font-size: 10px !important; padding: 3px 1px !important; }
+    .dias-table td { padding: 3px 1px !important; }
 
     /* Lançamento planilha: inputs e eitos maiores */
     .planilha-table th { padding: 10px 6px; font-size: 10px; }
@@ -814,8 +813,8 @@
     /* Grade: single column with all days */
     .prog-grade { grid-template-columns:1fr; }
 
-    /* FAB visible */
-    .prog-fab { display:flex; bottom:80px; }
+    /* FAB visível, acima da bottom-bar + safe-area */
+    .prog-fab { display:flex; bottom:calc(80px + env(safe-area-inset-bottom, 0px)); right:calc(16px + env(safe-area-inset-right, 0px)); }
 
     /* Header: stack vertically */
     .prog-header-nav { flex-direction:column !important; align-items:stretch !important; gap:8px !important; }
@@ -884,14 +883,14 @@
 .card-badge.ruim{background:#fde8ea;color:#dc3545;}
 .card-badge.neutro{background:#fff3cd;color:#856404;}
 .dias-table{width:100%;border-collapse:collapse;}
-.dias-table th{font-size:7px;font-family:var(--font-mono);color:var(--muted);text-align:center;padding:2px 0;text-transform:uppercase;}
-.dias-table td{text-align:center;padding:2px 1px;border-top:1px solid var(--surface2);}
-.dia-emoji{font-size:14px;display:block;line-height:1.2;}
-.dia-temp{font-family:var(--font-mono);font-weight:700;font-size:10px;}
-.dia-mm{font-family:var(--font-mono);font-size:7px;color:var(--vermelho);display:block;}
+.dias-table th{font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:center;padding:3px 1px;text-transform:uppercase;}
+.dias-table td{text-align:center;padding:3px 1px;border-top:1px solid var(--surface2);}
+.dia-emoji{font-size:15px;display:block;line-height:1.2;}
+.dia-temp{font-family:var(--font-mono);font-weight:700;font-size:11px;}
+.dia-mm{font-family:var(--font-mono);font-size:9px;color:var(--vermelho);display:block;}
 .chegada{background:#fffde7;}
 .chegada-ruim{background:#fde8ea;}
-.tag-ch{background:#f5f5a0;color:#5a5a00;border-radius:3px;padding:1px 3px;font-size:6.5px;font-weight:800;}
+.tag-ch{background:#f5f5a0;color:#5a5a00;border-radius:3px;padding:1px 3px;font-size:9px;font-weight:800;}
 .tag-ch-ruim{background:#fde8ea;color:#dc3545;border-radius:3px;padding:1px 3px;font-size:6.5px;font-weight:800;}
 .card-footer{padding:4px 6px 8px;}
 .card-loading{padding:20px;text-align:center;color:var(--muted);font-size:11px;}
