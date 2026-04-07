@@ -148,14 +148,18 @@ async function loadVendasSupabase() {
     let allData = [];
     let from = 0;
     const pageSize = 1000;
-    while(true) {
+    const MAX_PAGES = 100; // Guarda contra loop runaway (até 100k vendas)
+    let pages = 0;
+    while(pages < MAX_PAGES) {
       const { data, error } = await _SB.from('vendas').select('*').order('data', {ascending: true}).range(from, from+pageSize-1);
       if(error) throw error;
       if(!data || data.length === 0) break;
       allData = allData.concat(data);
       if(data.length < pageSize) break;
       from += pageSize;
+      pages++;
     }
+    if(pages >= MAX_PAGES) console.warn('loadVendasSupabase: limite de páginas atingido (', MAX_PAGES * pageSize, ')');
     const data = allData;
     console.log('Vendas carregadas do Supabase:', data.length);
 
@@ -305,6 +309,17 @@ async function loadClientesSupabase() {
   try {
     const { data, error } = await _SB.from('clientes').select('*').order('nome');
     if (error) throw error;
+    // Proteção: se Supabase retornar vazio mas houver cache local, manter o local
+    // (evita perder 68+ clientes em uma falha momentânea de rede/RLS)
+    const local = (() => {
+      try { return JSON.parse(localStorage.getItem('neofrut_clientes_v1') || '[]'); }
+      catch(e2) { return []; }
+    })();
+    if ((!data || data.length === 0) && local.length > 0) {
+      console.warn('Supabase retornou 0 clientes — mantendo cache local com', local.length);
+      _clientesCache = local;
+      return _clientesCache;
+    }
     _clientesCache = data || [];
     localStorage.setItem('neofrut_clientes_v1', JSON.stringify(_clientesCache));
     return _clientesCache;

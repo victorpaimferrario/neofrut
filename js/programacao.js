@@ -23,6 +23,12 @@ let _progDragId = null;
 
 // ── FERIADOS NACIONAIS + SERGIPE ──
 function _progPascoa(ano) {
+  // Validação: algoritmo Meeus/Jones/Butcher só vale para o calendário gregoriano
+  ano = parseInt(ano);
+  if (!Number.isFinite(ano) || ano < 1583 || ano > 9999) {
+    console.warn('_progPascoa: ano inválido, usando ano atual:', ano);
+    ano = new Date().getFullYear();
+  }
   const a=ano%19, b=Math.floor(ano/100), c=ano%100;
   const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
   const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
@@ -1130,11 +1136,19 @@ function _progMediaDiasUteis(cargas, de, ate) {
   let dias = 0;
   const d = new Date(de + 'T12:00:00');
   const fim = new Date(ate + 'T12:00:00');
-  while (d <= fim) {
+  if (isNaN(d.getTime()) || isNaN(fim.getTime())) {
+    console.warn('_progMediaDiasUteis: datas inválidas', de, ate);
+    return fmtNum(totalCocos);
+  }
+  // Guarda de segurança: máx 5 anos de iterações para evitar loop infinito
+  let safety = 0;
+  while (d <= fim && safety < 1830) {
     const dow = d.getDay();
     if (dow >= 1 && dow <= 5 && !_progIsFeriado(_progDataISO(d))) dias++;
     d.setDate(d.getDate() + 1);
+    safety++;
   }
+  if (safety >= 1830) console.warn('_progMediaDiasUteis: limite de iteração atingido');
   return dias > 0 ? fmtNum(Math.round(totalCocos / dias)) : fmtNum(totalCocos);
 }
 
