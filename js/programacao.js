@@ -132,15 +132,34 @@ function _progValorToDigits(n) {
 function _progOnValorInput(el) {
   const digits = el.value.replace(/\D/g, '');
   el.value = _progFormatValor(digits);
+  // O input SEMPRE contém o valor BRUTO digitado pelo usuário.
+  // O líquido (após dedução do frete) é exibido apenas na nota e usado em _progGetValor.
   el.dataset.digits = digits;
-  // Marca o que o usuário acabou de digitar como valor BRUTO (antes de deduzir frete)
   el.dataset.brutoDigits = digits;
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
+// Retorna o valor LÍQUIDO por coco (bruto - frete/coco). Usado em preview e ao salvar.
 function _progGetValor() {
   const el = document.getElementById('prog-inp-valor');
-  return _progParseValor(el.dataset.digits || el.value);
+  const bruto = _progParseValor(el.dataset.brutoDigits || el.dataset.digits || el.value);
+  if (!bruto) return 0;
+  const freteEl = document.getElementById('prog-inp-frete');
+  const freteVal = freteEl ? _progParseValor(freteEl.dataset.digits || '') : 0;
+  if (!freteVal) return bruto;
+  let fretePorCoco = 0;
+  if (_progFreteMode === 'percoco') {
+    fretePorCoco = freteVal;
+  } else {
+    const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+    fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
+  }
+  return Math.max(0, bruto - fretePorCoco);
+}
+// Retorna o BRUTO digitado (sem dedução). Usado para decidir UI (mostrar campo frete, etc).
+function _progGetValorBruto() {
+  const el = document.getElementById('prog-inp-valor');
+  return _progParseValor(el.dataset.brutoDigits || el.dataset.digits || el.value);
 }
 
 // ── FRETE HELPERS ──
@@ -173,54 +192,56 @@ function _progToggleFreteMode() {
   _progAtualizarPreview();
 }
 
-// Auto-dedução: quando o usuário preenche o frete, o valor do coco exibido
-// passa a ser o LÍQUIDO (bruto - frete por coco). Só faz sentido em modo 'percoco'
-// ou em modo 'total' se houver qtde > 0 para calcular o frete por coco.
-// Se o frete for limpo, o valor volta ao bruto original.
+// Auto-dedução: o input do valor SEMPRE mostra o BRUTO. A nota abaixo
+// mostra o cálculo do líquido (bruto − frete/coco). _progGetValor retorna
+// o líquido para preview/save. Se o frete for limpo, a nota some.
 function _progAplicarDeducaoFrete() {
   const valorEl = document.getElementById('prog-inp-valor');
   const freteEl = document.getElementById('prog-inp-frete');
   const notaEl = document.getElementById('prog-valor-nota');
-  if (!valorEl || !freteEl) return;
+  if (!valorEl || !freteEl || !notaEl) return;
 
-  // Se ainda não há bruto registrado, considera o digits atual como bruto
-  if (valorEl.dataset.brutoDigits === undefined || valorEl.dataset.brutoDigits === '') {
-    valorEl.dataset.brutoDigits = valorEl.dataset.digits || '';
-  }
-  const brutoDigits = valorEl.dataset.brutoDigits || '';
-  const bruto = _progParseValor(brutoDigits);
-
+  const bruto = _progParseValor(valorEl.dataset.brutoDigits || valorEl.dataset.digits || '');
   const freteVal = _progParseValor(freteEl.dataset.digits || '');
 
-  // Calcular frete por coco conforme modo
-  let fretePorCoco = 0;
-  if (freteVal > 0) {
-    if (_progFreteMode === 'percoco') {
-      fretePorCoco = freteVal;
-    } else {
-      const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
-      fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
-    }
-  }
-
-  // Sem frete ou sem bruto: restaura valor bruto no display e oculta nota
-  if (fretePorCoco <= 0 || bruto <= 0) {
-    valorEl.dataset.digits = brutoDigits;
-    valorEl.value = _progFormatValor(brutoDigits);
-    if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
+  // Sem bruto ou sem frete: oculta nota
+  if (bruto <= 0 || freteVal <= 0) {
+    notaEl.style.display = 'none';
+    notaEl.textContent = '';
     return;
   }
 
-  // Aplicar dedução: valor exibido = bruto - frete por coco
-  const liquido = Math.max(0, bruto - fretePorCoco);
-  const liquidoDigits = String(Math.round(liquido * 100));
-  valorEl.dataset.digits = liquidoDigits;
-  valorEl.value = _progFormatValor(liquidoDigits);
-  if (notaEl) {
-    const fmt = (n) => n.toFixed(2).replace('.', ',');
-    notaEl.style.display = 'block';
-    notaEl.innerHTML = '🔻 Bruto R$ ' + fmt(bruto) + ' − frete R$ ' + fmt(fretePorCoco) + '/coco = <strong>R$ ' + fmt(liquido) + '/coco líquido</strong>';
+  // Calcular frete por coco conforme modo
+  let fretePorCoco = 0;
+  let avisoSemQtde = false;
+  if (_progFreteMode === 'percoco') {
+    fretePorCoco = freteVal;
+  } else {
+    const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+    if (qtde > 0) {
+      fretePorCoco = freteVal / qtde;
+    } else {
+      avisoSemQtde = true;
+    }
   }
+
+  // Modo 'total' sem qtde: mostra aviso explicativo em vez de silêncio
+  if (avisoSemQtde) {
+    notaEl.style.display = 'block';
+    notaEl.innerHTML = '⚠ Informe a quantidade de cocos para calcular o líquido (frete total ÷ qtde)';
+    return;
+  }
+
+  if (fretePorCoco <= 0) {
+    notaEl.style.display = 'none';
+    notaEl.textContent = '';
+    return;
+  }
+
+  const liquido = Math.max(0, bruto - fretePorCoco);
+  const fmt = (n) => n.toFixed(2).replace('.', ',');
+  notaEl.style.display = 'block';
+  notaEl.innerHTML = '🔻 Bruto R$ ' + fmt(bruto) + ' − frete R$ ' + fmt(fretePorCoco) + '/coco = <strong>R$ ' + fmt(liquido) + '/coco líquido</strong>';
 }
 
 // ── INIT ──
@@ -535,11 +556,17 @@ function abrirModalProgEditar(id) {
 
   document.getElementById('prog-inp-qtde').value = c.volume_cocos || '';
 
-  // Valor: converter para formato com vírgula
-  // Em edição, o valor salvo é tratado como BRUTO (sem dedução automática).
-  // Se o usuário quiser, pode editar o frete e a dedução é aplicada normalmente.
+  // Valor: o DB armazena o LÍQUIDO. Para mostrar o BRUTO no input em edição,
+  // somamos de volta o frete por coco (se houver). Assim, ao mexer no frete,
+  // a dedução é recalculada corretamente a partir do bruto original.
+  _progFreteMode = 'total';
   const valorEl = document.getElementById('prog-inp-valor');
-  const digits = _progValorToDigits(c.valor_por_coco);
+  let valorBruto = Number(c.valor_por_coco || 0);
+  if (valorBruto > 0 && c.frete_total && c.volume_cocos) {
+    const fretePorCoco = Number(c.frete_total) / Number(c.volume_cocos);
+    valorBruto = valorBruto + fretePorCoco;
+  }
+  const digits = _progValorToDigits(valorBruto);
   valorEl.dataset.digits = digits;
   valorEl.dataset.brutoDigits = digits;
   valorEl.value = _progFormatValor(digits);
@@ -547,7 +574,6 @@ function abrirModalProgEditar(id) {
   if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
 
   // Frete
-  _progFreteMode = 'total';
   const freteEl = document.getElementById('prog-inp-frete');
   const campoFrete = document.getElementById('prog-campo-frete');
   if (freteEl && c.frete_total) {
@@ -555,6 +581,8 @@ function abrirModalProgEditar(id) {
     freteEl.dataset.digits = fd;
     freteEl.value = _progFormatValor(fd);
     if (campoFrete) campoFrete.style.display = '';
+    // Aplica dedução para mostrar a nota explicativa imediatamente
+    _progAplicarDeducaoFrete();
   } else if (freteEl) {
     freteEl.value = ''; freteEl.dataset.digits = '';
     if (campoFrete) campoFrete.style.display = c.valor_por_coco ? '' : 'none';
@@ -836,9 +864,10 @@ function _progAtualizarPreview() {
     document.getElementById('prog-prev-frete').textContent = '+ R$ ' + fmtNum(Math.round(freteTotal));
     document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(totalNF));
   }
-  // Mostrar campo frete quando valor preenchido
+  // Mostrar campo frete quando valor BRUTO preenchido (não líquido — senão sumiria
+  // se o frete digitado for maior que o bruto)
   const campoFrete = document.getElementById('prog-campo-frete');
-  if (campoFrete) campoFrete.style.display = valor > 0 ? '' : 'none';
+  if (campoFrete) campoFrete.style.display = _progGetValorBruto() > 0 ? '' : 'none';
 }
 
 function progToggleObs() {
