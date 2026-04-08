@@ -15,6 +15,7 @@
   --verde:#1a5c1a; --verde2:#2a7a2a; --verde-bg:#e8f5e0;
   --amarelo:#e6a817; --amarelo-bg:#fff8e1;
   --vermelho:#c62828; --vermelho-bg:#ffebee;
+  --critico:#7c3aed; --critico-bg:#ede9fe; --critico-border:#a78bfa;
   --cinza:#6b7280; --borda:#c8cfd8; --bg:#f0f7ec;
   --branco:#fff; --texto:#1a1a1a; --muted:#6b7280;
 }
@@ -78,16 +79,26 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 
 /* Botao de eito — grande e claro */
 .eito-btn{background:var(--bg);border:3px solid var(--borda);border-radius:12px;padding:12px 8px;cursor:pointer;transition:all .1s;-webkit-tap-highlight-color:transparent;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.eito-btn:active{transform:scale(.94);background:var(--verde-bg)}
-.eito-btn.concluido{border-color:var(--verde);background:var(--verde-bg);position:relative}
+.eito-btn:active{transform:scale(.94);opacity:.85}
+/* Fundo do card inteiro pelo prazo */
+.eito-btn[data-prazo="verde"]{background:var(--verde-bg);border-color:var(--verde)}
+.eito-btn[data-prazo="amarelo"]{background:var(--amarelo-bg);border-color:var(--amarelo)}
+.eito-btn[data-prazo="vermelho"]{background:var(--vermelho-bg);border-color:var(--vermelho)}
+.eito-btn[data-prazo="critico"]{background:var(--critico-bg);border-color:var(--critico)}
+.eito-btn.concluido{border-color:var(--verde) !important;background:var(--verde) !important;position:relative}
+.eito-btn.concluido .eito-id,.eito-btn.concluido .eito-resultado,.eito-btn.concluido .eito-editar{color:#fff !important}
 .eito-editar{font-size:9px;color:var(--verde);font-weight:800;opacity:.7;text-transform:uppercase;letter-spacing:.5px}
-.eito-btn.programado{border-color:var(--amarelo);background:var(--amarelo-bg)}
+.eito-btn.programado{box-shadow:0 0 0 3px var(--amarelo)}
 .eito-id{font-size:17px;font-weight:900;color:var(--verde);line-height:1}
+.eito-btn[data-prazo="vermelho"] .eito-id{color:var(--vermelho)}
+.eito-btn[data-prazo="critico"] .eito-id{color:var(--critico)}
+.eito-btn[data-prazo="amarelo"] .eito-id{color:#a87617}
 .eito-check{font-size:16px;margin-top:2px}
-.eito-dias{font-size:11px;font-weight:800;margin-top:4px;padding:2px 8px;border-radius:6px}
-.dias-verde{background:var(--verde-bg);color:var(--verde)}
-.dias-amarelo{background:var(--amarelo-bg);color:var(--amarelo)}
-.dias-vermelho{background:var(--vermelho-bg);color:var(--vermelho)}
+.eito-dias{font-size:11px;font-weight:800;margin-top:4px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.7)}
+.dias-verde{color:var(--verde)}
+.dias-amarelo{color:#a87617}
+.dias-vermelho{color:var(--vermelho)}
+.dias-critico{color:var(--critico)}
 .eito-resultado{font-size:11px;color:var(--verde);font-weight:800;margin-top:2px}
 
 /* Secao programados */
@@ -351,9 +362,17 @@ function diasDesde(data) {
 }
 function diasClass(dias) {
   if (dias === null) return 'dias-vermelho';
+  if (dias >= 32) return 'dias-critico';
   if (dias >= 21) return 'dias-vermelho';
   if (dias >= 15) return 'dias-amarelo';
   return 'dias-verde';
+}
+function diasPrazo(dias) {
+  if (dias === null) return 'vermelho';
+  if (dias >= 32) return 'critico';
+  if (dias >= 21) return 'vermelho';
+  if (dias >= 15) return 'amarelo';
+  return 'verde';
 }
 function calcDataFromDias(dias) {
   if (dias == null) return null;
@@ -634,6 +653,7 @@ function criarEitoBtn(area, eito, isProgramado) {
 
   const div = document.createElement('div');
   div.className = 'eito-btn' + (feito ? ' concluido' : isProgramado ? ' programado' : '');
+  if (!feito) div.setAttribute('data-prazo', diasPrazo(dias));
   div.onclick = () => abrirContagem(area, eito);
 
   div.innerHTML = `
