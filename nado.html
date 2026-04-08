@@ -399,7 +399,6 @@ function fmtData() {
   return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 function fmtN(n) { return (n||0).toLocaleString('pt-BR'); }
-function gVal(id) { if (id==='inp-mesa') return _valMesa; if (id==='inp-fabrica') return _valFabrica; return 0; }
 function diasDesde(data) {
   if (!data) return null;
   const d = new Date(data+'T00:00:00'), h = new Date(); h.setHours(0,0,0,0);
@@ -418,12 +417,6 @@ function diasPrazo(dias) {
   if (dias >= 21) return 'vermelho';
   if (dias >= 15) return 'amarelo';
   return 'verde';
-}
-function calcDataFromDias(dias) {
-  if (dias == null) return null;
-  const d = new Date(); d.setHours(0,0,0,0);
-  d.setDate(d.getDate() - dias);
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function chaveEito(area, id) { return area + '||' + id; }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -535,8 +528,13 @@ async function enviarFila() {
 
 async function tentarSync() {
   if (!navigator.onLine) { toast('Sem conexao'); return; }
-  await enviarFila();
-  atualizarSyncStatus();
+  // Sincroniza tudo: eitos, colheitas, programação E envia fila pendente
+  await sincronizarDados();
+  // Re-renderiza para refletir possíveis novos eitos/colheitas
+  renderLista();
+  addBtnResumo();
+  // Atualiza status da tela de revisão (se estiver aberta)
+  if (document.getElementById('sync-status')) atualizarSyncStatus();
 }
 
 // ── CARREGAR CACHE LOCAL ──
@@ -1056,9 +1054,25 @@ setInterval(() => {
   if (navigator.onLine && filaEnvio.length > 0) enviarFila().catch(() => {});
 }, 30000);
 
-// Service Worker
+// Service Worker — registra e detecta atualizações
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Detecta nova versão do SW
+    reg.addEventListener('updatefound', () => {
+      const novo = reg.installing;
+      if (!novo) return;
+      novo.addEventListener('statechange', () => {
+        if (novo.state === 'installed' && navigator.serviceWorker.controller) {
+          // Há uma nova versão pronta — avisa o usuário (sem forçar reload)
+          toast('Nova versão disponível. Recarregue para atualizar.');
+        }
+      });
+    });
+    // Verifica atualização ao voltar do background
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  }).catch(() => {});
 }
 </script>
 </body>
