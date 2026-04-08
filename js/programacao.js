@@ -133,6 +133,9 @@ function _progOnValorInput(el) {
   const digits = el.value.replace(/\D/g, '');
   el.value = _progFormatValor(digits);
   el.dataset.digits = digits;
+  // Marca o que o usuário acabou de digitar como valor BRUTO (antes de deduzir frete)
+  el.dataset.brutoDigits = digits;
+  _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
 function _progGetValor() {
@@ -145,6 +148,7 @@ function _progOnFreteInput(el) {
   const digits = el.value.replace(/\D/g, '');
   el.value = _progFormatValor(digits);
   el.dataset.digits = digits;
+  _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
 function _progGetFreteInput() {
@@ -165,7 +169,58 @@ function _progToggleFreteMode() {
   _progFreteMode = _progFreteMode === 'total' ? 'percoco' : 'total';
   document.getElementById('prog-frete-unit').textContent = _progFreteMode === 'total' ? 'R$ total' : 'R$/coco';
   document.getElementById('prog-frete-toggle').textContent = _progFreteMode === 'total' ? '⇄ R$/coco' : '⇄ R$ total';
+  _progAplicarDeducaoFrete();
   _progAtualizarPreview();
+}
+
+// Auto-dedução: quando o usuário preenche o frete, o valor do coco exibido
+// passa a ser o LÍQUIDO (bruto - frete por coco). Só faz sentido em modo 'percoco'
+// ou em modo 'total' se houver qtde > 0 para calcular o frete por coco.
+// Se o frete for limpo, o valor volta ao bruto original.
+function _progAplicarDeducaoFrete() {
+  const valorEl = document.getElementById('prog-inp-valor');
+  const freteEl = document.getElementById('prog-inp-frete');
+  const notaEl = document.getElementById('prog-valor-nota');
+  if (!valorEl || !freteEl) return;
+
+  // Se ainda não há bruto registrado, considera o digits atual como bruto
+  if (valorEl.dataset.brutoDigits === undefined || valorEl.dataset.brutoDigits === '') {
+    valorEl.dataset.brutoDigits = valorEl.dataset.digits || '';
+  }
+  const brutoDigits = valorEl.dataset.brutoDigits || '';
+  const bruto = _progParseValor(brutoDigits);
+
+  const freteVal = _progParseValor(freteEl.dataset.digits || '');
+
+  // Calcular frete por coco conforme modo
+  let fretePorCoco = 0;
+  if (freteVal > 0) {
+    if (_progFreteMode === 'percoco') {
+      fretePorCoco = freteVal;
+    } else {
+      const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+      fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
+    }
+  }
+
+  // Sem frete ou sem bruto: restaura valor bruto no display e oculta nota
+  if (fretePorCoco <= 0 || bruto <= 0) {
+    valorEl.dataset.digits = brutoDigits;
+    valorEl.value = _progFormatValor(brutoDigits);
+    if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
+    return;
+  }
+
+  // Aplicar dedução: valor exibido = bruto - frete por coco
+  const liquido = Math.max(0, bruto - fretePorCoco);
+  const liquidoDigits = String(Math.round(liquido * 100));
+  valorEl.dataset.digits = liquidoDigits;
+  valorEl.value = _progFormatValor(liquidoDigits);
+  if (notaEl) {
+    const fmt = (n) => n.toFixed(2).replace('.', ',');
+    notaEl.style.display = 'block';
+    notaEl.innerHTML = '🔻 Bruto R$ ' + fmt(bruto) + ' − frete R$ ' + fmt(fretePorCoco) + '/coco = <strong>R$ ' + fmt(liquido) + '/coco líquido</strong>';
+  }
 }
 
 // ── INIT ──
@@ -427,6 +482,9 @@ function abrirModalProg() {
   const valorEl = document.getElementById('prog-inp-valor');
   valorEl.value = '';
   valorEl.dataset.digits = '';
+  valorEl.dataset.brutoDigits = '';
+  const notaEl = document.getElementById('prog-valor-nota');
+  if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
   document.getElementById('prog-inp-obs').value = '';
   document.getElementById('prog-inp-obs').style.display = 'none';
   document.getElementById('prog-inp-motorista').value = '';
@@ -478,10 +536,15 @@ function abrirModalProgEditar(id) {
   document.getElementById('prog-inp-qtde').value = c.volume_cocos || '';
 
   // Valor: converter para formato com vírgula
+  // Em edição, o valor salvo é tratado como BRUTO (sem dedução automática).
+  // Se o usuário quiser, pode editar o frete e a dedução é aplicada normalmente.
   const valorEl = document.getElementById('prog-inp-valor');
   const digits = _progValorToDigits(c.valor_por_coco);
   valorEl.dataset.digits = digits;
+  valorEl.dataset.brutoDigits = digits;
   valorEl.value = _progFormatValor(digits);
+  const notaEl = document.getElementById('prog-valor-nota');
+  if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
 
   // Frete
   _progFreteMode = 'total';
