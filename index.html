@@ -185,7 +185,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
       <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DE COCO DO CAMPO</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <span id="nado-badge-prog" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ecfdf5;color:#047857;display:none">0 programados</span>
+        <span id="nado-badge-prog" onclick="abrirPrepararDia()" title="Clique para gerenciar a programação" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ecfdf5;color:#047857;display:none;cursor:pointer">0 programados</span>
         <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
       </div>
     </div>
@@ -246,7 +246,7 @@
       <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
         <div>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Data</div>
-          <input type="date" id="nado-prep-data" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:13px">
+          <input type="date" id="nado-prep-data" onchange="recarregarPrepLista()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:13px">
         </div>
         <button class="btn btn-outline" onclick="selecionarUrgentesNado()" style="font-size:12px">Selecionar urgentes (21+d)</button>
         <button class="btn btn-outline" onclick="limparSelecaoNado()" style="font-size:12px">Limpar</button>
@@ -255,8 +255,9 @@
       <div style="font-size:10px;color:var(--muted);margin-bottom:12px;font-style:italic">Nado pode contar qualquer eito — esta lista e uma sugestao.</div>
       <div id="nado-prep-lista" style="max-height:400px;overflow-y:auto"></div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-outline" onclick="closeModal('modal-preparar-nado')">Cancelar</button>
+      <button class="btn btn-outline" onclick="limparProgramacaoNadoUI()" style="border-color:#dc2626;color:#dc2626">🗑 Limpar programação do dia</button>
       <button class="btn btn-primary" onclick="salvarProgramacaoNadoUI()">Confirmar programacao</button>
     </div>
   </div>

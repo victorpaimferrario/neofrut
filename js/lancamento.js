@@ -806,11 +806,44 @@ function copiarLinkCampo() {
 
 // ── PREPARAR DIA ──
 
-function abrirPrepararDia() {
+async function abrirPrepararDia() {
   _nadoSelPrep = new Set();
-  document.getElementById('nado-prep-data').value = today();
-  renderPrepLista();
+  const dataInp = document.getElementById('nado-prep-data');
+  dataInp.value = today();
+  // Pré-carrega sugeridos existentes para que Jamille veja o que já está programado
+  // (seleção fica marcada automaticamente — pode desmarcar para remover)
   document.getElementById('modal-preparar-nado').classList.add('open');
+  renderPrepLista(); // render inicial vazio
+  try {
+    const existentes = await loadProgramacaoNado(dataInp.value, true);
+    existentes.forEach(p => _nadoSelPrep.add(p.area + '||' + p.eito_id));
+    renderPrepLista();
+  } catch(e) { console.warn('Não carregou programação existente:', e); }
+}
+
+async function recarregarPrepLista() {
+  // Quando muda a data no input, recarrega os sugeridos daquele dia
+  _nadoSelPrep = new Set();
+  renderPrepLista();
+  const data = document.getElementById('nado-prep-data').value;
+  if (!data) return;
+  try {
+    const existentes = await loadProgramacaoNado(data, true);
+    existentes.forEach(p => _nadoSelPrep.add(p.area + '||' + p.eito_id));
+    renderPrepLista();
+  } catch(e) {}
+}
+
+async function limparProgramacaoNadoUI() {
+  const data = document.getElementById('nado-prep-data').value;
+  if (!data) { showToast('Informe a data'); return; }
+  if (!confirm('Limpar TODA a programação do dia ' + data + '?\nO Nado deixará de ver eitos sugeridos para esta data.')) return;
+  const ok = await limparProgramacaoNado(data);
+  if (ok) {
+    showToast('✓ Programação limpa');
+    closeModal('modal-preparar-nado');
+    renderNadoCard();
+  }
 }
 
 function renderPrepLista() {
@@ -898,6 +931,7 @@ async function salvarProgramacaoNadoUI() {
   });
   await salvarProgramacaoNado(data, eitos);
   closeModal('modal-preparar-nado');
+  renderNadoCard(); // atualiza o badge de "X programados hoje"
 }
 
 // ── VALIDAR CONTAGENS ──

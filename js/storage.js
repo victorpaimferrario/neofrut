@@ -293,6 +293,12 @@ async function loadProgramacaoNado(data, onlySugeridos = false) {
   return rows || [];
 }
 
+async function limparProgramacaoNado(data) {
+  const { error } = await _SB.from('nado_programacao').delete().eq('data', data);
+  if (error) { console.error('Erro ao limpar programação:', error); showToast('⚠ Erro ao limpar programação'); return false; }
+  return true;
+}
+
 async function loadContagemsNado(status) {
   const { data: rows, error } = await _SB.from('nado_contagens').select('*').eq('status', status || 'pendente').order('data', { ascending: false });
   if (error) { console.error('Erro ao carregar contagens:', error); return []; }
