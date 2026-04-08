@@ -1010,6 +1010,16 @@ function editarVenda(id){
     }).join('')+'<div class="av-wrap"><div class="av-label">TOTAL</div><input type="number" id="eva-total" class="av-inp filled" value="'+(v.qtde||'')+'" readonly style="font-weight:700"></div>'
     +'<div class="av-wrap"><div class="av-label" style="color:var(--amarelo)">QUEBRA</div><input type="number" id="eva-quebra" class="av-inp'+(quebraVal?' filled':'')+'" value="'+quebraVal+'" min="0" style="font-weight:700;color:var(--amarelo)" oninput="calcEditVenda()"></div>';
   }
+  // BLOCO FÁBRICA: aparece se cliente é fábrica ou venda já tem litragem registrada
+  const mapaCli = (typeof getMapaClientes === 'function') ? getMapaClientes() : {};
+  const isFab = !!mapaCli[v.cliente]?.fabrica;
+  const temLitro = v.tipoVenda === 'litro' || (v.litragem != null && v.litragem > 0);
+  const blocoFab = document.getElementById('ev-bloco-fabrica');
+  if (blocoFab) {
+    blocoFab.style.display = (isFab || temLitro) ? '' : 'none';
+    set('ev-litragem', v.litragem || '');
+    set('ev-peso', v.pesoKg || '');
+  }
   // sub
   const [y,m,d]=(v.data||'').split('-');
   document.getElementById('ev-sub').textContent=v.cliente+' · '+(d?d+'/'+m+'/'+y:'');
@@ -1065,6 +1075,21 @@ function calcEditVenda(){
   if(el2)el2.textContent=q>0&&t>0?'R$ '+((t-f)/q).toFixed(2):'—';
   const r=document.getElementById('ev-recebido');
   if(r&&t>0)r.value=(t-f).toFixed(2);
+  // Cálculos do bloco fábrica (R$/L e L/coco a partir da litragem informada)
+  const fcEl=document.getElementById('ev-fab-calc');
+  if(fcEl){
+    const lit=parseFloat(document.getElementById('ev-litragem')?.value)||0;
+    if(lit>0){
+      const liquido=t-f;
+      const vl=liquido/lit;
+      const lpc=q>0?lit/q:0;
+      fcEl.innerHTML='<strong>R$ '+vl.toFixed(4)+'/L</strong>'
+        +(lpc>0?' · <strong>'+lpc.toFixed(2)+' L/coco</strong>':'')
+        +'<br><span style="font-size:10px">(R$/L = (total − frete) ÷ litragem)</span>';
+    }else{
+      fcEl.innerHTML='<span style="font-size:10px;font-style:italic">Informe a litragem que a fábrica enviou para calcular R$/L e L/coco</span>';
+    }
+  }
 }
 
 let _salvandoEditVenda = false;
@@ -1104,6 +1129,22 @@ async function salvarEditVenda(){
   const areas={};
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const val=parseInt(document.getElementById('eva-'+a)?.value)||0;if(val>0)areas[a]=val;});
   v.areas=areas;
+  // Dados de fábrica (litragem, peso, R$/L). Se a litragem foi informada,
+  // marca a venda como tipo 'litro' e calcula vPorLitro automaticamente.
+  const litragemEdit=parseFloat(document.getElementById('ev-litragem')?.value)||0;
+  const pesoEdit=parseFloat(document.getElementById('ev-peso')?.value)||0;
+  if(litragemEdit>0){
+    v.litragem=litragemEdit;
+    v.pesoKg=pesoEdit||null;
+    v.tipoVenda='litro';
+    v.vPorLitro=(v.total-(v.frete||0))/litragemEdit;
+  }else{
+    // Se o usuário limpou a litragem, remove os campos derivados
+    v.litragem=null;
+    v.pesoKg=pesoEdit||null;
+    v.vPorLitro=null;
+    if(v.tipoVenda==='litro')v.tipoVenda='coco';
+  }
   saveVendas(db);
   await salvarVendaSupabase(v);
   closeEditVendaPanel();
