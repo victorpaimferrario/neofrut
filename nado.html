@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Neofrut Campo</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1a5c1a">
@@ -20,10 +20,28 @@
   --branco:#fff; --texto:#1a1a1a; --muted:#6b7280;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;max-width:430px;margin:0 auto;padding-bottom:40px;-webkit-user-select:none;user-select:none}
+html,body{height:100%}
+body{
+  font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);color:var(--texto);
+  min-height:100vh;
+  min-height:100dvh;
+  max-width:430px;margin:0 auto;
+  padding-bottom:calc(40px + env(safe-area-inset-bottom, 0px));
+  padding-left:env(safe-area-inset-left, 0px);
+  padding-right:env(safe-area-inset-right, 0px);
+  -webkit-user-select:none;user-select:none;
+  overscroll-behavior-y:contain;
+}
 
-/* TOPO — compacto */
-.topo{background:var(--verde);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+/* TOPO — compacto + safe-area */
+.topo{
+  background:var(--verde);color:#fff;
+  padding:10px 16px;
+  padding-top:calc(10px + env(safe-area-inset-top, 0px));
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
 .topo-logo{font-size:15px;font-weight:900}
 .topo-data{font-size:10px;opacity:.7;margin-top:1px}
 .sync-badge{font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;display:flex;align-items:center;gap:5px}
@@ -108,7 +126,15 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .prog-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 
 /* ════════ TELA CONTAGEM ════════ */
-#tela-contagem{display:none;padding:8px 10px;min-height:100vh;flex-direction:column}
+#tela-contagem{
+  display:none;
+  padding:8px 10px;
+  padding-top:calc(8px + env(safe-area-inset-top, 0px));
+  padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  min-height:100vh;
+  min-height:100dvh;
+  flex-direction:column;
+}
 .eito-header{background:var(--verde);color:#fff;border-radius:12px;padding:10px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .eito-header-area{font-size:11px;opacity:.8;text-transform:uppercase;font-weight:700}
 .eito-header-id{font-size:26px;font-weight:900;line-height:1}
@@ -173,11 +199,29 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 @keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 .pop{animation:pop .3s ease forwards}
 
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--verde);color:#fff;padding:14px 28px;border-radius:14px;font-size:16px;font-weight:800;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast{
+  position:fixed;
+  bottom:calc(30px + env(safe-area-inset-bottom, 0px));
+  left:50%;transform:translateX(-50%);
+  background:var(--verde);color:#fff;
+  padding:14px 28px;border-radius:14px;
+  font-size:16px;font-weight:800;
+  opacity:0;transition:opacity .3s;
+  pointer-events:none;z-index:999;
+  max-width:calc(100vw - 32px);
+  text-align:center;
+}
 .toast.show{opacity:1}
 
 /* ════════ TELA REVISÃO ════════ */
-#tela-revisao{display:none;padding:16px;min-height:100vh}
+#tela-revisao{
+  display:none;
+  padding:16px;
+  padding-top:calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom:calc(16px + env(safe-area-inset-bottom, 0px));
+  min-height:100vh;
+  min-height:100dvh;
+}
 .revisao-titulo{text-align:center;font-size:20px;font-weight:900;color:var(--verde);margin-bottom:16px}
 .revisao-card{background:var(--branco);border:3px solid var(--verde);border-radius:16px;padding:18px;margin-bottom:14px}
 .revisao-area{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase}
@@ -195,7 +239,8 @@ body{font-family:-apple-system,system-ui,'Helvetica Neue',Arial,sans-serif;backg
 .obs-campo{display:none;background:var(--branco);border:3px solid var(--borda);border-radius:14px;padding:8px 10px}
 .obs-campo.aberto{display:block}
 .obs-campo label{font-size:13px;font-weight:800;color:var(--texto);text-transform:uppercase;margin-bottom:4px;display:block}
-.obs-campo textarea{width:100%;border:none;outline:none;font-size:15px;font-family:inherit;color:var(--texto);resize:none;min-height:60px;background:transparent;-webkit-user-select:text;user-select:text}
+/* font-size 16px é obrigatório para evitar zoom automático no iOS Safari ao focar */
+.obs-campo textarea{width:100%;border:none;outline:none;font-size:16px;font-family:inherit;color:var(--texto);resize:none;min-height:60px;background:transparent;-webkit-user-select:text;user-select:text}
 
 /* ════════ RASCUNHO BANNER ════════ */
 .rascunho-banner{display:none;background:var(--amarelo-bg);border:2px solid var(--amarelo);border-radius:12px;margin:10px 12px;padding:12px 14px;text-align:center}
