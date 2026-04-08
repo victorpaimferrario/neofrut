@@ -44,7 +44,8 @@ body{
 }
 .topo-logo{font-size:15px;font-weight:900}
 .topo-data{font-size:10px;opacity:.7;margin-top:1px}
-.sync-badge{font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;display:flex;align-items:center;gap:5px}
+.sync-badge{font-size:11px;font-weight:800;padding:5px 12px;border-radius:20px;display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+.sync-badge:active{transform:scale(.94);opacity:.85}
 .sync-badge.offline{background:rgba(255,255,255,.15);color:#fff}
 .sync-badge.online{background:#22c55e;color:#fff}
 .sync-badge.enviado{background:#3b82f6;color:#fff}
@@ -263,7 +264,7 @@ body{
       <div class="topo-data" id="topo-data"></div>
     </div>
   </div>
-  <div class="sync-badge offline" id="sync-badge">SEM SINAL</div>
+  <div class="sync-badge offline" id="sync-badge" onclick="syncManual()" title="Tocar para sincronizar com o escritório">SEM SINAL</div>
 </div>
 
 <div class="progress-wrap" id="progress-wrap" style="display:none">
@@ -458,18 +459,18 @@ async function sincronizarDados() {
       }
     } catch(e) { console.warn('Falha ao carregar colheitas:', e); }
 
-    // 3. Carregar sugestões da Jamille (opcional — Nado funciona sem isso)
+    // 3. Carregar sugestões da Jamille para HOJE (opcional — Nado funciona sem isso).
+    // ANTES o código pegava a "data mais recente" do banco e filtrava por ela. Bug:
+    // se Jamille deletou a programação de hoje, ele encontrava ontem e mostrava os
+    // sugeridos antigos como se fossem de hoje.
     programados = [];
     try {
-      const { data: progAll } = await _SB.from('nado_programacao')
-        .select('area,eito_id,sugerido,data')
-        .order('data', { ascending: false })
-        .limit(200);
-      if (progAll && progAll.length > 0) {
-        const dataRecente = progAll[0].data;
-        progAll.filter(p => p.data === dataRecente && p.sugerido).forEach(e => {
-          programados.push({ area: e.area, eito_id: e.eito_id });
-        });
+      const { data: progHoje } = await _SB.from('nado_programacao')
+        .select('area,eito_id')
+        .eq('data', hoje())
+        .eq('sugerido', true);
+      if (progHoje && progHoje.length > 0) {
+        progHoje.forEach(e => programados.push({ area: e.area, eito_id: e.eito_id }));
       }
     } catch(e) {} // Sem sugestões, Nado vê todos os eitos normalmente
     localStorage.setItem(SK_PROG, JSON.stringify({ data: hoje(), items: programados }));
@@ -538,6 +539,31 @@ async function tentarSync() {
   if (document.getElementById('sync-status')) atualizarSyncStatus();
 }
 
+// Sync manual disparado pelo usuário (botão/badge no topo).
+// Mostra feedback claro: "sincronizando" → "atualizado" / "sem sinal".
+let _syncManualEmAndamento = false;
+async function syncManual() {
+  if (_syncManualEmAndamento) return;
+  _syncManualEmAndamento = true;
+  try {
+    if (!navigator.onLine) { toast('Sem conexão — tente perto do escritório'); return; }
+    const tinhaPendentes = filaEnvio.length;
+    await sincronizarDados();
+    renderLista();
+    addBtnResumo();
+    if (document.getElementById('sync-status')) atualizarSyncStatus();
+    if (tinhaPendentes > 0 && filaEnvio.length === 0) {
+      toast('✓ ' + tinhaPendentes + ' eito(s) enviados ao escritório');
+    } else if (filaEnvio.length > 0) {
+      toast('⚠ ' + filaEnvio.length + ' eito(s) ainda aguardando — tente de novo');
+    } else {
+      toast('✓ Atualizado');
+    }
+  } finally {
+    _syncManualEmAndamento = false;
+  }
+}
+
 // ── CARREGAR CACHE LOCAL ──
 function carregarCache() {
   try { todosEitos = JSON.parse(localStorage.getItem(SK_EITOS)) || {}; } catch(e) {}
@@ -547,10 +573,16 @@ function carregarCache() {
     programados = (p && p.data === hoje()) ? p.items : [];
   } catch(e) { programados = []; }
   try { resultados = JSON.parse(localStorage.getItem(SK_RESULTADOS)) || {}; } catch(e) { resultados = {}; }
-  // Limpar resultados de outros dias
-  const h = hoje();
-  Object.keys(resultados).forEach(k => { if (resultados[k].data !== h) delete resultados[k]; });
   try { filaEnvio = JSON.parse(localStorage.getItem(SK_FILA)) || []; } catch(e) { filaEnvio = []; }
+  // ANTI-PERDA: só remove resultados de outros dias se JÁ foram sincronizados.
+  // Se ainda estão na fila de envio, preserva — virada de meia-noite no campo
+  // não pode causar perda de contagens não enviadas.
+  const h = hoje();
+  const filaKeys = new Set(filaEnvio.map(r => chaveEito(r.area, r.id)));
+  Object.keys(resultados).forEach(k => {
+    if (resultados[k].data !== h && !filaKeys.has(k)) delete resultados[k];
+  });
+  salvarResultados();
 }
 
 function salvarResultados() {
@@ -1057,10 +1089,33 @@ atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
 // Sync ao iniciar
 if (navigator.onLine) sincronizarDados().then(() => { renderLista(); addBtnResumo(); });
 
-// Retry a cada 30s
+// Retry a cada 30s para enviar fila pendente quando online
 setInterval(() => {
   if (navigator.onLine && filaEnvio.length > 0) enviarFila().catch(() => {});
 }, 30000);
+
+// Auto-refresh quando o app volta ao foco (Nado abriu, pôs o celular no bolso,
+// e voltou — se tem internet, atualiza programação/colheitas e tenta enviar)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!navigator.onLine) return;
+  sincronizarDados().then(() => { renderLista(); addBtnResumo(); }).catch(() => {});
+});
+
+// Quando ganha conexão (saiu do campo, chegou no Wi-Fi), sincroniza tudo
+window.addEventListener('online', () => {
+  atualizarSyncBadge('online');
+  sincronizarDados().then(() => {
+    renderLista();
+    addBtnResumo();
+    if (filaEnvio.length === 0 && Object.keys(resultados).length > 0) {
+      toast('✓ Dados enviados ao escritório');
+    }
+  }).catch(() => {});
+});
+window.addEventListener('offline', () => {
+  atualizarSyncBadge('offline');
+});
 
 // Service Worker — registra e detecta atualizações
 if ('serviceWorker' in navigator) {
