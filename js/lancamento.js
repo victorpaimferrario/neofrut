@@ -755,10 +755,19 @@ async function renderNadoCard() {
   if (!card) return;
   card.style.display = 'block';
 
+  // Carregar pendentes (contagens já feitas pelo Nado) e programados (sugeridos hoje)
+  // em paralelo para reduzir latência percebida
+  let progSugeridos = [];
   try {
-    _nadoPendentes = await loadContagemsNado('pendente');
-  } catch(e) { _nadoPendentes = []; }
+    [_nadoPendentes, progSugeridos] = await Promise.all([
+      loadContagemsNado('pendente').catch(() => []),
+      loadProgramacaoNado(today(), true).catch(() => [])
+    ]);
+  } catch(e) {
+    _nadoPendentes = []; progSugeridos = [];
+  }
 
+  // Badge de pendentes (eitos contados, aguardando validação)
   const badge = document.getElementById('nado-badge');
   const btnPend = document.getElementById('nado-btn-pendentes');
   if (_nadoPendentes.length > 0) {
@@ -768,6 +777,20 @@ async function renderNadoCard() {
   } else {
     badge.style.display = 'none';
     btnPend.style.display = 'none';
+  }
+
+  // Badge de programados (eitos sugeridos para hoje, ainda não contados)
+  const badgeProg = document.getElementById('nado-badge-prog');
+  if (badgeProg) {
+    // Filtra: só conta como "programado" se o eito ainda não tem contagem pendente
+    const pendKeys = new Set(_nadoPendentes.map(p => p.area + '||' + p.eito_id));
+    const aindaNaoContados = progSugeridos.filter(p => !pendKeys.has(p.area + '||' + p.eito_id));
+    if (aindaNaoContados.length > 0) {
+      badgeProg.style.display = 'inline';
+      badgeProg.textContent = aindaNaoContados.length + ' programado' + (aindaNaoContados.length > 1 ? 's' : '') + ' hoje';
+    } else {
+      badgeProg.style.display = 'none';
+    }
   }
 }
 

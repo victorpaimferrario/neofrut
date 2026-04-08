@@ -285,8 +285,10 @@ async function salvarProgramacaoNado(data, eitos) {
   showToast('✓ Programação salva');
 }
 
-async function loadProgramacaoNado(data) {
-  const { data: rows, error } = await _SB.from('nado_programacao').select('area,eito_id,plantas').eq('data', data);
+async function loadProgramacaoNado(data, onlySugeridos = false) {
+  let q = _SB.from('nado_programacao').select('area,eito_id,plantas,sugerido,dias_desde').eq('data', data);
+  if (onlySugeridos) q = q.eq('sugerido', true);
+  const { data: rows, error } = await q;
   if (error) { console.error('Erro ao carregar programação:', error); return []; }
   return rows || [];
 }

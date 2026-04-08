@@ -184,7 +184,10 @@
   <div id="nado-card" style="background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:14px;margin-bottom:20px;display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px">
       <div style="font-size:14px;font-weight:800;color:var(--verde)">CONTAGEM DE COCO DO CAMPO</div>
-      <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span id="nado-badge-prog" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#ecfdf5;color:#047857;display:none">0 programados</span>
+        <span id="nado-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#fffbeb;color:#d97706;display:none">0 pendentes</span>
+      </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-outline" onclick="abrirPrepararDia()">Preparar dia</button>
