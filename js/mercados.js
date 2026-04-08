@@ -343,47 +343,84 @@ function renderOportunidades(){
 }
 
 // ── CLIMA ──
+// Cidades customizadas (adicionadas pelo usuário) — persistidas em localStorage
+const SK_CIDADES_CLIMA_CUSTOM = 'neofrut_cidades_clima_custom_v1';
+function loadCidadesClimaCustom(){
+  try { return JSON.parse(localStorage.getItem(SK_CIDADES_CLIMA_CUSTOM) || '[]'); }
+  catch(e) { return []; }
+}
+function saveCidadesClimaCustom(arr){
+  localStorage.setItem(SK_CIDADES_CLIMA_CUSTOM, JSON.stringify(arr));
+}
+function getCidadesClima(){
+  // Mescla cidades padrão (config.js) + customizadas (localStorage)
+  const custom = loadCidadesClimaCustom();
+  return CIDADES_CLIMA.concat(custom);
+}
 function fmtDia(s){const d=new Date(s+'T12:00:00');return DIAS_PT[d.getDay()]+' '+d.getDate()+'/'+MESES_PT[d.getMonth()];}
 function wcEmoji(wc){if(wc<=1)return'☀️';if(wc<=3)return'🌤️';if(wc<=48)return'☁️';if(wc<=67)return'🌧️';if(wc<=77)return'❄️';return'⛈️';}
 function wcDesc(wc){if(wc<=1)return'Sol aberto';if(wc<=3)return'Nublado';if(wc<=48)return'Névoa';if(wc<=57)return'Garoa';if(wc<=67)return'Chuva';return'Tempestade';}
 function temChuva(wc){return wc>=51;}
+
+// Cache persistente em localStorage (sobrevive recarregamento)
+const SK_CLIMA_CACHE = 'neofrut_clima_cache_v1';
+function _loadClimaCachePersistente(){
+  try {
+    const raw = localStorage.getItem(SK_CLIMA_CACHE);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    Object.keys(obj).forEach(k => {
+      if (!_dadosClima[k]) _dadosClima[k] = obj[k];
+    });
+  } catch(e) { console.warn('clima cache load:', e.message); }
+}
+function _saveClimaCachePersistente(){
+  try { localStorage.setItem(SK_CLIMA_CACHE, JSON.stringify(_dadosClima)); }
+  catch(e) { console.warn('clima cache save:', e.message); }
+}
 
 async function carregarClima(){
   const grid=document.getElementById('clima-grid');
   const alertaEl=document.getElementById('alerta');
   const alertaTxt=document.getElementById('alerta-txt');
   const cidadesChuva=[];
+  // Carregar cache persistente do localStorage na primeira chamada
+  _loadClimaCachePersistente();
+  const cidades = getCidadesClima();
   // Se já tem dados em cache, renderizar imediatamente
-  const temCache=Object.keys(_dadosClima).length>=CIDADES_CLIMA.length;
+  const temCache=Object.keys(_dadosClima).length>=cidades.length;
   if(!temCache&&grid) grid.innerHTML='<div style="grid-column:1/-1;padding:20px;color:var(--muted);font-size:13px;text-align:center">⏳ Carregando previsão do tempo...</div>';
-  const resultados=await Promise.all(CIDADES_CLIMA.map(async c=>{
+  const resultados=await Promise.all(cidades.map(async c=>{
     try{
       // Usar cache se disponível e recente (menos de 30min)
       if(_dadosClima[c.nome]&&_dadosClima[c.nome]._ts&&Date.now()-_dadosClima[c.nome]._ts<1800000){
         const cached=_dadosClima[c.nome];
         const chegadaRuim=c.chegada.some(i=>cached.dias[i]?.chuva);
         if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
-        return{c,dias:cached.dias,chegadaRuim,ok:true};
+        return{c,dias:cached.dias,chegadaRuim,ok:true,stale:false};
       }
       const url='https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon
         +'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum'
         +'&timezone=America%2FSao_Paulo&forecast_days=16';
       let resp;
-      for(let tentativa=0;tentativa<2;tentativa++){
+      let lastErr = null;
+      for(let tentativa=0;tentativa<3;tentativa++){
         const ctrl = new AbortController();
-        const tid = setTimeout(()=>ctrl.abort(), 10000);
+        const tid = setTimeout(()=>ctrl.abort(), 15000);
         try{
-          resp = await fetch(url, {signal:ctrl.signal});
+          resp = await fetch(url, {signal:ctrl.signal, cache:'no-store'});
           clearTimeout(tid);
           if(resp&&resp.ok) break;
+          lastErr = new Error('HTTP '+(resp?resp.status:'?'));
         }catch(e){
           clearTimeout(tid);
-          if(tentativa===1) throw e;
-          await new Promise(r=>setTimeout(r,500));
+          lastErr = e;
         }
+        if (tentativa < 2) await new Promise(r=>setTimeout(r, 600 * (tentativa+1)));
       }
-      if(!resp||!resp.ok) throw new Error('HTTP '+(resp?resp.status:'timeout'));
+      if(!resp||!resp.ok) throw lastErr || new Error('falha');
       const d=await resp.json();const dl=d.daily;
+      if(!dl||!dl.time||!dl.time.length) throw new Error('payload vazio');
       const dias=dl.time.map((dt,i)=>({
         data:fmtDia(dt),wc:dl.weathercode[i],
         tmax:Math.round(dl.temperature_2m_max[i]),
@@ -394,14 +431,32 @@ async function carregarClima(){
       _dadosClima[c.nome]={cidade:c,dias,_ts:Date.now()};
       const chegadaRuim=c.chegada.some(i=>dias[i]?.chuva);
       if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
-      return{c,dias,chegadaRuim,ok:true};
-    }catch(e){console.warn(c.nome,e.message);return{c,dias:null,chegadaRuim:false,ok:false};}
+      return{c,dias,chegadaRuim,ok:true,stale:false};
+    }catch(e){
+      console.warn('clima',c.nome,e.message);
+      // Fallback: usar cache antigo (mesmo se >30min) para não exibir "Sem dados"
+      if(_dadosClima[c.nome] && _dadosClima[c.nome].dias){
+        const cached=_dadosClima[c.nome];
+        const chegadaRuim=c.chegada.some(i=>cached.dias[i]?.chuva);
+        if(chegadaRuim)cidadesChuva.push(c.nome+'/'+c.uf);
+        return{c,dias:cached.dias,chegadaRuim,ok:true,stale:true};
+      }
+      return{c,dias:null,chegadaRuim:false,ok:false,stale:false};
+    }
   }));
+  // Salvar cache persistente após bateria de fetches
+  _saveClimaCachePersistente();
   grid.innerHTML='';
   resultados.forEach(r=>{
     const card=document.createElement('div');
     card.className='clima-card'+(r.chegadaRuim?' ruim':(!r.dias||!r.dias[0]||r.dias[0].chuva||r.dias[0].tmax<28)?'':' otimo');
-    if(!r.ok||!r.dias||!r.dias.length){card.innerHTML='<div class="card-header"><span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span></div><div class="card-loading">Sem dados</div>';grid.appendChild(card);return;}
+    if(!r.ok||!r.dias||!r.dias.length){
+      const safeNome = escapeHtml(r.c.nome);
+      const safeUf = escapeHtml(r.c.uf);
+      card.innerHTML='<div class="card-header"><span class="card-cidade">'+safeNome+'</span><span class="card-uf"> '+safeUf+'</span></div><div class="card-loading" style="display:flex;flex-direction:column;gap:6px;align-items:center"><span>⚠️ Sem dados</span><button onclick="event.stopPropagation();carregarClima()" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer">↻ Tentar novamente</button></div>';
+      grid.appendChild(card);return;
+    }
+    if(r.stale){card.style.opacity='0.75';card.title='Dados em cache (API indisponível)';}
     const diasCard=r.dias.slice(0,7);
     const bCls=r.chegadaRuim?'ruim':r.dias[0].tmax>=28?'ok':'neutro';
     const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':r.dias[0].tmax>=28?'☀️ FAVORÁVEL':'🌤️ NEUTRO';
@@ -443,6 +498,86 @@ async function carregarClima(){
     alertaTxt.innerHTML='<strong>🌧️ Chuva prevista na chegada (dia +2 ou +3) em:</strong> '+cidadesChuva.join(', ')+' — avalie antes de carregar';
   }
   renderOportunidades();
+}
+
+// ── MODAL ADICIONAR CIDADE ──
+function abrirModalAddCidade(){
+  document.getElementById('addcid-nome').value = '';
+  document.getElementById('addcid-uf').value = '';
+  document.getElementById('addcid-lat').value = '';
+  document.getElementById('addcid-lon').value = '';
+  document.getElementById('addcid-chegada').value = '2';
+  const erro = document.getElementById('addcid-erro');
+  erro.style.display = 'none';
+  erro.textContent = '';
+  renderCidadesClimaCustom();
+  openModal('modal-add-cidade');
+}
+
+function renderCidadesClimaCustom(){
+  const wrap = document.getElementById('addcid-cidades-existentes');
+  if (!wrap) return;
+  const custom = loadCidadesClimaCustom();
+  if (custom.length === 0) {
+    wrap.innerHTML = '<div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma cidade customizada ainda.</div>';
+    return;
+  }
+  let html = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Cidades adicionadas</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  custom.forEach((c, idx) => {
+    const safeNome = escapeHtml(c.nome);
+    const safeUf = escapeHtml(c.uf);
+    html += `<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px"><span>${safeNome}/${safeUf}</span><button onclick="removerCidadeClima(${idx})" style="background:none;border:none;color:var(--vermelho);cursor:pointer;font-size:13px;padding:0;line-height:1" title="Remover">✕</button></div>`;
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+function salvarCidadeClima(){
+  const erro = document.getElementById('addcid-erro');
+  const nome = (document.getElementById('addcid-nome').value || '').trim();
+  const uf = (document.getElementById('addcid-uf').value || '').trim().toUpperCase();
+  const latStr = (document.getElementById('addcid-lat').value || '').trim().replace(',', '.');
+  const lonStr = (document.getElementById('addcid-lon').value || '').trim().replace(',', '.');
+  const chegada = parseInt(document.getElementById('addcid-chegada').value || '2');
+
+  function showErr(msg){ erro.textContent = msg; erro.style.display = 'block'; }
+
+  if (!nome) return showErr('Informe o nome da cidade.');
+  if (!uf || uf.length !== 2) return showErr('UF deve ter 2 letras (ex: PE).');
+  const lat = parseFloat(latStr);
+  const lon = parseFloat(lonStr);
+  if (isNaN(lat) || lat < -90 || lat > 90) return showErr('Latitude inválida (-90 a 90).');
+  if (isNaN(lon) || lon < -180 || lon > 180) return showErr('Longitude inválida (-180 a 180).');
+
+  // Verificar duplicata (incluindo padrões)
+  const todas = getCidadesClima();
+  const dup = todas.find(c => c.nome.toUpperCase() === nome.toUpperCase());
+  if (dup) return showErr('Já existe uma cidade com esse nome.');
+
+  const custom = loadCidadesClimaCustom();
+  custom.push({ nome, uf, lat, lon, chegada: [chegada] });
+  saveCidadesClimaCustom(custom);
+
+  // Limpar cache da nova cidade para forçar fetch
+  delete _dadosClima[nome];
+
+  closeModal('modal-add-cidade');
+  showToast('✓ Cidade adicionada — atualizando previsão...');
+  carregarClima();
+}
+
+function removerCidadeClima(idx){
+  const custom = loadCidadesClimaCustom();
+  if (idx < 0 || idx >= custom.length) return;
+  const removida = custom[idx];
+  if (!confirm('Remover ' + removida.nome + '/' + removida.uf + ' da lista de cidades?')) return;
+  custom.splice(idx, 1);
+  saveCidadesClimaCustom(custom);
+  delete _dadosClima[removida.nome];
+  renderCidadesClimaCustom();
+  showToast('Cidade removida');
+  carregarClima();
 }
 
 // ── MODAL CLIMA ──
