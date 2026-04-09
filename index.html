@@ -938,105 +938,194 @@
 
     <!-- PAINEL MESA — Coco Posto no Local -->
     <div id="sim-painel-mesa" class="sim-painel ativo">
-      <div class="vform">
-        <div style="font-size:15px;font-weight:800;margin-bottom:4px">Preço Ideal — Posto no Local</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Informe quanto você quer receber por coco e os custos operacionais. O sistema calcula o valor a cobrar do cliente.</div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Valor desejado por coco (R$)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-preco-desejado" placeholder="ex: 1,50" oninput="calcSimMesa()">
+      <!-- COLUNA ESQUERDA: ENTRADAS -->
+      <div>
+        <!-- Card: o que você quer receber -->
+        <div class="sim-card" style="margin-bottom:14px">
+          <div class="sim-card-head">
+            <div class="sim-card-titulo">🎯 O que você quer receber</div>
+            <div class="sim-card-sub">Preço líquido desejado · já com todos os custos deduzidos</div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Quantidade de cocos na carga</label>
-            <input class="form-input" type="number" min="0" id="sm-qtde" placeholder="ex: 15000" oninput="calcSimMesa()">
+          <div class="sim-card-body">
+            <div class="sim-campo">
+              <label>Quantidade de cocos</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp destaque" type="number" id="m-qtde" placeholder="ex: 10000" oninput="calcSimMesa()" min="1">
+                <span class="sim-inp-unit">cocos</span>
+              </div>
+            </div>
+            <div class="sim-campo">
+              <label>Valor que você quer receber por coco</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp destaque" type="text" inputmode="numeric" id="m-preco-base" placeholder="ex: 230 = R$ 2,30" oninput="onPrecoBaseInput(this)">
+                <span class="sim-inp-unit" id="m-preco-base-fmt">R$ 0,00</span>
+              </div>
+              <div class="sim-campo-desc">Digite em centavos: <strong>230</strong> = R$ 2,30 · <strong>170</strong> = R$ 1,70 · é o valor líquido que entra no seu bolso.</div>
+            </div>
           </div>
         </div>
 
-        <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin:18px 0 8px">Custos do transporte</div>
+        <!-- Card: custos -->
+        <div class="sim-card">
+          <div class="sim-card-head">
+            <div class="sim-card-titulo">📋 Custos da operação</div>
+            <div class="sim-card-sub">Preencha apenas os que se aplicam</div>
+          </div>
+          <div class="sim-card-body">
 
-        <div class="form-group" style="margin-bottom:10px">
-          <label class="form-label">Frete</label>
-          <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
-            <button type="button" id="sm-ft-coco" class="sm-ft-btn ativo" onclick="setSimMesaFreteMode('coco')">Por coco</button>
-            <button type="button" id="sm-ft-total" class="sm-ft-btn" onclick="setSimMesaFreteMode('total')">Valor total</button>
-          </div>
-          <div id="sm-frete-coco-wrap">
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-frete-coco" placeholder="ex: 0,40 por coco" oninput="calcSimMesa()">
-          </div>
-          <div id="sm-frete-total-wrap" style="display:none">
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-frete-total" placeholder="ex: 6000 total" oninput="calcSimMesa()">
-          </div>
-        </div>
+            <div class="sim-secao">🚛 Frete</div>
+            <div class="sim-campo">
+              <label>Tipo de entrada do frete</label>
+              <div class="sim-frete-toggle">
+                <button type="button" class="sim-ft-btn ativo" id="ft-coco" onclick="setSimMesaFreteMode('coco')">Por coco (R$/coco)</button>
+                <button type="button" class="sim-ft-btn" id="ft-total" onclick="setSimMesaFreteMode('total')">Valor total (R$)</button>
+              </div>
+              <div id="frete-coco-wrap" class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-frete-coco" placeholder="ex: 0.30" step="0.01" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">R$/coco</span>
+              </div>
+              <div id="frete-total-wrap" class="sim-inp-wrap" style="display:none">
+                <input class="sim-inp" type="number" id="m-frete-total" placeholder="ex: 3000" step="10" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">R$ total</span>
+              </div>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Descarga (R$ por carga)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-descarga" placeholder="ex: 800" oninput="calcSimMesa()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Seguro do transporte (R$)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-seguro" placeholder="opcional" oninput="calcSimMesa()">
-          </div>
-        </div>
+            <div class="sim-secao">📦 Descarga</div>
+            <div class="sim-campo">
+              <label>Custo de descarga</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-descarga" placeholder="ex: 800" step="10" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">R$ total</span>
+              </div>
+              <div class="sim-campo-desc">Valor por carga/carro. Dividido automaticamente pela quantidade de cocos.</div>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Gaiola — aluguel (R$)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-gaiola-valor" value="50" oninput="calcSimMesa()">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gaiola — capacidade (cocos)</label>
-            <input class="form-input" type="number" min="1" id="sm-gaiola-cap" value="200" oninput="calcSimMesa()">
-          </div>
-        </div>
+            <div class="sim-secao">🧺 Gaiola</div>
+            <div class="sim-campo">
+              <label>Quantidade de gaiolas · valor por gaiola · cocos por gaiola</label>
+              <div class="sim-inp-row3">
+                <div class="sim-inp-wrap">
+                  <input class="sim-inp" type="number" id="m-gaiola-qtd" placeholder="auto" step="1" min="0" oninput="calcSimMesa()">
+                  <span class="sim-inp-unit">gaiolas</span>
+                </div>
+                <div class="sim-inp-wrap">
+                  <input class="sim-inp" type="number" id="m-gaiola-unit" value="50" step="1" min="0" oninput="calcSimMesa()">
+                  <span class="sim-inp-unit">R$/gaiola</span>
+                </div>
+                <div class="sim-inp-wrap">
+                  <input class="sim-inp" type="number" id="m-gaiola-cap" value="200" step="1" min="1" oninput="onGaiolaCapChange()">
+                  <span class="sim-inp-unit">cocos/gaiola</span>
+                </div>
+              </div>
+              <div class="sim-campo-desc" id="gaiola-desc">Quantidade pré-preenchida automaticamente (qtde cocos ÷ cocos/gaiola), mas pode editar — nem toda a carga precisa ir pra gaiola.</div>
+            </div>
 
-        <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin:18px 0 8px">Condições financeiras</div>
+            <div class="sim-secao">🛡️ Seguro</div>
+            <div class="sim-campo">
+              <label>Seguro do transporte</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-seguro" placeholder="ex: 200" step="10" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">R$ total</span>
+              </div>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Desconto financeiro (%)</label>
-            <input class="form-input" type="number" step="0.01" min="0" id="sm-desconto" placeholder="ex: 2" oninput="calcSimMesa()">
+            <div class="sim-secao">💳 Financeiro</div>
+            <div class="sim-campo">
+              <label>Desconto financeiro</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-desconto" placeholder="ex: 2" step="0.1" oninput="calcSimMesa()" min="0" max="20">
+                <span class="sim-inp-unit">%</span>
+              </div>
+              <div class="sim-campo-desc">Desconto concedido ao cliente. Ex: 2% para pagamento à vista.</div>
+            </div>
+            <div class="sim-campo">
+              <label>Prazo de pagamento</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-prazo" placeholder="ex: 30" step="1" oninput="calcSimMesa()" min="0">
+                <span class="sim-inp-unit">dias</span>
+              </div>
+              <div class="sim-campo-desc">Custo do capital: taxa de 1%/mês proporcional aos dias (juro composto).</div>
+            </div>
+            <div class="sim-campo">
+              <label>Taxa de juros mensal (aplicação)</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-taxa" placeholder="1.0" step="0.1" min="0" max="10" value="1" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">%/mês</span>
+              </div>
+            </div>
+
+            <div class="sim-secao">📈 Margem</div>
+            <div class="sim-campo">
+              <label>Margem desejada sobre os custos</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-margem" placeholder="10" step="0.5" min="0" max="100" value="10" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">%</span>
+              </div>
+              <div class="sim-campo-desc">O sistema mostrará o preço mínimo e o preço sugerido com esta margem.</div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Prazo de pagamento (dias)</label>
-            <input class="form-input" type="number" min="0" id="sm-prazo" placeholder="ex: 30" oninput="calcSimMesa()">
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Taxa de juros aplicada (% ao mês)</label>
-          <input class="form-input" type="number" step="0.01" min="0" id="sm-juros-mes" value="1" oninput="calcSimMesa()">
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">Juros proporcionais ao prazo. Padrão: 1% a.m. (rendimento de banco).</div>
         </div>
       </div>
 
-      <div class="vform" style="background:var(--verde-bg);border:1.5px solid var(--verde-border)">
-        <div style="font-size:15px;font-weight:800;margin-bottom:12px;color:var(--forest)">💰 Resultado</div>
-
-        <div id="sm-resultado-principal" style="background:#fff;border:2px solid var(--verde);border-radius:10px;padding:16px;margin-bottom:14px">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Preço a cobrar do cliente</div>
-          <div style="font-size:28px;font-weight:900;color:var(--forest);font-family:var(--font-mono);line-height:1.2" id="sm-preco-cobrar">R$ —</div>
-          <div style="font-size:13px;color:var(--muted);margin-top:2px"><span id="sm-preco-por-coco">—</span> por coco</div>
+      <!-- COLUNA DIREITA: RESULTADO -->
+      <div class="sim-resultado">
+        <!-- Vazio -->
+        <div id="res-vazio-mesa" class="sim-card">
+          <div class="sim-card-body" style="text-align:center;padding:40px 20px">
+            <div style="font-size:40px;margin-bottom:10px;opacity:.3">🧮</div>
+            <div style="font-size:12px;color:var(--muted)">Preencha a quantidade e o valor desejado para calcular</div>
+          </div>
         </div>
 
-        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Detalhamento</div>
-        <table style="width:100%;font-size:12px;border-collapse:collapse" id="sm-tabela-detalhes">
-          <tbody>
-            <tr><td style="padding:6px 0;color:var(--muted)">Valor produtor (qtde × preço)</td><td id="sm-det-produtor" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Frete</td><td id="sm-det-frete" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Descarga</td><td id="sm-det-descarga" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Gaiola <span id="sm-det-gaiola-unit" style="font-size:10px"></span></td><td id="sm-det-gaiola" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Seguro</td><td id="sm-det-seguro" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr style="border-top:1px solid var(--border)"><td style="padding:8px 0;font-weight:800">Subtotal de custos</td><td id="sm-det-subtotal" style="padding:8px 0;text-align:right;font-family:var(--font-mono);font-weight:800">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Juros (<span id="sm-det-juros-pct">—</span>)</td><td id="sm-det-juros" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr><td style="padding:6px 0;color:var(--muted)">Desconto financeiro (<span id="sm-det-desc-pct">—</span>)</td><td id="sm-det-desc" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
-            <tr style="border-top:2px solid var(--verde)"><td style="padding:8px 0;font-weight:900;color:var(--forest)">Total a cobrar</td><td id="sm-det-total" style="padding:8px 0;text-align:right;font-family:var(--font-mono);font-weight:900;color:var(--forest)">R$ —</td></tr>
-          </tbody>
-        </table>
-        <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
-          Fórmula: <code>Preço = (Custos × (1 + juros)) ÷ (1 − desconto)</code>.<br>
-          Cliente paga o total, você recebe o líquido que cobre exatamente o valor desejado por coco + custos operacionais, já ajustado para o prazo.
+        <!-- Preço final (oculto até calcular) -->
+        <div id="res-preco-final" style="display:none">
+          <!-- Dois preços lado a lado (mesmo tamanho) -->
+          <div class="sim-precos-grid">
+            <div class="sim-preco-card minimo">
+              <div class="sim-preco-label">🔻 Preço mínimo</div>
+              <div class="sim-preco-valor" id="res-preco-minimo">—</div>
+              <div class="sim-preco-sub">por coco · cobre custos</div>
+              <div class="sim-preco-total" id="res-total-minimo">—</div>
+            </div>
+            <div class="sim-preco-card sugerido">
+              <div class="sim-preco-label">⭐ Preço sugerido</div>
+              <div class="sim-preco-valor" id="res-preco-sugerido">—</div>
+              <div class="sim-preco-sub">por coco · com margem</div>
+              <div class="sim-preco-total" id="res-total-sugerido">—</div>
+            </div>
+          </div>
+
+          <!-- Breakdown resumido -->
+          <div class="sim-breakdown">
+            <div>
+              <div class="sim-brk-label">Você recebe</div>
+              <div class="sim-brk-val verde" id="res-voce-recebe">—</div>
+            </div>
+            <div class="sim-brk-mid">
+              <div class="sim-brk-label">Total custos</div>
+              <div class="sim-brk-val vermelho" id="res-total-custos-badge">—</div>
+            </div>
+            <div>
+              <div class="sim-brk-label">Margem</div>
+              <div class="sim-brk-val azul" id="res-margem-label">—</div>
+            </div>
+          </div>
         </div>
+
+        <!-- Detalhamento -->
+        <div id="res-detalhes" class="sim-card" style="display:none;margin-top:10px">
+          <div class="sim-card-head" style="display:flex;align-items:center;justify-content:space-between">
+            <div class="sim-card-titulo">📊 Detalhamento por coco</div>
+            <span style="font-size:10px;color:var(--muted);font-family:var(--font-mono)" id="res-qtde-label"></span>
+          </div>
+          <div class="sim-card-body">
+            <div id="res-linhas-custo"></div>
+          </div>
+        </div>
+
+        <!-- Interpretação -->
+        <div id="res-interpretacao" style="display:none;margin-top:10px"></div>
       </div>
     </div>
 

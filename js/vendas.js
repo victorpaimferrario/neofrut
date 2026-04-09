@@ -113,72 +113,225 @@ function setSimTab(tab, el){
 let _simMesaFreteMode = 'coco';
 function setSimMesaFreteMode(mode){
   _simMesaFreteMode = mode;
-  const bCoco=document.getElementById('sm-ft-coco');
-  const bTot=document.getElementById('sm-ft-total');
+  const bCoco=document.getElementById('ft-coco');
+  const bTot=document.getElementById('ft-total');
   if(bCoco) bCoco.classList.toggle('ativo', mode==='coco');
   if(bTot) bTot.classList.toggle('ativo', mode==='total');
-  const wCoco=document.getElementById('sm-frete-coco-wrap');
-  const wTot=document.getElementById('sm-frete-total-wrap');
+  const wCoco=document.getElementById('frete-coco-wrap');
+  const wTot=document.getElementById('frete-total-wrap');
   if(wCoco) wCoco.style.display = mode==='coco' ? 'block' : 'none';
   if(wTot) wTot.style.display = mode==='total' ? 'block' : 'none';
   calcSimMesa();
 }
 
+// Preço base em centavos: usuário digita 230 → R$ 2,30
+function onPrecoBaseInput(el){
+  // Só dígitos
+  const digits = (el.value||'').replace(/\D/g,'');
+  el.value = digits;
+  const reais = digits ? (parseInt(digits,10)/100) : 0;
+  const fmt = document.getElementById('m-preco-base-fmt');
+  if(fmt) fmt.textContent = 'R$ '+reais.toFixed(2).replace('.',',');
+  calcSimMesa();
+}
+
+// Ao mudar cocos por gaiola, se qtd de gaiolas estiver vazia ou foi auto-preenchida, recalcular
+function onGaiolaCapChange(){
+  _simAutopreencherGaiolas();
+  calcSimMesa();
+}
+function _simAutopreencherGaiolas(){
+  const qtdeCocos = parseInt(document.getElementById('m-qtde')?.value)||0;
+  const cap = parseInt(document.getElementById('m-gaiola-cap')?.value)||0;
+  const qtdEl = document.getElementById('m-gaiola-qtd');
+  if(!qtdEl) return;
+  // Só auto-preenche se o campo estiver vazio ou marcado como auto
+  if(qtdEl.value==='' || qtdEl.dataset.auto==='1'){
+    if(qtdeCocos>0 && cap>0){
+      qtdEl.value = Math.ceil(qtdeCocos/cap);
+      qtdEl.dataset.auto = '1';
+    } else {
+      qtdEl.value = '';
+    }
+  }
+}
+
 function _gSM(id){ return parseFloat(document.getElementById(id)?.value)||0; }
-function _fmtRSM(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _fmtRSM(n, casas=2){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:casas,maximumFractionDigits:casas}); }
 function _fmtRCocoSM(n){ return 'R$ '+n.toFixed(4).replace('.',','); }
+function _fmtNSM(n){ return Math.round(n).toLocaleString('pt-BR'); }
 
 function calcSimMesa(){
-  const qtde = _gSM('sm-qtde');
-  const precoDesejado = _gSM('sm-preco-desejado');
-  const freteCoco = _gSM('sm-frete-coco');
-  const freteTotalInput = _gSM('sm-frete-total');
-  const descarga = _gSM('sm-descarga');
-  const gaiolaVal = _gSM('sm-gaiola-valor');
-  const gaiolaCap = _gSM('sm-gaiola-cap');
-  const seguro = _gSM('sm-seguro');
-  const descontoPct = _gSM('sm-desconto');
-  const prazoDias = _gSM('sm-prazo');
-  const jurosMesPct = _gSM('sm-juros-mes');
-
-  // Valores base
-  const valorProdutor = qtde * precoDesejado;
-  const freteTotal = _simMesaFreteMode==='coco' ? (freteCoco*qtde) : freteTotalInput;
-  const gaiolaPorCoco = gaiolaCap>0 ? (gaiolaVal/gaiolaCap) : 0;
-  const gaiolaTotal = gaiolaPorCoco*qtde;
-  const subtotal = valorProdutor + freteTotal + descarga + gaiolaTotal + seguro;
-
-  // Juros proporcional ao prazo (dias × juros_mes/30)
-  const jurosPct = (prazoDias * jurosMesPct) / 30; // em %
-  const jurosFrac = jurosPct/100;
-  const descFrac = descontoPct/100;
-
-  // Preço a cobrar: subtotal = X × (1-desc) / (1+juros)
-  // X = subtotal × (1+juros) / (1-desc)
-  let totalCobrar = 0;
-  if(subtotal>0 && descFrac<1){
-    totalCobrar = subtotal * (1+jurosFrac) / (1-descFrac);
+  // Auto-preencher qtd de gaiolas se necessário (antes de ler valores)
+  _simAutopreencherGaiolas();
+  // Marcar manual quando o usuário editar
+  const gaiolaQtdEl = document.getElementById('m-gaiola-qtd');
+  if(gaiolaQtdEl && !gaiolaQtdEl._bound){
+    gaiolaQtdEl.addEventListener('input', function(){ this.dataset.auto=''; });
+    gaiolaQtdEl._bound = true;
   }
-  const precoPorCoco = qtde>0 ? totalCobrar/qtde : 0;
-  const valorJuros = totalCobrar>0 ? totalCobrar*jurosFrac/(1+jurosFrac) : 0;
-  const valorDesc = totalCobrar*descFrac;
 
-  // Render
+  const qtde = _gSM('m-qtde');
+  // Preço base: ler do dataset (centavos)
+  const precoBaseEl = document.getElementById('m-preco-base');
+  const digits = (precoBaseEl?.value||'').replace(/\D/g,'');
+  const precoBase = digits ? parseInt(digits,10)/100 : 0;
+
+  const vazio = document.getElementById('res-vazio-mesa');
+  const precoFinal = document.getElementById('res-preco-final');
+  const detalhes = document.getElementById('res-detalhes');
+  const interp = document.getElementById('res-interpretacao');
+
+  if(qtde<=0 || precoBase<=0){
+    if(vazio) vazio.style.display = 'block';
+    if(precoFinal) precoFinal.style.display = 'none';
+    if(detalhes) detalhes.style.display = 'none';
+    if(interp) interp.style.display = 'none';
+    return;
+  }
+
+  // Frete
+  let frete_coco = 0;
+  if(_simMesaFreteMode==='coco'){
+    frete_coco = _gSM('m-frete-coco');
+  } else {
+    const ft = _gSM('m-frete-total');
+    frete_coco = qtde>0 ? ft/qtde : 0;
+  }
+
+  // Descarga
+  const descarga_tot = _gSM('m-descarga');
+  const descarga_coco = qtde>0 ? descarga_tot/qtde : 0;
+
+  // Gaiola — qtd × unit
+  const gaiola_qtd = _gSM('m-gaiola-qtd');
+  const gaiola_unit = _gSM('m-gaiola-unit');
+  const gaiola_cap = _gSM('m-gaiola-cap');
+  const gaiola_tot = gaiola_qtd * gaiola_unit;
+  const gaiola_coco = (qtde>0 && gaiola_tot>0) ? gaiola_tot/qtde : 0;
+  const descElG = document.getElementById('gaiola-desc');
+  if(descElG){
+    if(gaiola_qtd>0 && gaiola_unit>0){
+      descElG.textContent = gaiola_qtd+' gaiolas × R$ '+gaiola_unit.toFixed(2)+' = R$ '+gaiola_tot.toFixed(2)+' total (R$ '+gaiola_coco.toFixed(4)+'/coco) · cap: '+gaiola_cap+' cocos/gaiola';
+    } else {
+      descElG.textContent = 'Quantidade pré-preenchida automaticamente (qtde cocos ÷ cocos/gaiola), mas pode editar — nem toda a carga precisa ir pra gaiola.';
+    }
+  }
+
+  // Seguro
+  const seguro_tot = _gSM('m-seguro');
+  const seguro_coco = qtde>0 ? seguro_tot/qtde : 0;
+
+  // Desconto financeiro
+  const desc_pct = _gSM('m-desconto')/100;
+  const desc_coco = precoBase * desc_pct;
+
+  // Juro composto do prazo
+  const prazo = _gSM('m-prazo');
+  const taxa = _gSM('m-taxa')/100;
+  const fator_jc = prazo>0 ? Math.pow(1+taxa, prazo/30)-1 : 0;
+  const fin_coco = precoBase * fator_jc;
+
+  // Custos por coco
+  const custos_coco = frete_coco + descarga_coco + gaiola_coco + seguro_coco + desc_coco + fin_coco;
+
+  // Margem
+  const margem_pct = _gSM('m-margem')/100;
+  const margem_coco = custos_coco * margem_pct;
+
+  // Preços
+  const preco_min = precoBase + custos_coco;
+  const preco_sug = preco_min + margem_coco;
+  const tot_min = preco_min * qtde;
+  const tot_sug = preco_sug * qtde;
+
+  // Mostrar
+  if(vazio) vazio.style.display = 'none';
+  if(precoFinal) precoFinal.style.display = 'block';
+  if(detalhes) detalhes.style.display = 'block';
+  if(interp) interp.style.display = 'block';
+
   const $ = id => document.getElementById(id);
-  if($('sm-preco-cobrar')) $('sm-preco-cobrar').textContent = totalCobrar>0 ? _fmtRSM(totalCobrar) : 'R$ —';
-  if($('sm-preco-por-coco')) $('sm-preco-por-coco').textContent = precoPorCoco>0 ? _fmtRSM(precoPorCoco) : '—';
-  if($('sm-det-produtor')) $('sm-det-produtor').textContent = _fmtRSM(valorProdutor);
-  if($('sm-det-frete')) $('sm-det-frete').textContent = _fmtRSM(freteTotal);
-  if($('sm-det-descarga')) $('sm-det-descarga').textContent = _fmtRSM(descarga);
-  if($('sm-det-gaiola')) $('sm-det-gaiola').textContent = _fmtRSM(gaiolaTotal);
-  if($('sm-det-gaiola-unit')) $('sm-det-gaiola-unit').textContent = gaiolaPorCoco>0 ? '('+_fmtRCocoSM(gaiolaPorCoco)+'/coco)' : '';
-  if($('sm-det-seguro')) $('sm-det-seguro').textContent = _fmtRSM(seguro);
-  if($('sm-det-subtotal')) $('sm-det-subtotal').textContent = _fmtRSM(subtotal);
-  if($('sm-det-juros')) $('sm-det-juros').textContent = _fmtRSM(valorJuros);
-  if($('sm-det-juros-pct')) $('sm-det-juros-pct').textContent = jurosPct.toFixed(2)+'%';
-  if($('sm-det-desc')) $('sm-det-desc').textContent = _fmtRSM(valorDesc);
-  if($('sm-det-desc-pct')) $('sm-det-desc-pct').textContent = descontoPct.toFixed(2)+'%';
-  if($('sm-det-total')) $('sm-det-total').textContent = _fmtRSM(totalCobrar);
+  $('res-preco-minimo').textContent = 'R$ '+preco_min.toFixed(2).replace('.',',');
+  $('res-total-minimo').textContent = 'Total: '+_fmtRSM(tot_min,0);
+  $('res-preco-sugerido').textContent = 'R$ '+preco_sug.toFixed(2).replace('.',',');
+  $('res-total-sugerido').textContent = 'Total: '+_fmtRSM(tot_sug,0);
+  $('res-voce-recebe').textContent = 'R$ '+precoBase.toFixed(2).replace('.',',');
+  $('res-total-custos-badge').textContent = 'R$ '+custos_coco.toFixed(2).replace('.',',');
+  $('res-margem-label').textContent = 'R$ '+margem_coco.toFixed(2).replace('.',',')+' ('+(margem_pct*100).toFixed(0)+'%)';
+  $('res-qtde-label').textContent = _fmtNSM(qtde)+' cocos';
+
+  // Linhas de detalhe
+  const linhas = [
+    {nome:'🎯 Você quer receber', coco:precoBase, tot:precoBase*qtde, cls:''},
+    {nome:'🚛 Frete', coco:frete_coco, tot:frete_coco*qtde, cls:'negativo', ocultar:frete_coco===0},
+    {nome:'📦 Descarga', coco:descarga_coco, tot:descarga_tot, cls:'negativo', ocultar:descarga_tot===0},
+    {nome:'🧺 Gaiola — '+gaiola_qtd+' × R$'+gaiola_unit.toFixed(2), coco:gaiola_coco, tot:gaiola_tot, cls:'negativo', ocultar:gaiola_tot===0},
+    {nome:'🛡️ Seguro', coco:seguro_coco, tot:seguro_tot, cls:'negativo', ocultar:seguro_tot===0},
+    {nome:'💳 Desconto '+(desc_pct*100).toFixed(1)+'%', coco:desc_coco, tot:desc_coco*qtde, cls:'negativo', ocultar:desc_pct===0},
+    {nome:'⏱️ Prazo '+prazo+'d · juro '+(taxa*100).toFixed(1)+'%/mês', coco:fin_coco, tot:fin_coco*qtde, cls:'negativo', ocultar:prazo===0,
+      detalhe: prazo>0 ? '(1 + '+(taxa*100).toFixed(1)+'%)^('+prazo+'/30) − 1 = '+(fator_jc*100).toFixed(3)+'%' : ''},
+  ];
+
+  const wrap = $('res-linhas-custo');
+  wrap.innerHTML = '';
+  linhas.forEach(l => {
+    if(l.ocultar) return;
+    const div = document.createElement('div');
+    div.className = 'custo-row '+l.cls;
+    div.innerHTML =
+      '<div>'
+      +'<span class="custo-nome">'+l.nome+'</span>'
+      +(l.detalhe ? '<div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);margin-top:1px">'+l.detalhe+'</div>' : '')
+      +'</div>'
+      +'<span class="custo-porcoco">'+(l.coco>0 ? _fmtRCocoSM(l.coco) : '—')+'</span>'
+      +'<span class="custo-total">'+(l.tot>0 ? _fmtRSM(l.tot,0) : '—')+'</span>';
+    wrap.appendChild(div);
+  });
+
+  // Preço mínimo
+  const divMin = document.createElement('div');
+  divMin.className = 'custo-row subtotal';
+  divMin.innerHTML =
+    '<span class="custo-nome">🔻 Preço mínimo (cobre todos os custos)</span>'
+    +'<span class="custo-porcoco" style="color:#d97706;font-weight:900">R$ '+preco_min.toFixed(2).replace('.',',')+'</span>'
+    +'<span class="custo-total" style="color:#d97706">'+_fmtRSM(tot_min,0)+'</span>';
+  wrap.appendChild(divMin);
+
+  if(margem_coco>0){
+    const divMarg = document.createElement('div');
+    divMarg.className = 'custo-row';
+    divMarg.innerHTML =
+      '<span class="custo-nome">📈 Margem '+(margem_pct*100).toFixed(0)+'% sobre custos</span>'
+      +'<span class="custo-porcoco" style="color:#1d4ed8;font-weight:700">+ R$ '+margem_coco.toFixed(2).replace('.',',')+'</span>'
+      +'<span class="custo-total" style="color:#1d4ed8">+ '+_fmtRSM(margem_coco*qtde,0)+'</span>';
+    wrap.appendChild(divMarg);
+
+    const divSug = document.createElement('div');
+    divSug.className = 'custo-row subtotal';
+    divSug.style.cssText = 'border-top:2px solid var(--forest);margin-top:4px;padding-top:10px';
+    divSug.innerHTML =
+      '<span class="custo-nome" style="color:var(--forest)">⭐ Preço sugerido (com margem)</span>'
+      +'<span class="custo-porcoco" style="color:var(--forest);font-weight:900;font-size:14px">R$ '+preco_sug.toFixed(2).replace('.',',')+'</span>'
+      +'<span class="custo-total" style="color:var(--forest);font-size:14px">'+_fmtRSM(tot_sug,0)+'</span>';
+    wrap.appendChild(divSug);
+  }
+
+  // Interpretação
+  const pct = (custos_coco/preco_min)*100;
+  let intClass, intMsg;
+  if(pct<15){
+    intClass='ok';
+    intMsg='✅ Custos saudáveis — '+pct.toFixed(1)+'% do preço mínimo. Você recebe R$ '+precoBase.toFixed(2).replace('.',',')+' líquido por coco ('+_fmtRSM(precoBase*qtde,0)+' na carga).';
+  } else if(pct<25){
+    intClass='atencao';
+    intMsg='⚠️ Custos representam '+pct.toFixed(1)+'% do preço mínimo. Avalie se frete, prazo ou desconto podem ser melhorados.';
+  } else {
+    intClass='ruim';
+    intMsg='🔴 Custos elevados — '+pct.toFixed(1)+'% do preço mínimo são despesas. O juro composto do prazo ou o frete estão pesando muito.';
+  }
+  interp.className='sim-interpretacao '+intClass;
+  interp.textContent=intMsg;
 }
 
 function filtrarVendas(db,ano,mes){
