@@ -533,12 +533,13 @@
     <!-- Frete -->
     <div class="prog-campo" id="prog-campo-frete" style="display:none">
       <label>Frete <span style="font-weight:400;font-size:10px;color:var(--muted)">(se o valor/coco já inclui frete)</span></label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div style="position:relative;flex:1">
-          <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-frete" placeholder="0,00" oninput="_progOnFreteInput(this)" autocomplete="off">
-          <span id="prog-frete-unit" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted)">R$ total</span>
-        </div>
-        <button type="button" id="prog-frete-toggle" onclick="_progToggleFreteMode()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:10px;cursor:pointer;white-space:nowrap;color:var(--muted);font-family:var(--font-mono)">⇄ R$/coco</button>
+      <div class="sim-frete-toggle" style="margin-bottom:8px">
+        <button type="button" class="sim-ft-btn" id="prog-ft-percoco" onclick="_progSetFreteMode('percoco')">Por coco (R$/coco)</button>
+        <button type="button" class="sim-ft-btn ativo" id="prog-ft-total" onclick="_progSetFreteMode('total')">Valor total (R$)</button>
+      </div>
+      <div style="position:relative">
+        <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-frete" placeholder="0,00" oninput="_progOnFreteInput(this)" autocomplete="off">
+        <span id="prog-frete-unit" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);font-family:var(--font-mono);font-weight:600;pointer-events:none">R$ total</span>
       </div>
     </div>
 

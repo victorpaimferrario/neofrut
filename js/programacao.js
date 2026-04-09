@@ -184,12 +184,20 @@ function _progCalcFreteTotal() {
   }
   return val;
 }
-function _progToggleFreteMode() {
-  _progFreteMode = _progFreteMode === 'total' ? 'percoco' : 'total';
-  document.getElementById('prog-frete-unit').textContent = _progFreteMode === 'total' ? 'R$ total' : 'R$/coco';
-  document.getElementById('prog-frete-toggle').textContent = _progFreteMode === 'total' ? '⇄ R$/coco' : '⇄ R$ total';
+function _progSetFreteMode(mode) {
+  if (mode !== 'total' && mode !== 'percoco') return;
+  _progFreteMode = mode;
+  const unit = document.getElementById('prog-frete-unit');
+  if (unit) unit.textContent = mode === 'total' ? 'R$ total' : 'R$/coco';
+  const btnPc = document.getElementById('prog-ft-percoco');
+  const btnTot = document.getElementById('prog-ft-total');
+  if (btnPc) btnPc.classList.toggle('ativo', mode === 'percoco');
+  if (btnTot) btnTot.classList.toggle('ativo', mode === 'total');
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
+}
+function _progToggleFreteMode() {
+  _progSetFreteMode(_progFreteMode === 'total' ? 'percoco' : 'total');
 }
 
 // Auto-dedução: o input do valor SEMPRE mostra o BRUTO. A nota abaixo
@@ -515,7 +523,7 @@ function abrirModalProg() {
   if (freteEl) { freteEl.value = ''; freteEl.dataset.digits = ''; }
   const campoFrete = document.getElementById('prog-campo-frete');
   if (campoFrete) campoFrete.style.display = 'none';
-  _progFreteMode = 'total';
+  _progSetFreteMode('total');
   document.getElementById('prog-btn-salvar').textContent = '✓ Agendar carga';
   document.getElementById('prog-acoes-editar').style.display = 'none';
 
@@ -559,7 +567,7 @@ function abrirModalProgEditar(id) {
   // Valor: o DB armazena o LÍQUIDO. Para mostrar o BRUTO no input em edição,
   // somamos de volta o frete por coco (se houver). Assim, ao mexer no frete,
   // a dedução é recalculada corretamente a partir do bruto original.
-  _progFreteMode = 'total';
+  _progSetFreteMode('total');
   const valorEl = document.getElementById('prog-inp-valor');
   let valorBruto = Number(c.valor_por_coco || 0);
   if (valorBruto > 0 && c.frete_total && c.volume_cocos) {
