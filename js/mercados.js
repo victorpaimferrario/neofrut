@@ -345,6 +345,9 @@ function renderOportunidades(){
 // ── CLIMA ──
 // Cidades customizadas (adicionadas pelo usuário) — persistidas em localStorage
 const SK_CIDADES_CLIMA_CUSTOM = 'neofrut_cidades_clima_custom_v1';
+// Cidades padrão removidas pelo usuário (exclusão) — persistidas em localStorage
+const SK_CIDADES_CLIMA_REMOVIDAS = 'neofrut_cidades_clima_removidas_v1';
+function _chaveCidade(c){ return (c.nome||'').toLowerCase()+'|'+(c.uf||'').toUpperCase(); }
 function loadCidadesClimaCustom(){
   try { return JSON.parse(localStorage.getItem(SK_CIDADES_CLIMA_CUSTOM) || '[]'); }
   catch(e) { return []; }
@@ -352,10 +355,20 @@ function loadCidadesClimaCustom(){
 function saveCidadesClimaCustom(arr){
   localStorage.setItem(SK_CIDADES_CLIMA_CUSTOM, JSON.stringify(arr));
 }
+function loadCidadesClimaRemovidas(){
+  try { return JSON.parse(localStorage.getItem(SK_CIDADES_CLIMA_REMOVIDAS) || '[]'); }
+  catch(e) { return []; }
+}
+function saveCidadesClimaRemovidas(arr){
+  localStorage.setItem(SK_CIDADES_CLIMA_REMOVIDAS, JSON.stringify(arr));
+}
 function getCidadesClima(){
-  // Mescla cidades padrão (config.js) + customizadas (localStorage)
+  // Mescla cidades padrão (config.js) + customizadas (localStorage),
+  // excluindo as que o usuário removeu
   const custom = loadCidadesClimaCustom();
-  return CIDADES_CLIMA.concat(custom);
+  const removidas = new Set(loadCidadesClimaRemovidas());
+  const todas = CIDADES_CLIMA.concat(custom);
+  return todas.filter(c => !removidas.has(_chaveCidade(c)));
 }
 function fmtDia(s){const d=new Date(s+'T12:00:00');return DIAS_PT[d.getDay()]+' '+d.getDate()+'/'+MESES_PT[d.getMonth()];}
 function wcEmoji(wc){if(wc<=1)return'☀️';if(wc<=3)return'🌤️';if(wc<=48)return'☁️';if(wc<=67)return'🌧️';if(wc<=77)return'❄️';return'⛈️';}
@@ -453,15 +466,18 @@ async function carregarClima(){
     if(!r.ok||!r.dias||!r.dias.length){
       const safeNome = escapeHtml(r.c.nome);
       const safeUf = escapeHtml(r.c.uf);
-      card.innerHTML='<div class="card-header"><span class="card-cidade">'+safeNome+'</span><span class="card-uf"> '+safeUf+'</span></div><div class="card-loading" style="display:flex;flex-direction:column;gap:6px;align-items:center"><span>⚠️ Sem dados</span><button onclick="event.stopPropagation();carregarClima()" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer">↻ Tentar novamente</button></div>';
+      card.innerHTML='<div class="card-header" style="position:relative"><span class="card-cidade">'+safeNome+'</span><span class="card-uf"> '+safeUf+'</span><button class="card-remove-btn" onclick="event.stopPropagation();removerCidadeClima(\''+safeNome.replace(/'/g,"\\'")+'\',\''+safeUf+'\')" title="Remover cidade" style="position:absolute;top:2px;right:4px;background:none;border:none;color:var(--vermelho);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px">✕</button></div><div class="card-loading" style="display:flex;flex-direction:column;gap:6px;align-items:center"><span>⚠️ Sem dados</span><button onclick="event.stopPropagation();carregarClima()" style="font-size:10px;padding:4px 10px;border:1px solid var(--border);background:var(--surface);border-radius:6px;cursor:pointer">↻ Tentar novamente</button></div>';
       grid.appendChild(card);return;
     }
     if(r.stale){card.style.opacity='0.75';card.title='Dados em cache (API indisponível)';}
     const diasCard=r.dias.slice(0,7);
     const bCls=r.chegadaRuim?'ruim':r.dias[0].tmax>=28?'ok':'neutro';
     const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':r.dias[0].tmax>=28?'☀️ FAVORÁVEL':'🌤️ NEUTRO';
-    const hdr=document.createElement('div');hdr.className='card-header';
-    hdr.innerHTML='<span class="card-cidade">'+r.c.nome+'</span><span class="card-uf"> '+r.c.uf+'</span>';
+    const hdr=document.createElement('div');hdr.className='card-header';hdr.style.position='relative';
+    const safeNomeR=escapeHtml(r.c.nome);
+    const safeUfR=escapeHtml(r.c.uf);
+    hdr.innerHTML='<span class="card-cidade">'+safeNomeR+'</span><span class="card-uf"> '+safeUfR+'</span>'
+      +'<button class="card-remove-btn" onclick="event.stopPropagation();removerCidadeClima(\''+safeNomeR.replace(/'/g,"\\'")+'\',\''+safeUfR+'\')" title="Remover cidade" style="position:absolute;top:2px;right:4px;background:none;border:none;color:var(--vermelho);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;opacity:0.65">✕</button>';
     card.appendChild(hdr);
     const bdg=document.createElement('span');bdg.className='card-badge '+bCls;bdg.textContent=bTxt;card.appendChild(bdg);
     const ftr=document.createElement('div');ftr.className='card-footer';
@@ -502,80 +518,113 @@ async function carregarClima(){
 
 // ── MODAL ADICIONAR CIDADE ──
 function abrirModalAddCidade(){
-  document.getElementById('addcid-nome').value = '';
-  document.getElementById('addcid-uf').value = '';
-  document.getElementById('addcid-lat').value = '';
-  document.getElementById('addcid-lon').value = '';
-  document.getElementById('addcid-chegada').value = '2';
+  const ufSel = document.getElementById('addcid-uf');
+  const cidSel = document.getElementById('addcid-cidade');
   const erro = document.getElementById('addcid-erro');
-  erro.style.display = 'none';
-  erro.textContent = '';
-  renderCidadesClimaCustom();
+  // Popular UFs uma única vez
+  if (ufSel && ufSel.options.length <= 1 && typeof UFS_LISTA !== 'undefined') {
+    UFS_LISTA.forEach(([s,n]) => {
+      const o = document.createElement('option');
+      o.value = s;
+      o.textContent = s + ' — ' + n;
+      ufSel.appendChild(o);
+    });
+  }
+  if (ufSel) ufSel.value = '';
+  if (cidSel) {
+    cidSel.innerHTML = '<option value="">— Selecione a UF primeiro —</option>';
+    cidSel.disabled = true;
+  }
+  document.getElementById('addcid-chegada').value = '2';
+  if (erro) { erro.style.display = 'none'; erro.textContent = ''; }
   openModal('modal-add-cidade');
 }
 
-function renderCidadesClimaCustom(){
-  const wrap = document.getElementById('addcid-cidades-existentes');
-  if (!wrap) return;
-  const custom = loadCidadesClimaCustom();
-  if (custom.length === 0) {
-    wrap.innerHTML = '<div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma cidade customizada ainda.</div>';
+// Ao escolher UF, popular cidades filtradas (excluindo as já cadastradas no clima)
+function onChangeUfAddCidade(){
+  const uf = (document.getElementById('addcid-uf').value || '').toUpperCase();
+  const cidSel = document.getElementById('addcid-cidade');
+  if (!cidSel) return;
+  cidSel.innerHTML = '';
+  if (!uf || typeof CIDADES_BR_DB === 'undefined' || !CIDADES_BR_DB[uf]) {
+    cidSel.innerHTML = '<option value="">— Selecione a UF primeiro —</option>';
+    cidSel.disabled = true;
     return;
   }
-  let html = '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Cidades adicionadas</div>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
-  custom.forEach((c, idx) => {
-    const safeNome = escapeHtml(c.nome);
-    const safeUf = escapeHtml(c.uf);
-    html += `<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px"><span>${safeNome}/${safeUf}</span><button onclick="removerCidadeClima(${idx})" style="background:none;border:none;color:var(--vermelho);cursor:pointer;font-size:13px;padding:0;line-height:1" title="Remover">✕</button></div>`;
-  });
-  html += '</div>';
-  wrap.innerHTML = html;
+  // Filtrar cidades já cadastradas (pelo nome+uf)
+  const jaCad = new Set(getCidadesClima().map(c => (c.nome||'').toLowerCase()+'|'+(c.uf||'').toUpperCase()));
+  const lista = CIDADES_BR_DB[uf]
+    .map(c => ({...c, uf}))
+    .filter(c => !jaCad.has(c.nome.toLowerCase()+'|'+uf))
+    .sort((a,b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  if (lista.length === 0) {
+    cidSel.innerHTML = '<option value="">Todas as cidades desta UF já estão cadastradas</option>';
+    cidSel.disabled = true;
+    return;
+  }
+  cidSel.disabled = false;
+  cidSel.innerHTML = '<option value="">— Selecione a cidade —</option>'
+    + lista.map(c => `<option value="${escapeHtml(c.nome)}" data-lat="${c.lat}" data-lon="${c.lon}">${escapeHtml(c.nome)}</option>`).join('');
 }
 
 function salvarCidadeClima(){
   const erro = document.getElementById('addcid-erro');
-  const nome = (document.getElementById('addcid-nome').value || '').trim();
-  const uf = (document.getElementById('addcid-uf').value || '').trim().toUpperCase();
-  const latStr = (document.getElementById('addcid-lat').value || '').trim().replace(',', '.');
-  const lonStr = (document.getElementById('addcid-lon').value || '').trim().replace(',', '.');
+  const ufSel = document.getElementById('addcid-uf');
+  const cidSel = document.getElementById('addcid-cidade');
+  const uf = (ufSel?.value || '').toUpperCase();
+  const nome = (cidSel?.value || '').trim();
   const chegada = parseInt(document.getElementById('addcid-chegada').value || '2');
 
-  function showErr(msg){ erro.textContent = msg; erro.style.display = 'block'; }
+  function showErr(msg){ if (erro) { erro.textContent = msg; erro.style.display = 'block'; } }
 
-  if (!nome) return showErr('Informe o nome da cidade.');
-  if (!uf || uf.length !== 2) return showErr('UF deve ter 2 letras (ex: PE).');
-  const lat = parseFloat(latStr);
-  const lon = parseFloat(lonStr);
-  if (isNaN(lat) || lat < -90 || lat > 90) return showErr('Latitude inválida (-90 a 90).');
-  if (isNaN(lon) || lon < -180 || lon > 180) return showErr('Longitude inválida (-180 a 180).');
+  if (!uf) return showErr('Selecione a UF.');
+  if (!nome) return showErr('Selecione a cidade.');
 
-  // Verificar duplicata (incluindo padrões)
-  const todas = getCidadesClima();
-  const dup = todas.find(c => c.nome.toUpperCase() === nome.toUpperCase());
-  if (dup) return showErr('Já existe uma cidade com esse nome.');
+  const opt = cidSel.options[cidSel.selectedIndex];
+  const lat = parseFloat(opt?.dataset?.lat);
+  const lon = parseFloat(opt?.dataset?.lon);
+  if (isNaN(lat) || isNaN(lon)) return showErr('Coordenadas não encontradas para essa cidade.');
 
-  const custom = loadCidadesClimaCustom();
-  custom.push({ nome, uf, lat, lon, chegada: [chegada] });
-  saveCidadesClimaCustom(custom);
+  // Se a cidade estava na lista de removidas (era padrão), só reativar
+  const removidas = loadCidadesClimaRemovidas();
+  const chave = nome.toLowerCase() + '|' + uf;
+  if (removidas.includes(chave)) {
+    saveCidadesClimaRemovidas(removidas.filter(k => k !== chave));
+  } else {
+    // Senão, adicionar como customizada
+    const jaCad = getCidadesClima().find(c => _chaveCidade(c) === chave);
+    if (jaCad) return showErr('Essa cidade já está cadastrada.');
+    const custom = loadCidadesClimaCustom();
+    custom.push({ nome, uf, lat, lon, chegada: [chegada] });
+    saveCidadesClimaCustom(custom);
+  }
 
-  // Limpar cache da nova cidade para forçar fetch
   delete _dadosClima[nome];
-
   closeModal('modal-add-cidade');
-  showToast('✓ Cidade adicionada — atualizando previsão...');
+  showToast('✓ ' + nome + '/' + uf + ' adicionada — atualizando previsão...');
   carregarClima();
 }
 
-function removerCidadeClima(idx){
+// Remove cidade (padrão ou customizada) pela chave nome|uf
+function removerCidadeClima(nome, uf){
+  if (!nome || !uf) return;
+  if (!confirm('Remover ' + nome + '/' + uf + ' do painel de clima?')) return;
+  const chave = nome.toLowerCase() + '|' + uf.toUpperCase();
+  // Se é customizada, tira do custom
   const custom = loadCidadesClimaCustom();
-  if (idx < 0 || idx >= custom.length) return;
-  const removida = custom[idx];
-  if (!confirm('Remover ' + removida.nome + '/' + removida.uf + ' da lista de cidades?')) return;
-  custom.splice(idx, 1);
-  saveCidadesClimaCustom(custom);
-  delete _dadosClima[removida.nome];
-  renderCidadesClimaCustom();
+  const idxCustom = custom.findIndex(c => _chaveCidade(c) === chave);
+  if (idxCustom >= 0) {
+    custom.splice(idxCustom, 1);
+    saveCidadesClimaCustom(custom);
+  } else {
+    // É padrão — adiciona na lista de removidas
+    const removidas = loadCidadesClimaRemovidas();
+    if (!removidas.includes(chave)) {
+      removidas.push(chave);
+      saveCidadesClimaRemovidas(removidas);
+    }
+  }
+  delete _dadosClima[nome];
   showToast('Cidade removida');
   carregarClima();
 }

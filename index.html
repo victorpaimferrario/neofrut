@@ -1082,6 +1082,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/config.js?v=1775340018"></script>
+<script src="js/cidades_br.js?v=1775340018"></script>
 <script src="js/utils.js?v=1775340018"></script>
 <script src="js/storage.js?v=1775340018"></script>
 <script src="js/components.js?v=1775340018"></script>
@@ -1477,28 +1478,20 @@
   <div class="modal-box" style="max-width:520px;text-align:left">
     <button class="modal-close" onclick="fecharModal('modal-add-cidade')">✕</button>
     <h3 style="margin-bottom:6px">+ Adicionar Cidade ao Clima</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Adicione uma nova cidade para acompanhar a previsão. Use coordenadas geográficas (latitude/longitude). Você pode buscar no Google Maps clicando com o botão direito em qualquer lugar.</div>
-
-    <div id="addcid-cidades-existentes" style="margin-bottom:16px"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Selecione a UF e depois a cidade. Coordenadas já estão cadastradas.</div>
 
     <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="flex:2">
-        <label class="form-label">Nome da cidade</label>
-        <input type="text" id="addcid-nome" class="form-input" placeholder="Ex: Recife" autocomplete="off">
-      </div>
       <div class="form-group" style="flex:1">
         <label class="form-label">UF</label>
-        <input type="text" id="addcid-uf" class="form-input" placeholder="PE" maxlength="2" style="text-transform:uppercase" autocomplete="off">
+        <select id="addcid-uf" class="form-input" onchange="onChangeUfAddCidade()">
+          <option value="">— Selecione —</option>
+        </select>
       </div>
-    </div>
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="flex:1">
-        <label class="form-label">Latitude</label>
-        <input type="text" inputmode="decimal" id="addcid-lat" class="form-input" placeholder="-8.0476" autocomplete="off">
-      </div>
-      <div class="form-group" style="flex:1">
-        <label class="form-label">Longitude</label>
-        <input type="text" inputmode="decimal" id="addcid-lon" class="form-input" placeholder="-34.8770" autocomplete="off">
+      <div class="form-group" style="flex:2">
+        <label class="form-label">Cidade</label>
+        <select id="addcid-cidade" class="form-input" disabled>
+          <option value="">— Selecione a UF primeiro —</option>
+        </select>
       </div>
     </div>
     <div class="form-group" style="margin-bottom:14px">
