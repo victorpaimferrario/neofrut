@@ -543,6 +543,25 @@
       </div>
     </div>
 
+    <!-- ICMS do frete -->
+    <div class="prog-campo" id="prog-campo-icms" style="display:none">
+      <label>ICMS do frete <span style="font-weight:400;font-size:10px;color:var(--muted)">(R$ por carga)</span></label>
+      <div style="position:relative">
+        <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-icms" placeholder="0,00" value="0,96" oninput="_progOnIcmsInput(this)" autocomplete="off">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);font-family:var(--font-mono);font-weight:600;pointer-events:none">R$ total</span>
+      </div>
+    </div>
+
+    <!-- Seguro 0,07% -->
+    <div class="prog-campo" id="prog-campo-seguro" style="display:none">
+      <label>Seguro <span style="font-weight:400;font-size:10px;color:var(--muted)">(0,07% do valor da NF — auto)</span></label>
+      <div style="position:relative">
+        <input class="prog-inp" type="text" inputmode="numeric" id="prog-inp-seguro" placeholder="auto" oninput="_progOnSeguroInput(this)" autocomplete="off">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);font-family:var(--font-mono);font-weight:600;pointer-events:none">R$ total</span>
+      </div>
+      <div id="prog-seguro-nota" style="font-size:10px;color:var(--muted);margin-top:4px"></div>
+    </div>
+
     <!-- Área -->
     <div class="prog-campo">
       <label>Área da fazenda</label>
@@ -587,6 +606,8 @@
       <div class="prog-receita-linha"><span>Receita bruta</span><span id="prog-prev-receita">—</span></div>
       <div class="prog-receita-linha prog-receita-total"><span>R$/coco efetivo</span><span id="prog-prev-rpc">—</span></div>
       <div class="prog-receita-linha" id="prog-prev-frete-row" style="display:none;color:var(--muted)"><span>Frete (repasse)</span><span id="prog-prev-frete">—</span></div>
+      <div class="prog-receita-linha" id="prog-prev-icms-row" style="display:none;color:var(--muted)"><span>ICMS frete</span><span id="prog-prev-icms">—</span></div>
+      <div class="prog-receita-linha" id="prog-prev-seguro-row" style="display:none;color:var(--muted)"><span>Seguro 0,07%</span><span id="prog-prev-seguro">—</span></div>
       <div class="prog-receita-linha prog-receita-total" id="prog-prev-liquida-row" style="display:none;color:#1d4ed8"><span>Total NF</span><span id="prog-prev-liquida">—</span></div>
     </div>
 
@@ -833,6 +854,11 @@
         <div class="form-group"><label class="form-label">Frete (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-frete" placeholder="0" oninput="calcVendaRecebido()"></div>
         <div class="form-group"><label class="form-label">Valor Recebido (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-recebido" placeholder="0"></div>
       </div>
+      <!-- ICMS + Seguro (visível quando tem frete) -->
+      <div class="form-row" id="v-custos-frete-row" style="display:none">
+        <div class="form-group"><label class="form-label">ICMS frete (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-icms" value="96" oninput="calcVendaRecebido()"></div>
+        <div class="form-group"><label class="form-label">Seguro 0,07% (R$)</label><input class="form-input" type="number" min="0" step="0.01" id="v-seguro" placeholder="auto" oninput="this.dataset.manual='1';calcVendaRecebido()"><div style="font-size:9px;color:var(--muted);margin-top:2px" id="v-seguro-desc"></div></div>
+      </div>
       <div class="vcalc" id="v-calc">
         <div class="vcalc-item"><div class="vcalc-label">Cocos</div><div class="vcalc-val" id="vc-cocos">—</div></div>
         <div class="vcalc-item"><div class="vcalc-label">R$/Coco</div><div class="vcalc-val" id="vc-preco">—</div></div>
@@ -1025,13 +1051,24 @@
               <div class="sim-campo-desc" id="gaiola-desc">Quantidade pré-preenchida automaticamente (qtde cocos ÷ cocos/gaiola), mas pode editar — nem toda a carga precisa ir pra gaiola.</div>
             </div>
 
-            <div class="sim-secao">🛡️ Seguro</div>
+            <div class="sim-secao">📄 ICMS do frete</div>
             <div class="sim-campo">
-              <label>Seguro do transporte</label>
+              <label>ICMS do frete (por carga)</label>
               <div class="sim-inp-wrap">
-                <input class="sim-inp" type="number" id="m-seguro" placeholder="ex: 200" step="10" oninput="calcSimMesa()">
+                <input class="sim-inp" type="number" id="m-icms" value="96" step="1" oninput="calcSimMesa()">
                 <span class="sim-inp-unit">R$ total</span>
               </div>
+              <div class="sim-campo-desc">Valor fixo por carga. Pré-preenchido R$ 96,00 — edite se necessário.</div>
+            </div>
+
+            <div class="sim-secao">🛡️ Seguro</div>
+            <div class="sim-campo">
+              <label>Seguro (0,07% do valor da NF)</label>
+              <div class="sim-inp-wrap">
+                <input class="sim-inp" type="number" id="m-seguro" placeholder="auto" step="0.01" oninput="this.dataset.manual=this.value?'1':'';calcSimMesa()">
+                <span class="sim-inp-unit">R$ total</span>
+              </div>
+              <div class="sim-campo-desc" id="seguro-desc">Calculado automaticamente: 0,07% × (valor cocos + frete). Edite para sobrescrever.</div>
             </div>
 
             <div class="sim-secao">💳 Financeiro</div>
@@ -1545,6 +1582,18 @@
       <div class="form-group">
         <label class="form-label">Frete (R$)</label>
         <input type="number" id="ev-frete" class="form-input" step="0.01" oninput="calcEditVenda()">
+      </div>
+    </div>
+    <!-- ICMS + Seguro (edição) -->
+    <div class="form-row" id="ev-custos-frete-row" style="display:none;margin-bottom:16px">
+      <div class="form-group">
+        <label class="form-label">ICMS frete (R$)</label>
+        <input type="number" id="ev-icms" class="form-input" step="0.01" value="96" oninput="calcEditVenda()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Seguro 0,07% (R$)</label>
+        <input type="number" id="ev-seguro" class="form-input" step="0.01" placeholder="auto" oninput="this.dataset.manual='1';calcEditVenda()">
+        <div style="font-size:9px;color:var(--muted);margin-top:2px" id="ev-seguro-desc"></div>
       </div>
     </div>
     <div class="form-row" style="margin-bottom:16px">

@@ -139,22 +139,26 @@ function _progOnValorInput(el) {
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
-// Retorna o valor LÍQUIDO por coco (bruto - frete/coco). Usado em preview e ao salvar.
+// Retorna o valor LÍQUIDO por coco (bruto - frete/coco - icms/coco - seguro/coco). Usado em preview e ao salvar.
 function _progGetValor() {
   const el = document.getElementById('prog-inp-valor');
   const bruto = _progParseValor(el.dataset.brutoDigits || el.dataset.digits || el.value);
   if (!bruto) return 0;
+  const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
   const freteEl = document.getElementById('prog-inp-frete');
   const freteVal = freteEl ? _progParseValor(freteEl.dataset.digits || '') : 0;
-  if (!freteVal) return bruto;
   let fretePorCoco = 0;
-  if (_progFreteMode === 'percoco') {
-    fretePorCoco = freteVal;
-  } else {
-    const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
-    fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
+  if (freteVal) {
+    if (_progFreteMode === 'percoco') {
+      fretePorCoco = freteVal;
+    } else {
+      fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
+    }
   }
-  return Math.max(0, bruto - fretePorCoco);
+  // Custos extras (ICMS + seguro) divididos por qtde
+  const extras = _progGetCustosExtras();
+  const extrasPorCoco = (extras > 0 && qtde > 0) ? extras / qtde : 0;
+  return Math.max(0, bruto - fretePorCoco - extrasPorCoco);
 }
 // Retorna o BRUTO digitado (sem dedução). Usado para decidir UI (mostrar campo frete, etc).
 function _progGetValorBruto() {
@@ -200,9 +204,59 @@ function _progToggleFreteMode() {
   _progSetFreteMode(_progFreteMode === 'total' ? 'percoco' : 'total');
 }
 
+// ── ICMS + SEGURO HELPERS ──
+function _progOnIcmsInput(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = _progFormatValor(digits);
+  el.dataset.digits = digits;
+  _progAplicarDeducaoFrete();
+  _progAtualizarPreview();
+}
+function _progOnSeguroInput(el) {
+  const digits = el.value.replace(/\D/g, '');
+  el.value = _progFormatValor(digits);
+  el.dataset.digits = digits;
+  el.dataset.manual = el.value ? '1' : '';
+  _progAplicarDeducaoFrete();
+  _progAtualizarPreview();
+}
+function _progGetIcms() {
+  const el = document.getElementById('prog-inp-icms');
+  if (!el) return 0;
+  return _progParseValor(el.dataset.digits || el.value);
+}
+function _progGetSeguro() {
+  const el = document.getElementById('prog-inp-seguro');
+  if (!el) return 0;
+  return _progParseValor(el.dataset.digits || el.value);
+}
+function _progAutoSeguro() {
+  const el = document.getElementById('prog-inp-seguro');
+  if (!el || el.dataset.manual === '1') return;
+  const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+  const bruto = _progGetValorBruto();
+  const freteTotal = _progCalcFreteTotal();
+  const baseNF = (bruto * qtde) + freteTotal;
+  const seg = baseNF * 0.0007;
+  if (seg > 0) {
+    const digits = _progValorToDigits(seg);
+    el.dataset.digits = digits;
+    el.value = _progFormatValor(digits);
+  } else {
+    el.value = '';
+    el.dataset.digits = '';
+  }
+  const nota = document.getElementById('prog-seguro-nota');
+  if (nota) nota.textContent = seg > 0 ? '0,07% × R$ ' + Math.round(baseNF).toLocaleString('pt-BR') + ' = R$ ' + seg.toFixed(2).replace('.', ',') : '';
+}
+// Retorna total de custos extras (ICMS + seguro) — para deduzir do líquido
+function _progGetCustosExtras() {
+  return _progGetIcms() + _progGetSeguro();
+}
+
 // Auto-dedução: o input do valor SEMPRE mostra o BRUTO. A nota abaixo
-// mostra o cálculo do líquido (bruto − frete/coco). _progGetValor retorna
-// o líquido para preview/save. Se o frete for limpo, a nota some.
+// mostra o cálculo do líquido (bruto − frete/coco − icms/coco − seguro/coco).
+// _progGetValor retorna o líquido para preview/save. Se o frete for limpo, a nota some.
 function _progAplicarDeducaoFrete() {
   const valorEl = document.getElementById('prog-inp-valor');
   const freteEl = document.getElementById('prog-inp-frete');
@@ -240,16 +294,22 @@ function _progAplicarDeducaoFrete() {
     return;
   }
 
-  if (fretePorCoco <= 0) {
+  if (fretePorCoco <= 0 && _progGetCustosExtras() <= 0) {
     notaEl.style.display = 'none';
     notaEl.textContent = '';
     return;
   }
 
-  const liquido = Math.max(0, bruto - fretePorCoco);
+  const qtdeN = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
+  const extras = _progGetCustosExtras();
+  const extrasPorCoco = (extras > 0 && qtdeN > 0) ? extras / qtdeN : 0;
+  const liquido = Math.max(0, bruto - fretePorCoco - extrasPorCoco);
   const fmt = (n) => n.toFixed(2).replace('.', ',');
+  let partes = 'Bruto R$ ' + fmt(bruto);
+  if (fretePorCoco > 0) partes += ' − frete R$ ' + fmt(fretePorCoco);
+  if (extrasPorCoco > 0) partes += ' − custos R$ ' + fmt(extrasPorCoco);
   notaEl.style.display = 'block';
-  notaEl.innerHTML = '🔻 Bruto R$ ' + fmt(bruto) + ' − frete R$ ' + fmt(fretePorCoco) + '/coco = <strong>R$ ' + fmt(liquido) + '/coco líquido</strong>';
+  notaEl.innerHTML = '🔻 ' + partes + '/coco = <strong>R$ ' + fmt(liquido) + '/coco líquido</strong>';
 }
 
 // ── INIT ──
@@ -518,12 +578,20 @@ function abrirModalProg() {
   document.getElementById('prog-inp-obs').style.display = 'none';
   document.getElementById('prog-inp-motorista').value = '';
   document.getElementById('prog-receita-preview').style.display = 'none';
-  // Reset frete
+  // Reset frete, ICMS, seguro
   const freteEl = document.getElementById('prog-inp-frete');
   if (freteEl) { freteEl.value = ''; freteEl.dataset.digits = ''; }
   const campoFrete = document.getElementById('prog-campo-frete');
   if (campoFrete) campoFrete.style.display = 'none';
   _progSetFreteMode('total');
+  const icmsEl = document.getElementById('prog-inp-icms');
+  if (icmsEl) { const d = _progValorToDigits(96); icmsEl.value = _progFormatValor(d); icmsEl.dataset.digits = d; }
+  const campoIcms = document.getElementById('prog-campo-icms');
+  if (campoIcms) campoIcms.style.display = 'none';
+  const seguroEl = document.getElementById('prog-inp-seguro');
+  if (seguroEl) { seguroEl.value = ''; seguroEl.dataset.digits = ''; seguroEl.dataset.manual = ''; }
+  const campoSeguro = document.getElementById('prog-campo-seguro');
+  if (campoSeguro) campoSeguro.style.display = 'none';
   document.getElementById('prog-btn-salvar').textContent = '✓ Agendar carga';
   document.getElementById('prog-acoes-editar').style.display = 'none';
 
@@ -570,9 +638,10 @@ function abrirModalProgEditar(id) {
   _progSetFreteMode('total');
   const valorEl = document.getElementById('prog-inp-valor');
   let valorBruto = Number(c.valor_por_coco || 0);
-  if (valorBruto > 0 && c.frete_total && c.volume_cocos) {
-    const fretePorCoco = Number(c.frete_total) / Number(c.volume_cocos);
-    valorBruto = valorBruto + fretePorCoco;
+  if (valorBruto > 0 && c.volume_cocos) {
+    if (c.frete_total) valorBruto += Number(c.frete_total) / Number(c.volume_cocos);
+    const extrasTotal = (Number(c.icms_valor) || 0) + (Number(c.seguro_valor) || 0);
+    if (extrasTotal > 0) valorBruto += extrasTotal / Number(c.volume_cocos);
   }
   const digits = _progValorToDigits(valorBruto);
   valorEl.dataset.digits = digits;
@@ -595,6 +664,33 @@ function abrirModalProgEditar(id) {
     freteEl.value = ''; freteEl.dataset.digits = '';
     if (campoFrete) campoFrete.style.display = c.valor_por_coco ? '' : 'none';
   }
+
+  // ICMS + Seguro
+  const icmsEditEl = document.getElementById('prog-inp-icms');
+  const campoIcmsEdit = document.getElementById('prog-campo-icms');
+  if (icmsEditEl) {
+    const icmsVal = Number(c.icms_valor) || 96;
+    const id = _progValorToDigits(icmsVal);
+    icmsEditEl.dataset.digits = id;
+    icmsEditEl.value = _progFormatValor(id);
+  }
+  if (campoIcmsEdit) campoIcmsEdit.style.display = c.frete_total ? '' : 'none';
+
+  const seguroEditEl = document.getElementById('prog-inp-seguro');
+  const campoSeguroEdit = document.getElementById('prog-campo-seguro');
+  if (seguroEditEl) {
+    if (c.seguro_valor) {
+      const sd = _progValorToDigits(Number(c.seguro_valor));
+      seguroEditEl.dataset.digits = sd;
+      seguroEditEl.value = _progFormatValor(sd);
+      seguroEditEl.dataset.manual = '1';
+    } else {
+      seguroEditEl.value = '';
+      seguroEditEl.dataset.digits = '';
+      seguroEditEl.dataset.manual = '';
+    }
+  }
+  if (campoSeguroEdit) campoSeguroEdit.style.display = c.frete_total ? '' : 'none';
 
   _progAreaSel = c.area;
   _progResetAreaBtns();
@@ -863,19 +959,45 @@ function _progAtualizarPreview() {
   document.getElementById('prog-prev-litros').textContent = fmtNum(litros) + ' L' + (lpc !== LITROS_POR_COCO ? ' (' + lpc.toFixed(1) + '/coco)' : '');
   document.getElementById('prog-prev-receita').textContent = valor > 0 ? 'R$ ' + fmtNum(Math.round(receita)) : '—';
   document.getElementById('prog-prev-rpc').textContent = valor > 0 ? 'R$ ' + valor.toFixed(2) + '/coco' : '—';
-  // Frete e líquida
+  // Auto-seguro antes de ler valores
+  _progAutoSeguro();
+
+  // ICMS + Seguro
+  const icmsVal = _progGetIcms();
+  const seguroVal = _progGetSeguro();
+  const custosExtras = icmsVal + seguroVal;
+  const totalNFComCustos = totalNF + custosExtras;
+
+  // Frete, ICMS, Seguro e líquida
   const freteRow = document.getElementById('prog-prev-frete-row');
+  const icmsRow = document.getElementById('prog-prev-icms-row');
+  const seguroRow = document.getElementById('prog-prev-seguro-row');
   const liqRow = document.getElementById('prog-prev-liquida-row');
+  const temCustos = freteTotal > 0 || custosExtras > 0;
   if (freteRow) freteRow.style.display = freteTotal > 0 ? '' : 'none';
-  if (liqRow) liqRow.style.display = freteTotal > 0 ? '' : 'none';
+  if (icmsRow) icmsRow.style.display = icmsVal > 0 ? '' : 'none';
+  if (seguroRow) seguroRow.style.display = seguroVal > 0 ? '' : 'none';
+  if (liqRow) liqRow.style.display = temCustos ? '' : 'none';
   if (freteTotal > 0) {
     document.getElementById('prog-prev-frete').textContent = '+ R$ ' + fmtNum(Math.round(freteTotal));
-    document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(totalNF));
   }
-  // Mostrar campo frete quando valor BRUTO preenchido (não líquido — senão sumiria
-  // se o frete digitado for maior que o bruto)
+  if (icmsVal > 0) {
+    document.getElementById('prog-prev-icms').textContent = '− R$ ' + fmtNum(Math.round(icmsVal));
+  }
+  if (seguroVal > 0) {
+    document.getElementById('prog-prev-seguro').textContent = '− R$ ' + fmtNum(Math.round(seguroVal));
+  }
+  if (temCustos) {
+    document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(totalNFComCustos));
+  }
+  // Mostrar campos frete/icms/seguro quando valor BRUTO preenchido
+  const temBruto = _progGetValorBruto() > 0;
   const campoFrete = document.getElementById('prog-campo-frete');
-  if (campoFrete) campoFrete.style.display = _progGetValorBruto() > 0 ? '' : 'none';
+  if (campoFrete) campoFrete.style.display = temBruto ? '' : 'none';
+  const campoIcms = document.getElementById('prog-campo-icms');
+  if (campoIcms) campoIcms.style.display = (temBruto && freteTotal > 0) ? '' : 'none';
+  const campoSeguro = document.getElementById('prog-campo-seguro');
+  if (campoSeguro) campoSeguro.style.display = (temBruto && freteTotal > 0) ? '' : 'none';
 }
 
 function progToggleObs() {
@@ -925,6 +1047,8 @@ async function salvarProgCarga() {
     volume_cocos: qtde,
     valor_por_coco: valor,
     frete_total: _progCalcFreteTotal() || null,
+    icms_valor: _progGetIcms() || null,
+    seguro_valor: _progGetSeguro() || null,
     tipo_veiculo: _progVeiculoSel,
     area: _progAreaSel,
     providenciar_caminhao: _progProvidenciarCaminhao,

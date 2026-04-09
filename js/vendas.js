@@ -152,9 +152,9 @@ function onPrecoBaseInput(el){
 function limparSimMesa(){
   const ids = ['m-qtde','m-preco-base','m-frete-coco','m-frete-total','m-descarga',
     'm-gaiola-qtd','m-seguro','m-desconto','m-prazo'];
-  ids.forEach(id => { const el=document.getElementById(id); if(el){ el.value=''; if(el.dataset) el.dataset.auto=''; }});
+  ids.forEach(id => { const el=document.getElementById(id); if(el){ el.value=''; if(el.dataset){ el.dataset.auto=''; el.dataset.manual=''; } }});
   // Resets específicos
-  const defaults = {'m-gaiola-unit':50, 'm-gaiola-cap':200, 'm-taxa':1, 'm-margem':10};
+  const defaults = {'m-gaiola-unit':50, 'm-gaiola-cap':200, 'm-taxa':1, 'm-margem':10, 'm-icms':96};
   Object.keys(defaults).forEach(id => { const el=document.getElementById(id); if(el) el.value=defaults[id]; });
   const fmt = document.getElementById('m-preco-base-fmt');
   if(fmt) fmt.textContent = 'R$ 0,00';
@@ -243,9 +243,28 @@ function calcSimMesa(){
     }
   }
 
-  // Seguro
+  // ICMS do frete
+  const icms_tot = _gSM('m-icms');
+  const icms_coco = qtde>0 ? icms_tot/qtde : 0;
+
+  // Seguro — 0,07% do valor da NF (cocos + frete). Auto-calculado, mas editável.
+  const seguroEl = document.getElementById('m-seguro');
+  const frete_tot_valor = _simMesaFreteMode==='coco' ? frete_coco*qtde : _gSM('m-frete-total');
+  const baseNF = (precoBase * qtde) + frete_tot_valor;
+  if(seguroEl && seguroEl.dataset.manual!=='1'){
+    const autoSeg = baseNF * 0.0007;
+    seguroEl.value = autoSeg > 0 ? autoSeg.toFixed(2) : '';
+  }
   const seguro_tot = _gSM('m-seguro');
   const seguro_coco = qtde>0 ? seguro_tot/qtde : 0;
+  const descElSeg = document.getElementById('seguro-desc');
+  if(descElSeg){
+    if(seguroEl && seguroEl.dataset.manual==='1'){
+      descElSeg.textContent = 'Valor manual. Limpe o campo para voltar ao cálculo automático (0,07%).';
+    } else {
+      descElSeg.textContent = 'Calculado: 0,07% × R$ '+(baseNF>0?baseNF.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0}):'0')+' (cocos + frete) = R$ '+seguro_tot.toFixed(2);
+    }
+  }
 
   // Desconto financeiro
   const desc_pct = _gSM('m-desconto')/100;
@@ -258,7 +277,7 @@ function calcSimMesa(){
   const fin_coco = precoBase * fator_jc;
 
   // Custos por coco
-  const custos_coco = frete_coco + descarga_coco + gaiola_coco + seguro_coco + desc_coco + fin_coco;
+  const custos_coco = frete_coco + descarga_coco + gaiola_coco + icms_coco + seguro_coco + desc_coco + fin_coco;
 
   // Margem
   const margem_pct = _gSM('m-margem')/100;
@@ -292,7 +311,8 @@ function calcSimMesa(){
     {nome:'🚛 Frete', coco:frete_coco, tot:frete_coco*qtde, cls:'negativo', ocultar:frete_coco===0},
     {nome:'📦 Descarga', coco:descarga_coco, tot:descarga_tot, cls:'negativo', ocultar:descarga_tot===0},
     {nome:'🧺 Gaiola — '+gaiola_qtd+' × R$'+gaiola_unit.toFixed(2), coco:gaiola_coco, tot:gaiola_tot, cls:'negativo', ocultar:gaiola_tot===0},
-    {nome:'🛡️ Seguro', coco:seguro_coco, tot:seguro_tot, cls:'negativo', ocultar:seguro_tot===0},
+    {nome:'📄 ICMS frete', coco:icms_coco, tot:icms_tot, cls:'negativo', ocultar:icms_tot===0},
+    {nome:'🛡️ Seguro 0,07%', coco:seguro_coco, tot:seguro_tot, cls:'negativo', ocultar:seguro_tot===0},
     {nome:'💳 Desconto '+(desc_pct*100).toFixed(1)+'%', coco:desc_coco, tot:desc_coco*qtde, cls:'negativo', ocultar:desc_pct===0},
     {nome:'⏱️ Prazo '+prazo+'d · juro '+(taxa*100).toFixed(1)+'%/mês', coco:fin_coco, tot:fin_coco*qtde, cls:'negativo', ocultar:prazo===0,
       detalhe: prazo>0 ? '(1 + '+(taxa*100).toFixed(1)+'%)^('+prazo+'/30) − 1 = '+(fator_jc*100).toFixed(3)+'%' : ''},
@@ -868,8 +888,23 @@ function calcVendaLitro(){
 function calcVendaRecebido(){
   const t=parseFloat(document.getElementById('v-total')?.value)||0;
   const f=parseFloat(document.getElementById('v-frete')?.value)||0;
+  const icms=parseFloat(document.getElementById('v-icms')?.value)||0;
+  // Mostrar/ocultar ICMS+Seguro row quando tem frete
+  const custosRow=document.getElementById('v-custos-frete-row');
+  if(custosRow) custosRow.style.display=f>0?'':'none';
+  // Auto-seguro: 0,07% × (total + frete)
+  const seguroEl=document.getElementById('v-seguro');
+  if(seguroEl && seguroEl.dataset.manual!=='1' && t>0){
+    const autoSeg=(t+f)*0.0007;
+    seguroEl.value=autoSeg>0?autoSeg.toFixed(2):'';
+  }
+  if(seguroEl && !seguroEl.value) seguroEl.dataset.manual='';
+  const seguro=parseFloat(seguroEl?.value)||0;
+  const descEl=document.getElementById('v-seguro-desc');
+  if(descEl) descEl.textContent=t>0?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.0007).toFixed(2):'';
+  const deducoes=f+(f>0?(icms+seguro):0);
   const r=document.getElementById('v-recebido');
-  if(r&&t>0)r.value=(t-f).toFixed(2);
+  if(r&&t>0)r.value=(t-deducoes).toFixed(2);
 }
 
 function onClienteChange(){
@@ -933,7 +968,10 @@ async function salvarVenda(){
   const mapa=getMapaClientes();
   const isFab=mapa[cliente]?.fabrica;
   const db=loadVendas();
+  const icmsVal=frete>0?(parseFloat(document.getElementById('v-icms')?.value)||0):0;
+  const seguroVal=frete>0?(parseFloat(document.getElementById('v-seguro')?.value)||0):0;
   const venda={id:Date.now(),data,cliente,nf,areas,qtde,total,frete,quebra,valorRecebido:recebido,status,dataDeposito:dep,
+    icmsValor:icmsVal||null,seguroValor:seguroVal||null,
     ufDestino:ufDestino,cidadeDestino:cidadeDestino,
     tipoVenda:litro?'litro':'coco',
     pesoKg:litro?(parseFloat(document.getElementById('v-peso')?.value)||0):null,
@@ -993,6 +1031,10 @@ async function salvarVenda(){
 
 function limparFormVenda(){
   ['v-cliente','v-nf','v-total','v-frete','v-recebido','v-peso','v-litragem','v-vlitro','v-deposito','v-cidade-destino'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  // Reset ICMS + Seguro
+  const vIcms=document.getElementById('v-icms');if(vIcms)vIcms.value=96;
+  const vSeguro=document.getElementById('v-seguro');if(vSeguro){vSeguro.value='';vSeguro.dataset.manual='';}
+  const vCustosRow=document.getElementById('v-custos-frete-row');if(vCustosRow)vCustosRow.style.display='none';
   const ufSel=document.getElementById('v-uf-destino');if(ufSel)ufSel.value='';
   ['A1','A2','C','D','MA','MDC','MDB'].forEach(a=>{const el=document.getElementById('va-'+a);if(el){el.value='';el.classList.remove('filled');}});
   const t=document.getElementById('va-total');if(t){t.value='';t.classList.remove('filled');}
@@ -1242,6 +1284,16 @@ function editarVenda(id){
   set('ev-total',v.total||'');
   set('ev-frete',v.frete||'');
   set('ev-recebido',v.valorRecebido||'');
+  // ICMS + Seguro
+  const evIcms=document.getElementById('ev-icms');
+  if(evIcms) evIcms.value=v.icmsValor||96;
+  const evSeguro=document.getElementById('ev-seguro');
+  if(evSeguro){
+    if(v.seguroValor){evSeguro.value=v.seguroValor;evSeguro.dataset.manual='1';}
+    else{evSeguro.value='';evSeguro.dataset.manual='';}
+  }
+  const evCustosRow=document.getElementById('ev-custos-frete-row');
+  if(evCustosRow) evCustosRow.style.display=(v.frete&&v.frete>0)?'':'none';
   set('ev-status',v.status||'PAGO');
   updateEditStatusBadge();
   set('ev-deposito',v.dataDeposito||'');
@@ -1357,13 +1409,26 @@ function calcEditVenda(){
   const qb=parseInt(document.getElementById('eva-quebra')?.value)||0;
   const t=parseFloat(document.getElementById('ev-total')?.value)||0;
   const f=parseFloat(document.getElementById('ev-frete')?.value)||0;
-  const liquido=t-f;
+  // Mostrar/ocultar ICMS+Seguro quando tem frete
+  const custosRow=document.getElementById('ev-custos-frete-row');
+  if(custosRow) custosRow.style.display=f>0?'':'none';
+  const icms=f>0?(parseFloat(document.getElementById('ev-icms')?.value)||0):0;
+  // Auto-seguro
+  const seguroEl=document.getElementById('ev-seguro');
+  if(seguroEl && seguroEl.dataset.manual!=='1' && t>0 && f>0){
+    const autoSeg=(t+f)*0.0007;
+    seguroEl.value=autoSeg>0?autoSeg.toFixed(2):'';
+  }
+  if(seguroEl && !seguroEl.value) seguroEl.dataset.manual='';
+  const seguro=f>0?(parseFloat(seguroEl?.value)||0):0;
+  const descEl=document.getElementById('ev-seguro-desc');
+  if(descEl) descEl.textContent=(t>0&&f>0)?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.0007).toFixed(2):'';
+  const deducoes=f+icms+seguro;
+  const liquido=t-deducoes;
   const el1=document.getElementById('ev-calc-cocos');
   const el2=document.getElementById('ev-calc-preco');
   if(el1)el1.textContent=q>0?fmtNum(q)+(qb>0?' (+'+fmtNum(qb)+' quebra)':''):'—';
-  // R$/coco final SEMPRE a partir do total líquido (total − frete) ÷ qtde —
-  // vale tanto para venda por coco quanto por litro (já que o total foi
-  // calculado a partir de litragem × R$/L no tipo litro)
+  // R$/coco final SEMPRE a partir do total líquido (total − frete − icms − seguro) ÷ qtde
   if(el2)el2.textContent=q>0&&t>0?'R$ '+(liquido/q).toFixed(2):'—';
   const r=document.getElementById('ev-recebido');
   if(r&&t>0)r.value=liquido.toFixed(2);
@@ -1435,6 +1500,8 @@ async function salvarEditVenda(){
   v.cidadeDestino=(document.getElementById('ev-cidade')?.value||'').trim()||null;
   v.total=total;
   v.frete=parseFloat(document.getElementById('ev-frete')?.value)||0;
+  v.icmsValor=v.frete>0?(parseFloat(document.getElementById('ev-icms')?.value)||0):null;
+  v.seguroValor=v.frete>0?(parseFloat(document.getElementById('ev-seguro')?.value)||0):null;
   v.valorRecebido=parseFloat(document.getElementById('ev-recebido')?.value)||0;
   v.dataDeposito=document.getElementById('ev-deposito')?.value||null;
   v.qtde=qtde;
