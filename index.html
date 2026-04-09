@@ -1350,17 +1350,37 @@
         <input type="date" id="ev-deposito" class="form-input">
       </div>
     </div>
-    <!-- BLOCO DADOS DE FÁBRICA — aparece para clientes fábrica ou vendas em litro -->
+    <!-- TOGGLE TIPO DE VENDA -->
+    <div style="margin-bottom:12px">
+      <label class="form-label">Tipo de venda</label>
+      <div id="ev-tipo-toggle" style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+        <button type="button" id="ev-tipo-coco" onclick="setEditTipoVenda('coco')" style="flex:1;padding:10px;font-weight:800;font-size:12px;background:var(--verde);color:#fff;border:none;cursor:pointer">POR COCO</button>
+        <button type="button" id="ev-tipo-litro" onclick="setEditTipoVenda('litro')" style="flex:1;padding:10px;font-weight:800;font-size:12px;background:#fff;color:var(--muted);border:none;cursor:pointer">POR LITRO (FÁBRICA)</button>
+      </div>
+    </div>
+    <!-- BLOCO DADOS DE FÁBRICA — aparece quando tipo = litro -->
     <div id="ev-bloco-fabrica" style="display:none;background:var(--verde-bg);border:1.5px solid var(--verde-border);border-radius:10px;padding:12px;margin-bottom:16px">
       <div style="font-size:11px;font-weight:800;color:var(--verde);text-transform:uppercase;margin-bottom:8px">📊 Dados de Fábrica (litragem)</div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Litragem recebida (L)</label>
-          <input type="number" id="ev-litragem" class="form-input" step="0.01" placeholder="ex: 12500" oninput="calcEditVenda()">
+          <input type="number" id="ev-litragem" class="form-input" step="0.01" placeholder="ex: 12500" oninput="onEditFabricaInput()">
         </div>
+        <div class="form-group">
+          <label class="form-label">Valor por litro (R$/L)</label>
+          <input type="number" id="ev-vlitro" class="form-input" step="0.0001" placeholder="ex: 0,96" oninput="onEditFabricaInput()">
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
         <div class="form-group">
           <label class="form-label">Peso bruto (kg)</label>
           <input type="number" id="ev-peso" class="form-input" step="0.01" placeholder="opcional" oninput="calcEditVenda()">
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <label style="font-size:11px;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="ev-auto-total" checked onchange="onEditFabricaInput()">
+            <span>Atualizar Valor Total automaticamente</span>
+          </label>
         </div>
       </div>
       <div id="ev-fab-calc" style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5"></div>
