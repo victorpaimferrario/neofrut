@@ -434,7 +434,9 @@
   .sim-campo-desc{font-size:10px;color:var(--muted);margin-top:3px;font-style:italic;line-height:1.4}
   .sim-inp-wrap{position:relative}
   .sim-inp{width:100%;padding:10px 58px 10px 14px;border:2px solid var(--border);border-radius:9px;font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text);outline:none;transition:border-color .15s;background:var(--surface)}
+  .sim-inp::placeholder{color:#c4d3c0;font-weight:400;font-style:italic;opacity:1}
   .sim-inp:focus{border-color:var(--forest)}
+  .sim-inp.destaque::placeholder{color:#9fb89a;font-weight:400}
   .sim-inp-unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);font-family:var(--font-mono);font-weight:600;pointer-events:none;background:inherit;padding-left:4px}
   .sim-inp.destaque{border-color:var(--forest);background:var(--verde-bg)}
   .sim-inp.destaque:focus{border-color:var(--forest)}

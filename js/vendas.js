@@ -124,14 +124,41 @@ function setSimMesaFreteMode(mode){
   calcSimMesa();
 }
 
-// Preço base em centavos: usuário digita 230 → R$ 2,30
+// Preço base: aceita "230" (= R$ 2,30), "2,30" ou "2.30"
+function _parsePrecoBase(valor){
+  if(!valor) return 0;
+  const v = String(valor).trim();
+  if(v==='') return 0;
+  // Se contém vírgula ou ponto → decimal literal
+  if(v.includes(',') || v.includes('.')){
+    const normalizado = v.replace(/\./g,'').replace(',', '.');
+    const n = parseFloat(normalizado);
+    return isNaN(n) ? 0 : n;
+  }
+  // Só dígitos → centavos
+  const digits = v.replace(/\D/g,'');
+  return digits ? parseInt(digits,10)/100 : 0;
+}
 function onPrecoBaseInput(el){
-  // Só dígitos
-  const digits = (el.value||'').replace(/\D/g,'');
-  el.value = digits;
-  const reais = digits ? (parseInt(digits,10)/100) : 0;
+  // Permitir dígitos, vírgula e ponto
+  el.value = (el.value||'').replace(/[^\d.,]/g,'');
+  const reais = _parsePrecoBase(el.value);
   const fmt = document.getElementById('m-preco-base-fmt');
   if(fmt) fmt.textContent = 'R$ '+reais.toFixed(2).replace('.',',');
+  calcSimMesa();
+}
+
+// Limpar todos os campos do simulador mesa
+function limparSimMesa(){
+  const ids = ['m-qtde','m-preco-base','m-frete-coco','m-frete-total','m-descarga',
+    'm-gaiola-qtd','m-seguro','m-desconto','m-prazo'];
+  ids.forEach(id => { const el=document.getElementById(id); if(el){ el.value=''; if(el.dataset) el.dataset.auto=''; }});
+  // Resets específicos
+  const defaults = {'m-gaiola-unit':50, 'm-gaiola-cap':200, 'm-taxa':1, 'm-margem':10};
+  Object.keys(defaults).forEach(id => { const el=document.getElementById(id); if(el) el.value=defaults[id]; });
+  const fmt = document.getElementById('m-preco-base-fmt');
+  if(fmt) fmt.textContent = 'R$ 0,00';
+  setSimMesaFreteMode('coco');
   calcSimMesa();
 }
 
@@ -172,10 +199,8 @@ function calcSimMesa(){
   }
 
   const qtde = _gSM('m-qtde');
-  // Preço base: ler do dataset (centavos)
-  const precoBaseEl = document.getElementById('m-preco-base');
-  const digits = (precoBaseEl?.value||'').replace(/\D/g,'');
-  const precoBase = digits ? parseInt(digits,10)/100 : 0;
+  // Preço base: aceita "230" (centavos), "2,30" ou "2.30"
+  const precoBase = _parsePrecoBase(document.getElementById('m-preco-base')?.value);
 
   const vazio = document.getElementById('res-vazio-mesa');
   const precoFinal = document.getElementById('res-preco-final');

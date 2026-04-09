@@ -943,9 +943,12 @@
       <div>
         <!-- Card: o que você quer receber -->
         <div class="sim-card" style="margin-bottom:14px">
-          <div class="sim-card-head">
-            <div class="sim-card-titulo">🎯 O que você quer receber</div>
-            <div class="sim-card-sub">Preço líquido desejado · já com todos os custos deduzidos</div>
+          <div class="sim-card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div>
+              <div class="sim-card-titulo">🎯 O que você quer receber</div>
+              <div class="sim-card-sub">Preço líquido desejado · já com todos os custos deduzidos</div>
+            </div>
+            <button type="button" onclick="limparSimMesa()" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;font-family:var(--font-main)" title="Limpar todos os campos">🧹 Limpar</button>
           </div>
           <div class="sim-card-body">
             <div class="sim-campo">
@@ -958,7 +961,7 @@
             <div class="sim-campo">
               <label>Valor que você quer receber por coco</label>
               <div class="sim-inp-wrap">
-                <input class="sim-inp destaque" type="text" inputmode="numeric" id="m-preco-base" placeholder="ex: 230 = R$ 2,30" oninput="onPrecoBaseInput(this)">
+                <input class="sim-inp destaque" type="text" inputmode="decimal" id="m-preco-base" placeholder="230 ou 2,30" oninput="onPrecoBaseInput(this)">
                 <span class="sim-inp-unit" id="m-preco-base-fmt">R$ 0,00</span>
               </div>
               <div class="sim-campo-desc">Digite em centavos: <strong>230</strong> = R$ 2,30 · <strong>170</strong> = R$ 1,70 · é o valor líquido que entra no seu bolso.</div>
