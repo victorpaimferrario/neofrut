@@ -95,7 +95,90 @@ function showVendasTab(tab){
   if(tab==='lista')renderVendasLista();
   if(tab==='pendentes')renderVendasPendentes();
   if(tab==='clientes')initClientes();
-  if(tab==='simulador')calcSimulador();
+  if(tab==='simulador'){ calcSimulador(); calcSimMesa(); }
+}
+
+// ── SUB-ABAS DO SIMULADOR ──
+function setSimTab(tab, el){
+  document.querySelectorAll('.sim-sub-tab').forEach(t=>t.classList.remove('ativo'));
+  document.querySelectorAll('.sim-painel').forEach(p=>{p.classList.remove('ativo');p.style.display='none';});
+  if(el) el.classList.add('ativo');
+  const painel=document.getElementById('sim-painel-'+tab);
+  if(painel){ painel.classList.add('ativo'); painel.style.display='grid'; }
+  if(tab==='mesa') calcSimMesa();
+  if(tab==='fabrica') calcSimulador();
+}
+
+// ── SIMULADOR MESA (Coco Posto no Local) ──
+let _simMesaFreteMode = 'coco';
+function setSimMesaFreteMode(mode){
+  _simMesaFreteMode = mode;
+  const bCoco=document.getElementById('sm-ft-coco');
+  const bTot=document.getElementById('sm-ft-total');
+  if(bCoco) bCoco.classList.toggle('ativo', mode==='coco');
+  if(bTot) bTot.classList.toggle('ativo', mode==='total');
+  const wCoco=document.getElementById('sm-frete-coco-wrap');
+  const wTot=document.getElementById('sm-frete-total-wrap');
+  if(wCoco) wCoco.style.display = mode==='coco' ? 'block' : 'none';
+  if(wTot) wTot.style.display = mode==='total' ? 'block' : 'none';
+  calcSimMesa();
+}
+
+function _gSM(id){ return parseFloat(document.getElementById(id)?.value)||0; }
+function _fmtRSM(n){ return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _fmtRCocoSM(n){ return 'R$ '+n.toFixed(4).replace('.',','); }
+
+function calcSimMesa(){
+  const qtde = _gSM('sm-qtde');
+  const precoDesejado = _gSM('sm-preco-desejado');
+  const freteCoco = _gSM('sm-frete-coco');
+  const freteTotalInput = _gSM('sm-frete-total');
+  const descarga = _gSM('sm-descarga');
+  const gaiolaVal = _gSM('sm-gaiola-valor');
+  const gaiolaCap = _gSM('sm-gaiola-cap');
+  const seguro = _gSM('sm-seguro');
+  const descontoPct = _gSM('sm-desconto');
+  const prazoDias = _gSM('sm-prazo');
+  const jurosMesPct = _gSM('sm-juros-mes');
+
+  // Valores base
+  const valorProdutor = qtde * precoDesejado;
+  const freteTotal = _simMesaFreteMode==='coco' ? (freteCoco*qtde) : freteTotalInput;
+  const gaiolaPorCoco = gaiolaCap>0 ? (gaiolaVal/gaiolaCap) : 0;
+  const gaiolaTotal = gaiolaPorCoco*qtde;
+  const subtotal = valorProdutor + freteTotal + descarga + gaiolaTotal + seguro;
+
+  // Juros proporcional ao prazo (dias × juros_mes/30)
+  const jurosPct = (prazoDias * jurosMesPct) / 30; // em %
+  const jurosFrac = jurosPct/100;
+  const descFrac = descontoPct/100;
+
+  // Preço a cobrar: subtotal = X × (1-desc) / (1+juros)
+  // X = subtotal × (1+juros) / (1-desc)
+  let totalCobrar = 0;
+  if(subtotal>0 && descFrac<1){
+    totalCobrar = subtotal * (1+jurosFrac) / (1-descFrac);
+  }
+  const precoPorCoco = qtde>0 ? totalCobrar/qtde : 0;
+  const valorJuros = totalCobrar>0 ? totalCobrar*jurosFrac/(1+jurosFrac) : 0;
+  const valorDesc = totalCobrar*descFrac;
+
+  // Render
+  const $ = id => document.getElementById(id);
+  if($('sm-preco-cobrar')) $('sm-preco-cobrar').textContent = totalCobrar>0 ? _fmtRSM(totalCobrar) : 'R$ —';
+  if($('sm-preco-por-coco')) $('sm-preco-por-coco').textContent = precoPorCoco>0 ? _fmtRSM(precoPorCoco) : '—';
+  if($('sm-det-produtor')) $('sm-det-produtor').textContent = _fmtRSM(valorProdutor);
+  if($('sm-det-frete')) $('sm-det-frete').textContent = _fmtRSM(freteTotal);
+  if($('sm-det-descarga')) $('sm-det-descarga').textContent = _fmtRSM(descarga);
+  if($('sm-det-gaiola')) $('sm-det-gaiola').textContent = _fmtRSM(gaiolaTotal);
+  if($('sm-det-gaiola-unit')) $('sm-det-gaiola-unit').textContent = gaiolaPorCoco>0 ? '('+_fmtRCocoSM(gaiolaPorCoco)+'/coco)' : '';
+  if($('sm-det-seguro')) $('sm-det-seguro').textContent = _fmtRSM(seguro);
+  if($('sm-det-subtotal')) $('sm-det-subtotal').textContent = _fmtRSM(subtotal);
+  if($('sm-det-juros')) $('sm-det-juros').textContent = _fmtRSM(valorJuros);
+  if($('sm-det-juros-pct')) $('sm-det-juros-pct').textContent = jurosPct.toFixed(2)+'%';
+  if($('sm-det-desc')) $('sm-det-desc').textContent = _fmtRSM(valorDesc);
+  if($('sm-det-desc-pct')) $('sm-det-desc-pct').textContent = descontoPct.toFixed(2)+'%';
+  if($('sm-det-total')) $('sm-det-total').textContent = _fmtRSM(totalCobrar);
 }
 
 function filtrarVendas(db,ano,mes){

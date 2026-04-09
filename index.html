@@ -930,18 +930,131 @@
 
   <!-- SIMULADOR -->
   <div class="vd-sec" id="vsec-simulador">
-    <div class="vform">
-      <div style="font-size:15px;font-weight:800;margin-bottom:4px">Simulador de Carga</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Informe a quantidade de cocos. Peso e litragem são calculados automaticamente (editáveis).</div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Quantidade de cocos</label><input class="form-input" type="number" min="0" id="sim-qtde" placeholder="ex: 15000" oninput="onSimQtdeChange()"></div>
-        <div class="form-group"><label class="form-label">Peso da carga (kg) <span style="font-weight:400;color:var(--muted)">— média 2,2 kg/coco</span></label><input class="form-input" type="number" min="0" step="1" id="sim-peso" placeholder="auto" oninput="calcSimulador()"></div>
+    <!-- Sub-abas do simulador -->
+    <div class="sim-sub-tabs">
+      <button class="sim-sub-tab ativo" onclick="setSimTab('mesa',this)">🛒 Coco Posto no Local</button>
+      <button class="sim-sub-tab" onclick="setSimTab('fabrica',this)">🏭 Fábrica (por litro)</button>
+    </div>
+
+    <!-- PAINEL MESA — Coco Posto no Local -->
+    <div id="sim-painel-mesa" class="sim-painel ativo">
+      <div class="vform">
+        <div style="font-size:15px;font-weight:800;margin-bottom:4px">Preço Ideal — Posto no Local</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Informe quanto você quer receber por coco e os custos operacionais. O sistema calcula o valor a cobrar do cliente.</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor desejado por coco (R$)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-preco-desejado" placeholder="ex: 1,50" oninput="calcSimMesa()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantidade de cocos na carga</label>
+            <input class="form-input" type="number" min="0" id="sm-qtde" placeholder="ex: 15000" oninput="calcSimMesa()">
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin:18px 0 8px">Custos do transporte</div>
+
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Frete</label>
+          <div style="display:flex;gap:0;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
+            <button type="button" id="sm-ft-coco" class="sm-ft-btn ativo" onclick="setSimMesaFreteMode('coco')">Por coco</button>
+            <button type="button" id="sm-ft-total" class="sm-ft-btn" onclick="setSimMesaFreteMode('total')">Valor total</button>
+          </div>
+          <div id="sm-frete-coco-wrap">
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-frete-coco" placeholder="ex: 0,40 por coco" oninput="calcSimMesa()">
+          </div>
+          <div id="sm-frete-total-wrap" style="display:none">
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-frete-total" placeholder="ex: 6000 total" oninput="calcSimMesa()">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Descarga (R$ por carga)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-descarga" placeholder="ex: 800" oninput="calcSimMesa()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Seguro do transporte (R$)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-seguro" placeholder="opcional" oninput="calcSimMesa()">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Gaiola — aluguel (R$)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-gaiola-valor" value="50" oninput="calcSimMesa()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gaiola — capacidade (cocos)</label>
+            <input class="form-input" type="number" min="1" id="sm-gaiola-cap" value="200" oninput="calcSimMesa()">
+          </div>
+        </div>
+
+        <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;margin:18px 0 8px">Condições financeiras</div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Desconto financeiro (%)</label>
+            <input class="form-input" type="number" step="0.01" min="0" id="sm-desconto" placeholder="ex: 2" oninput="calcSimMesa()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prazo de pagamento (dias)</label>
+            <input class="form-input" type="number" min="0" id="sm-prazo" placeholder="ex: 30" oninput="calcSimMesa()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Taxa de juros aplicada (% ao mês)</label>
+          <input class="form-input" type="number" step="0.01" min="0" id="sm-juros-mes" value="1" oninput="calcSimMesa()">
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Juros proporcionais ao prazo. Padrão: 1% a.m. (rendimento de banco).</div>
+        </div>
       </div>
-      <div id="sim-estimativa" style="display:none;padding:12px 14px;background:var(--verde-bg);border:1px solid var(--verde-border);border-radius:8px;margin-bottom:16px;font-size:13px"></div>
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cenários</div>
-      <div id="sim-cenarios"></div>
-      <button class="btn btn-outline" onclick="adicionarCenario()" style="font-size:12px;margin-bottom:16px">+ Adicionar cenário</button>
-      <div id="sim-resultado" style="margin-top:8px"></div>
+
+      <div class="vform" style="background:var(--verde-bg);border:1.5px solid var(--verde-border)">
+        <div style="font-size:15px;font-weight:800;margin-bottom:12px;color:var(--forest)">💰 Resultado</div>
+
+        <div id="sm-resultado-principal" style="background:#fff;border:2px solid var(--verde);border-radius:10px;padding:16px;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">Preço a cobrar do cliente</div>
+          <div style="font-size:28px;font-weight:900;color:var(--forest);font-family:var(--font-mono);line-height:1.2" id="sm-preco-cobrar">R$ —</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:2px"><span id="sm-preco-por-coco">—</span> por coco</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Detalhamento</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse" id="sm-tabela-detalhes">
+          <tbody>
+            <tr><td style="padding:6px 0;color:var(--muted)">Valor produtor (qtde × preço)</td><td id="sm-det-produtor" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Frete</td><td id="sm-det-frete" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Descarga</td><td id="sm-det-descarga" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Gaiola <span id="sm-det-gaiola-unit" style="font-size:10px"></span></td><td id="sm-det-gaiola" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Seguro</td><td id="sm-det-seguro" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr style="border-top:1px solid var(--border)"><td style="padding:8px 0;font-weight:800">Subtotal de custos</td><td id="sm-det-subtotal" style="padding:8px 0;text-align:right;font-family:var(--font-mono);font-weight:800">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Juros (<span id="sm-det-juros-pct">—</span>)</td><td id="sm-det-juros" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr><td style="padding:6px 0;color:var(--muted)">Desconto financeiro (<span id="sm-det-desc-pct">—</span>)</td><td id="sm-det-desc" style="padding:6px 0;text-align:right;font-family:var(--font-mono);font-weight:700">R$ —</td></tr>
+            <tr style="border-top:2px solid var(--verde)"><td style="padding:8px 0;font-weight:900;color:var(--forest)">Total a cobrar</td><td id="sm-det-total" style="padding:8px 0;text-align:right;font-family:var(--font-mono);font-weight:900;color:var(--forest)">R$ —</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
+          Fórmula: <code>Preço = (Custos × (1 + juros)) ÷ (1 − desconto)</code>.<br>
+          Cliente paga o total, você recebe o líquido que cobre exatamente o valor desejado por coco + custos operacionais, já ajustado para o prazo.
+        </div>
+      </div>
+    </div>
+
+    <!-- PAINEL FÁBRICA — (existente) -->
+    <div id="sim-painel-fabrica" class="sim-painel" style="display:none">
+      <div class="vform" style="grid-column:1/-1">
+        <div style="font-size:15px;font-weight:800;margin-bottom:4px">Simulador de Carga (Fábrica)</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Informe a quantidade de cocos. Peso e litragem são calculados automaticamente (editáveis).</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Quantidade de cocos</label><input class="form-input" type="number" min="0" id="sim-qtde" placeholder="ex: 15000" oninput="onSimQtdeChange()"></div>
+          <div class="form-group"><label class="form-label">Peso da carga (kg) <span style="font-weight:400;color:var(--muted)">— média 2,2 kg/coco</span></label><input class="form-input" type="number" min="0" step="1" id="sim-peso" placeholder="auto" oninput="calcSimulador()"></div>
+        </div>
+        <div id="sim-estimativa" style="display:none;padding:12px 14px;background:var(--verde-bg);border:1px solid var(--verde-border);border-radius:8px;margin-bottom:16px;font-size:13px"></div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Cenários</div>
+        <div id="sim-cenarios"></div>
+        <button class="btn btn-outline" onclick="adicionarCenario()" style="font-size:12px;margin-bottom:16px">+ Adicionar cenário</button>
+        <div id="sim-resultado" style="margin-top:8px"></div>
+      </div>
     </div>
   </div>
 </div>

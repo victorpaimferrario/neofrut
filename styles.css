@@ -412,6 +412,17 @@
   .badge-pago{background:var(--verde-bg);color:var(--verde);border:1px solid var(--verde-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
   .badge-pendente{background:var(--amarelo-bg);color:#854d0e;border:1px solid var(--amarelo-border);font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px}
   .vform{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:700px}
+  /* Sub-abas do simulador */
+  .sim-sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+  .sim-sub-tab{padding:9px 20px;font-size:12px;font-weight:700;font-family:var(--font-main);border:none;background:transparent;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .15s}
+  .sim-sub-tab:hover{color:var(--text)}
+  .sim-sub-tab.ativo{color:var(--forest);border-bottom-color:var(--accent)}
+  .sim-painel{display:none}
+  .sim-painel.ativo{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .sim-painel.ativo .vform{max-width:none}
+  @media(max-width:900px){.sim-painel.ativo{grid-template-columns:1fr}}
+  .sm-ft-btn{flex:1;padding:9px;font-size:11px;font-weight:800;background:#fff;color:var(--muted);border:none;cursor:pointer;font-family:var(--font-main);text-transform:uppercase}
+  .sm-ft-btn.ativo{background:var(--verde);color:#fff}
   .areas-venda{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
   .av-wrap{display:flex;flex-direction:column;gap:4px}
   .av-label{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--muted)}
