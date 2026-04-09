@@ -252,7 +252,7 @@ function calcSimMesa(){
   const frete_tot_valor = _simMesaFreteMode==='coco' ? frete_coco*qtde : _gSM('m-frete-total');
   const baseNF = (precoBase * qtde) + frete_tot_valor;
   if(seguroEl && seguroEl.dataset.manual!=='1'){
-    const autoSeg = baseNF * 0.0007;
+    const autoSeg = baseNF * 0.007;
     seguroEl.value = autoSeg > 0 ? autoSeg.toFixed(2) : '';
   }
   const seguro_tot = _gSM('m-seguro');
@@ -895,13 +895,13 @@ function calcVendaRecebido(){
   // Auto-seguro: 0,07% × (total + frete)
   const seguroEl=document.getElementById('v-seguro');
   if(seguroEl && seguroEl.dataset.manual!=='1' && t>0){
-    const autoSeg=(t+f)*0.0007;
+    const autoSeg=(t+f)*0.007;
     seguroEl.value=autoSeg>0?autoSeg.toFixed(2):'';
   }
   if(seguroEl && !seguroEl.value) seguroEl.dataset.manual='';
   const seguro=parseFloat(seguroEl?.value)||0;
   const descEl=document.getElementById('v-seguro-desc');
-  if(descEl) descEl.textContent=t>0?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.0007).toFixed(2):'';
+  if(descEl) descEl.textContent=t>0?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.007).toFixed(2):'';
   const deducoes=f+(f>0?(icms+seguro):0);
   const r=document.getElementById('v-recebido');
   if(r&&t>0)r.value=(t-deducoes).toFixed(2);
@@ -1416,13 +1416,13 @@ function calcEditVenda(){
   // Auto-seguro
   const seguroEl=document.getElementById('ev-seguro');
   if(seguroEl && seguroEl.dataset.manual!=='1' && t>0 && f>0){
-    const autoSeg=(t+f)*0.0007;
+    const autoSeg=(t+f)*0.007;
     seguroEl.value=autoSeg>0?autoSeg.toFixed(2):'';
   }
   if(seguroEl && !seguroEl.value) seguroEl.dataset.manual='';
   const seguro=f>0?(parseFloat(seguroEl?.value)||0):0;
   const descEl=document.getElementById('ev-seguro-desc');
-  if(descEl) descEl.textContent=(t>0&&f>0)?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.0007).toFixed(2):'';
+  if(descEl) descEl.textContent=(t>0&&f>0)?'0,07% × R$ '+Math.round(t+f).toLocaleString('pt-BR')+' = R$ '+((t+f)*0.007).toFixed(2):'';
   const deducoes=f+icms+seguro;
   const liquido=t-deducoes;
   const el1=document.getElementById('ev-calc-cocos');

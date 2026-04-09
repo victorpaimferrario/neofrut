@@ -237,7 +237,7 @@ function _progAutoSeguro() {
   const bruto = _progGetValorBruto();
   const freteTotal = _progCalcFreteTotal();
   const baseNF = (bruto * qtde) + freteTotal;
-  const seg = baseNF * 0.0007;
+  const seg = baseNF * 0.007;
   if (seg > 0) {
     const digits = _progValorToDigits(seg);
     el.dataset.digits = digits;
