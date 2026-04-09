@@ -124,6 +124,20 @@ function setSimMesaFreteMode(mode){
   calcSimMesa();
 }
 
+let _simDescargaMode = 'total';
+function setSimDescargaMode(mode){
+  _simDescargaMode = mode;
+  const bCoco=document.getElementById('desc-coco');
+  const bTot=document.getElementById('desc-total');
+  if(bCoco) bCoco.classList.toggle('ativo', mode==='coco');
+  if(bTot) bTot.classList.toggle('ativo', mode==='total');
+  const wCoco=document.getElementById('descarga-coco-wrap');
+  const wTot=document.getElementById('descarga-total-wrap');
+  if(wCoco) wCoco.style.display = mode==='coco' ? 'block' : 'none';
+  if(wTot) wTot.style.display = mode==='total' ? 'block' : 'none';
+  calcSimMesa();
+}
+
 // Preço base: aceita "230" (= R$ 2,30), "2,30" ou "2.30"
 function _parsePrecoBase(valor){
   if(!valor) return 0;
@@ -150,7 +164,7 @@ function onPrecoBaseInput(el){
 
 // Limpar todos os campos do simulador mesa
 function limparSimMesa(){
-  const ids = ['m-qtde','m-preco-base','m-frete-coco','m-frete-total','m-descarga',
+  const ids = ['m-qtde','m-preco-base','m-frete-coco','m-frete-total','m-descarga','m-descarga-coco',
     'm-gaiola-qtd','m-seguro','m-desconto','m-prazo'];
   ids.forEach(id => { const el=document.getElementById(id); if(el){ el.value=''; if(el.dataset){ el.dataset.auto=''; el.dataset.manual=''; } }});
   // Resets específicos
@@ -159,6 +173,7 @@ function limparSimMesa(){
   const fmt = document.getElementById('m-preco-base-fmt');
   if(fmt) fmt.textContent = 'R$ 0,00';
   setSimMesaFreteMode('coco');
+  setSimDescargaMode('total');
   calcSimMesa();
 }
 
@@ -225,8 +240,14 @@ function calcSimMesa(){
   }
 
   // Descarga
-  const descarga_tot = _gSM('m-descarga');
-  const descarga_coco = qtde>0 ? descarga_tot/qtde : 0;
+  let descarga_coco = 0, descarga_tot = 0;
+  if(_simDescargaMode==='coco'){
+    descarga_coco = _gSM('m-descarga-coco');
+    descarga_tot = descarga_coco * qtde;
+  } else {
+    descarga_tot = _gSM('m-descarga');
+    descarga_coco = qtde>0 ? descarga_tot/qtde : 0;
+  }
 
   // Gaiola — qtd × unit
   const gaiola_qtd = _gSM('m-gaiola-qtd');

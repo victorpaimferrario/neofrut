@@ -1024,11 +1024,18 @@
             <div class="sim-secao">📦 Descarga</div>
             <div class="sim-campo">
               <label>Custo de descarga</label>
-              <div class="sim-inp-wrap">
+              <div class="sim-frete-toggle">
+                <button type="button" class="sim-ft-btn" id="desc-coco" onclick="setSimDescargaMode('coco')">Por coco (R$/coco)</button>
+                <button type="button" class="sim-ft-btn ativo" id="desc-total" onclick="setSimDescargaMode('total')">Valor total (R$)</button>
+              </div>
+              <div id="descarga-coco-wrap" class="sim-inp-wrap" style="display:none">
+                <input class="sim-inp" type="number" id="m-descarga-coco" placeholder="ex: 0.10" step="0.01" oninput="calcSimMesa()">
+                <span class="sim-inp-unit">R$/coco</span>
+              </div>
+              <div id="descarga-total-wrap" class="sim-inp-wrap">
                 <input class="sim-inp" type="number" id="m-descarga" placeholder="ex: 800" step="10" oninput="calcSimMesa()">
                 <span class="sim-inp-unit">R$ total</span>
               </div>
-              <div class="sim-campo-desc">Valor por carga/carro. Dividido automaticamente pela quantidade de cocos.</div>
             </div>
 
             <div class="sim-secao">🧺 Gaiola</div>
