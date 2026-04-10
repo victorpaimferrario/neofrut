@@ -1,4 +1,66 @@
 // ─────────── STORAGE ───────────
+
+// ── INTERCEPTOR DE SESSÃO EXPIRADA ──
+let _sessaoExpiradaMostrada = false;
+
+function _isAuthError(error) {
+  if (!error) return false;
+  const msg = (error.message || error.msg || '').toLowerCase();
+  const code = error.code || error.status || error.statusCode || 0;
+  return code === 401 || code === 403 || code === '401' || code === '403'
+    || msg.includes('jwt expired') || msg.includes('invalid jwt')
+    || msg.includes('not authenticated') || msg.includes('permission denied')
+    || msg.includes('new row violates row-level security');
+}
+
+function _tratarSessaoExpirada() {
+  if (_sessaoExpiradaMostrada) return;
+  _sessaoExpiradaMostrada = true;
+
+  // Salvar rascunho do lançamento se houver dados
+  try {
+    if (typeof salvarRascunho === 'function') salvarRascunho();
+  } catch(e) { /* silencioso */ }
+
+  // Criar modal de sessão expirada
+  const overlay = document.createElement('div');
+  overlay.id = 'sessao-expirada-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:360px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:40px;margin-bottom:12px">🔒</div>
+      <div style="font-size:18px;font-weight:800;color:#1a3a1a;margin-bottom:8px">Sessão expirada</div>
+      <div style="font-size:13px;color:#5a7a52;margin-bottom:6px">Sua sessão expirou por inatividade.</div>
+      <div style="font-size:12px;color:#9a6700;background:#fff8e1;border-radius:8px;padding:8px 12px;margin-bottom:16px">
+        ✓ Seus dados foram salvos localmente
+      </div>
+      <button onclick="location.reload()" style="width:100%;padding:14px;border:none;border-radius:10px;background:#1e7e34;color:#fff;font-size:14px;font-weight:800;cursor:pointer">
+        Entrar novamente
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// Wrapper para chamadas Supabase — detecta auth errors
+async function _sbSafe(operacao) {
+  try {
+    const result = await operacao();
+    if (result && result.error && _isAuthError(result.error)) {
+      console.error('Sessão expirada detectada:', result.error.message);
+      _tratarSessaoExpirada();
+      return { data: null, error: result.error };
+    }
+    return result;
+  } catch (e) {
+    if (_isAuthError(e)) {
+      console.error('Sessão expirada (exception):', e.message);
+      _tratarSessaoExpirada();
+    }
+    throw e;
+  }
+}
+
 let DB = loadDataLocal();
 
 async function loadDataSupabase() {
@@ -83,9 +145,13 @@ async function saveData() {
       }
     }
     if(eitosRows.length > 0) {
-      await _SB.from('eitos').upsert(eitosRows, { onConflict: 'area,eito_id' });
+      const r = await _SB.from('eitos').upsert(eitosRows, { onConflict: 'area,eito_id' });
+      if(r.error && _isAuthError(r.error)) { _tratarSessaoExpirada(); return; }
     }
-  } catch(err) { console.error('Erro ao salvar eitos:', err); showToast('⚠ Erro ao salvar — tente novamente'); }
+  } catch(err) {
+    if(_isAuthError(err)) { _tratarSessaoExpirada(); return; }
+    console.error('Erro ao salvar eitos:', err); showToast('⚠ Erro ao salvar — tente novamente');
+  }
 }
 
 async function salvarColheitaSupabase(area, eitoId, colheita) {
@@ -115,8 +181,12 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
     if (colheita.cliente) row.cliente = colheita.cliente;
     if (colheita.lancamento_id) row.lancamento_id = colheita.lancamento_id;
     if (colheita.parcial) row.parcial = true;
-    await _SB.from('colheitas').insert(row);
-  } catch(err) { console.error('Erro ao salvar colheita:', err); showToast('⚠ Erro ao salvar — tente novamente'); }
+    const r = await _SB.from('colheitas').insert(row);
+    if(r.error && _isAuthError(r.error)) { _tratarSessaoExpirada(); return; }
+  } catch(err) {
+    if(_isAuthError(err)) { _tratarSessaoExpirada(); return; }
+    console.error('Erro ao salvar colheita:', err); showToast('⚠ Erro ao salvar — tente novamente');
+  }
 }
 
 async function loadDBFromSupabase() {
@@ -259,13 +329,19 @@ async function salvarVendaSupabase(v) {
     frete_por_ton: v.fretePorTon||null
   };
   const { data, error } = await _SB.from('vendas').upsert(row).select();
-  if(error) { console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); return null; }
+  if(error) {
+    if(_isAuthError(error)) { _tratarSessaoExpirada(); return null; }
+    console.error('Erro ao salvar venda:', error); showToast('⚠ Erro ao salvar — tente novamente'); return null;
+  }
   return data && data[0];
 }
 
 async function excluirVendaSupabase(id) {
   const { error } = await _SB.from('vendas').delete().eq('id', id);
-  if(error) { console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao excluir — tente novamente'); }
+  if(error) {
+    if(_isAuthError(error)) { _tratarSessaoExpirada(); return; }
+    console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao excluir — tente novamente');
+  }
 }
 
 // ─── NADO CONTADOR ───
@@ -279,12 +355,16 @@ async function salvarProgramacaoNado(data, eitos) {
     return row;
   });
   // Limpar programação anterior do dia
-  await _SB.from('nado_programacao').delete().eq('data', data);
+  const del = await _SB.from('nado_programacao').delete().eq('data', data);
+  if(del.error && _isAuthError(del.error)) { _tratarSessaoExpirada(); return; }
   // Inserir em lotes de 500 (pode haver 300+ eitos)
   for (let i = 0; i < rows.length; i += 500) {
     const batch = rows.slice(i, i + 500);
     const { error } = await _SB.from('nado_programacao').insert(batch);
-    if (error) { console.error('Erro programação Nado:', error); showToast('⚠ Erro ao salvar programação'); return; }
+    if (error) {
+      if(_isAuthError(error)) { _tratarSessaoExpirada(); return; }
+      console.error('Erro programação Nado:', error); showToast('⚠ Erro ao salvar programação'); return;
+    }
   }
   showToast('✓ Programação salva');
 }
@@ -369,15 +449,20 @@ async function salvarClienteSupabase(c) {
   };
   if (c.id) row.id = c.id;
   const { data, error } = await _SB.from('clientes').upsert(row, { onConflict: 'nome' }).select();
-  if (error) { console.error('Erro ao salvar cliente:', error); showToast('⚠ Erro ao salvar cliente'); return null; }
-  // Atualizar cache
+  if (error) {
+    if(_isAuthError(error)) { _tratarSessaoExpirada(); return null; }
+    console.error('Erro ao salvar cliente:', error); showToast('⚠ Erro ao salvar cliente'); return null;
+  }
   await loadClientesSupabase();
   return data && data[0];
 }
 
 async function excluirClienteSupabase(id) {
   const { error } = await _SB.from('clientes').delete().eq('id', id);
-  if (error) { console.error('Erro ao excluir cliente:', error); showToast('⚠ Erro ao excluir cliente'); return false; }
+  if (error) {
+    if(_isAuthError(error)) { _tratarSessaoExpirada(); return false; }
+    console.error('Erro ao excluir cliente:', error); showToast('⚠ Erro ao excluir cliente'); return false;
+  }
   await loadClientesSupabase();
   return true;
 }
@@ -452,7 +537,10 @@ async function salvarContratoSupabase(c) {
     observacoes: c.observacoes || null
   };
   const { error } = await _SB.from('contratos').upsert(row);
-  if (error) { console.error('Erro ao salvar contrato:', error); showToast('⚠ Erro ao salvar contrato'); return null; }
+  if (error) {
+    if(_isAuthError(error)) { _tratarSessaoExpirada(); return null; }
+    console.error('Erro ao salvar contrato:', error); showToast('⚠ Erro ao salvar contrato'); return null;
+  }
   await loadContratosSupabase();
   return row;
 }
