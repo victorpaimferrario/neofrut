@@ -781,6 +781,8 @@
   .prog-card-qtde { font-size:13px; font-weight:900; font-family:var(--font-mono); color:var(--text); }
   .prog-card-rpc { font-size:10px; color:var(--muted); font-family:var(--font-mono); }
   .prog-card-receita { font-size:10px; font-weight:700; font-family:var(--font-mono); color:#1d4ed8; margin-left:auto; }
+  .prog-card-custos { font-size:9px; color:var(--muted); font-family:var(--font-mono); margin-top:1px; display:flex; gap:4px; align-items:center; flex-wrap:wrap; }
+  .prog-card-total-nf { color:var(--forest); font-weight:900; }
   .prog-card-badges { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
   .prog-card-obs { font-size:9px; color:var(--muted); margin-top:5px; font-style:italic; }
   .prog-st { font-size:8px; font-weight:700; padding:2px 6px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
@@ -918,6 +920,7 @@
     .prog-card-qtde { font-size:15px; }
     .prog-card-rpc { font-size:11px; }
     .prog-card-receita { font-size:11px; }
+    .prog-card-custos { font-size:10px; }
     .prog-badge { font-size:10px; padding:4px 8px; min-height:28px; display:inline-flex; align-items:center; }
     .prog-st { font-size:9px; padding:4px 8px; }
     .prog-btn-add { padding:14px; font-size:13px; min-height:48px; }
