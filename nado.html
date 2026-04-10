@@ -58,6 +58,39 @@ body{
 .progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
 .progress-fill{height:100%;background:var(--verde);border-radius:3px;transition:width .3s}
 
+/* ════════ CONTAGEM POR CARRO ════════ */
+.contagem-dia{background:var(--branco);padding:10px 16px 14px;border-bottom:2px solid var(--verde)}
+.contagem-dia-titulo{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--verde);margin-bottom:8px}
+.carro-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.carro-label{font-size:13px;font-weight:900;color:var(--texto);white-space:nowrap;min-width:62px}
+.carro-input{
+  flex:1;font-size:20px;font-weight:900;color:var(--verde);
+  border:2px solid var(--borda);border-radius:10px;padding:8px 12px;
+  text-align:right;font-variant-numeric:tabular-nums;
+  background:var(--branco);outline:none;-webkit-appearance:none;
+}
+.carro-input:focus{border-color:var(--verde);background:var(--verde-bg)}
+.carro-input::placeholder{color:#c4d3c0;font-weight:400;font-style:italic}
+.carro-btn-rm{
+  width:34px;height:34px;border:none;border-radius:8px;
+  background:rgba(198,40,40,.08);color:#c62828;
+  font-size:16px;font-weight:900;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.carro-btn-rm:active{transform:scale(.9);background:rgba(198,40,40,.15)}
+.btn-add-carro{
+  width:100%;padding:8px;border:2px dashed var(--borda);border-radius:10px;
+  background:none;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer;
+  margin-top:2px;margin-bottom:10px;
+}
+.btn-add-carro:active{background:var(--verde-bg);border-color:var(--verde);color:var(--verde)}
+.total-dia{
+  background:var(--verde-bg);border:2px solid var(--verde);border-radius:10px;
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+}
+.total-dia-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--verde)}
+.total-dia-num{font-size:26px;font-weight:900;color:var(--verde);font-variant-numeric:tabular-nums}
+
 /* ════════ TELA INICIO ════════ */
 .lista-areas{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
@@ -275,6 +308,17 @@ body{
   <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
 </div>
 
+<!-- CONTAGEM POR CARRO -->
+<div class="contagem-dia" id="contagem-dia-wrap" style="display:none">
+  <div class="contagem-dia-titulo">Contagem do dia</div>
+  <div id="carros-list"></div>
+  <button class="btn-add-carro" onclick="_carroAdd()">+ Adicionar carro</button>
+  <div class="total-dia">
+    <div class="total-dia-label">Total do dia</div>
+    <div class="total-dia-num" id="total-dia-num">0</div>
+  </div>
+</div>
+
 <!-- TELA INICIO -->
 <div id="tela-inicio">
   <div class="rascunho-banner" id="rascunho-banner">
@@ -388,6 +432,99 @@ let filaEnvio = [];       // resultados aguardando sync
 let eitoAtual = null;     // {area, id, plantas}
 let wakeLock = null;
 let areasAbertas = {};    // controle de collapse
+
+// ── CONTAGEM POR CARRO ──
+const SK_CARROS = 'nado_carros_dia';
+let _carros = [];
+let _carroNextId = 1;
+
+function _carroLoad() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SK_CARROS));
+    if (raw && raw.data === hoje()) {
+      _carros = raw.carros || [];
+      _carroNextId = raw.nextId || (_carros.length + 1);
+    } else {
+      _carros = [];
+      _carroNextId = 1;
+      localStorage.removeItem(SK_CARROS);
+    }
+  } catch(e) { _carros = []; _carroNextId = 1; }
+  if (_carros.length === 0) {
+    _carros = [{ id: 1, qtde: 0 }];
+    _carroNextId = 2;
+  }
+}
+
+function _carroSave() {
+  localStorage.setItem(SK_CARROS, JSON.stringify({
+    data: hoje(), carros: _carros, nextId: _carroNextId
+  }));
+}
+
+function _carroRender() {
+  const wrap = document.getElementById('contagem-dia-wrap');
+  const list = document.getElementById('carros-list');
+  if (!wrap || !list) return;
+  wrap.style.display = '';
+  list.innerHTML = '';
+  _carros.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'carro-row';
+    const rmBtn = _carros.length > 1
+      ? '<button class="carro-btn-rm" onclick="_carroRemove(' + c.id + ')">✕</button>'
+      : '<div style="width:34px"></div>';
+    div.innerHTML =
+      '<div class="carro-label">Carro ' + (i + 1) + '</div>' +
+      '<input class="carro-input" type="text" inputmode="numeric" placeholder="0"' +
+      ' value="' + (c.qtde ? fmtN(c.qtde) : '') + '"' +
+      ' data-cid="' + c.id + '"' +
+      ' oninput="_carroOnInput(' + c.id + ',this)"' +
+      ' onfocus="this.select()">' +
+      rmBtn;
+    list.appendChild(div);
+  });
+  _carroCalcTotal();
+}
+
+function _carroOnInput(id, el) {
+  const raw = el.value.replace(/\D/g, '');
+  const num = parseInt(raw) || 0;
+  const c = _carros.find(x => x.id === id);
+  if (c) c.qtde = num;
+  if (num > 0) {
+    const pos = el.selectionStart;
+    const oldLen = el.value.length;
+    el.value = fmtN(num);
+    const diff = el.value.length - oldLen;
+    el.setSelectionRange(pos + diff, pos + diff);
+  }
+  _carroCalcTotal();
+  _carroSave();
+}
+
+function _carroCalcTotal() {
+  const total = _carros.reduce((s, c) => s + (c.qtde || 0), 0);
+  const el = document.getElementById('total-dia-num');
+  if (el) el.textContent = fmtN(total);
+}
+
+function _carroAdd() {
+  _carros.push({ id: _carroNextId++, qtde: 0 });
+  _carroSave();
+  _carroRender();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.carro-input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function _carroRemove(id) {
+  _carros = _carros.filter(c => c.id !== id);
+  if (_carros.length === 0) { _carros = [{ id: _carroNextId++, qtde: 0 }]; }
+  _carroSave();
+  _carroRender();
+}
 
 // ── UTILS ──
 function hoje() {
@@ -787,9 +924,10 @@ function abrirContagem(area, eito) {
 
   document.getElementById('tela-inicio').style.display = 'none';
   document.getElementById('tela-contagem').style.display = 'flex';
-  // Esconder topo e progresso para maximizar espaço
+  // Esconder topo, progresso e contagem por carro para maximizar espaço
   document.querySelector('.topo').style.display = 'none';
   document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('contagem-dia-wrap').style.display = 'none';
   window.scrollTo(0, 0);
   ativarWakeLock();
 }
@@ -997,6 +1135,7 @@ function voltarInicio() {
   document.getElementById('tela-revisao').style.display = 'none';
   document.getElementById('tela-inicio').style.display = 'block';
   document.querySelector('.topo').style.display = '';
+  document.getElementById('contagem-dia-wrap').style.display = '';
   renderLista();
   window.scrollTo(0, 0);
 }
@@ -1033,6 +1172,7 @@ function mostrarResumo() {
 
   document.getElementById('tela-inicio').style.display = 'none';
   document.getElementById('tela-contagem').style.display = 'none';
+  document.getElementById('contagem-dia-wrap').style.display = 'none';
   document.getElementById('tela-resumo').style.display = 'block';
   window.scrollTo(0, 0);
 }
@@ -1081,6 +1221,8 @@ window.addEventListener('beforeunload', (e) => {
 // ── INIT ──
 document.getElementById('topo-data').textContent = fmtData();
 carregarCache();
+_carroLoad();
+_carroRender();
 verificarRascunho();
 renderLista();
 addBtnResumo();
