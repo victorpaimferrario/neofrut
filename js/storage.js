@@ -221,7 +221,7 @@ async function loadVendasSupabase() {
     const MAX_PAGES = 100; // Guarda contra loop runaway (até 100k vendas)
     let pages = 0;
     while(pages < MAX_PAGES) {
-      const { data, error } = await _SB.from('vendas').select('*').order('data', {ascending: true}).range(from, from+pageSize-1);
+      const { data, error } = await _SB.from('vendas').select('*').neq('status', 'EXCLUIDO').order('data', {ascending: true}).range(from, from+pageSize-1);
       if(error) throw error;
       if(!data || data.length === 0) break;
       allData = allData.concat(data);
@@ -337,7 +337,8 @@ async function salvarVendaSupabase(v) {
 }
 
 async function excluirVendaSupabase(id) {
-  const { error } = await _SB.from('vendas').delete().eq('id', id);
+  // Soft-delete: marca como EXCLUIDO em vez de apagar permanentemente
+  const { error } = await _SB.from('vendas').update({ status: 'EXCLUIDO' }).eq('id', id);
   if(error) {
     if(_isAuthError(error)) { _tratarSessaoExpirada(); return; }
     console.error('Erro ao excluir venda:', error); showToast('⚠ Erro ao excluir — tente novamente');

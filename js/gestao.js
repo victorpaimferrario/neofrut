@@ -87,15 +87,85 @@ function renderListaAreas() {
   }).join('');
 }
 
+// ── EXCLUSÃO COM UNDO (10 segundos) ──
+let _undoArea = null;
+let _undoTimer = null;
+
 function confirmarExcluirArea(area) {
   const eitos   = DB[area] || [];
   const comHist = eitos.filter(e=>e.historico?.length>0).length;
   const aviso   = comHist > 0 ? `\n⚠️ ${comHist} eito(s) com histórico será perdido!` : '';
-  if (!confirm(`Excluir "${area}" com ${eitos.length} eito(s)?${aviso}\n\nEsta ação é irreversível.`)) return;
+  if (!confirm(`Excluir "${area}" com ${eitos.length} eito(s)?${aviso}\n\nVocê terá 10 segundos para desfazer.`)) return;
+
+  // Guardar backup antes de remover
+  _undoArea = { nome: area, eitos: JSON.parse(JSON.stringify(DB[area])) };
   delete DB[area];
-  saveData();
-  showToast(`✓ Área "${area}" excluída`);
+  // Salvar no localStorage imediatamente (mas NÃO no Supabase ainda)
+  localStorage.setItem(SK, JSON.stringify(DB));
+
   renderListaAreas();
+  renderAreaBtnsGestao(Object.keys(DB)[0]);
+  renderDashboard();
+  setTimeout(renderMapa, 60);
+
+  // Mostrar toast com botão Desfazer
+  _mostrarUndoToast(area);
+}
+
+function _mostrarUndoToast(area) {
+  // Remover toast anterior se existir
+  const existente = document.getElementById('undo-toast');
+  if (existente) existente.remove();
+  if (_undoTimer) clearTimeout(_undoTimer);
+
+  const toast = document.createElement('div');
+  toast.id = 'undo-toast';
+  toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a3a1a;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:12px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:90vw';
+  toast.innerHTML = `
+    <span>🗑️ "${area}" excluída</span>
+    <button onclick="_desfazerExclusaoArea()" style="background:#22c55e;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap">DESFAZER</button>
+    <span id="undo-countdown" style="font-size:11px;opacity:.7;min-width:20px;text-align:right">10</span>
+  `;
+  document.body.appendChild(toast);
+
+  // Countdown visual
+  let seg = 10;
+  const countEl = document.getElementById('undo-countdown');
+  const interval = setInterval(() => {
+    seg--;
+    if (countEl) countEl.textContent = seg;
+    if (seg <= 0) clearInterval(interval);
+  }, 1000);
+
+  // Após 10s, confirmar exclusão no Supabase
+  _undoTimer = setTimeout(async () => {
+    clearInterval(interval);
+    toast.remove();
+    if (_undoArea) {
+      // Agora sim, persistir no Supabase
+      await saveData();
+      _undoArea = null;
+      showToast('✓ Exclusão confirmada');
+    }
+  }, 10000);
+}
+
+function _desfazerExclusaoArea() {
+  if (!_undoArea) return;
+  if (_undoTimer) clearTimeout(_undoTimer);
+
+  // Restaurar área
+  DB[_undoArea.nome] = _undoArea.eitos;
+  localStorage.setItem(SK, JSON.stringify(DB));
+  _undoArea = null;
+
+  // Remover toast
+  const toast = document.getElementById('undo-toast');
+  if (toast) toast.remove();
+
+  showToast('✓ Exclusão desfeita');
+  renderListaAreas();
+  renderAreaBtnsGestao(Object.keys(DB)[0]);
   renderDashboard();
   setTimeout(renderMapa, 60);
 }
