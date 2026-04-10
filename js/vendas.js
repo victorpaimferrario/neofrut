@@ -968,8 +968,10 @@ async function salvarVenda(){
   const erro=document.getElementById('v-erro');
   if(!data){erro.textContent='Informe a data.';erro.style.display='block';return;}
   if(!cliente){erro.textContent='Informe o cliente.';erro.style.display='block';return;}
-  if(qtde===0){erro.textContent='Informe a quantidade de cocos.';erro.style.display='block';return;}
-  if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
+  if(qtde<=0){erro.textContent='Informe a quantidade de cocos (maior que zero).';erro.style.display='block';return;}
+  if(isNaN(total)||total<=0){erro.textContent='Informe um valor total válido (ex: 15000.00).';erro.style.display='block';return;}
+  if(isNaN(frete)||frete<0){erro.textContent='Valor de frete inválido.';erro.style.display='block';return;}
+  if(frete>=total){erro.textContent='O frete não pode ser maior ou igual ao valor total.';erro.style.display='block';return;}
   if(!status){erro.textContent='Selecione o status (Pago ou Pendente).';erro.style.display='block';return;}
   erro.style.display='none';
   // Após validação: travar contra double-click
@@ -1503,10 +1505,13 @@ async function salvarEditVenda(){
   const cliente=(document.getElementById('ev-cliente').value||'').trim().toUpperCase();
   const qtde=parseInt(document.getElementById('eva-total')?.value)||0;
   const total=parseFloat(document.getElementById('ev-total')?.value)||0;
+  const frete=parseFloat(document.getElementById('ev-frete')?.value)||0;
   if(!data){erro.textContent='Informe a data.';erro.style.display='block';return;}
   if(!cliente){erro.textContent='Informe o cliente.';erro.style.display='block';return;}
-  if(qtde===0){erro.textContent='Informe a quantidade.';erro.style.display='block';return;}
-  if(total===0){erro.textContent='Informe o valor total.';erro.style.display='block';return;}
+  if(qtde<=0){erro.textContent='Informe a quantidade (maior que zero).';erro.style.display='block';return;}
+  if(isNaN(total)||total<=0){erro.textContent='Informe um valor total válido.';erro.style.display='block';return;}
+  if(isNaN(frete)||frete<0){erro.textContent='Valor de frete inválido.';erro.style.display='block';return;}
+  if(frete>=total){erro.textContent='O frete não pode ser maior ou igual ao valor total.';erro.style.display='block';return;}
   erro.style.display='none';
   _salvandoEditVenda = true;
   const _btnEv = document.querySelector('button[onclick="salvarEditVenda()"]');
@@ -1520,7 +1525,7 @@ async function salvarEditVenda(){
   v.ufDestino=document.getElementById('ev-uf')?.value||null;
   v.cidadeDestino=(document.getElementById('ev-cidade')?.value||'').trim()||null;
   v.total=total;
-  v.frete=parseFloat(document.getElementById('ev-frete')?.value)||0;
+  v.frete=frete;
   v.icmsValor=v.frete>0?(parseFloat(document.getElementById('ev-icms')?.value)||0):null;
   v.seguroValor=v.frete>0?(parseFloat(document.getElementById('ev-seguro')?.value)||0):null;
   v.valorRecebido=parseFloat(document.getElementById('ev-recebido')?.value)||0;
