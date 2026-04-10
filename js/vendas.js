@@ -54,15 +54,23 @@ function renderAnosBtns(anos){
   });
 }
 
+let _vendasRenderTimer = null;
+function _vendasRenderDebounced() {
+  if (_vendasRenderTimer) clearTimeout(_vendasRenderTimer);
+  _vendasRenderTimer = setTimeout(() => {
+    renderVendasPainel();
+    renderVendasLista();
+    renderVendasPendentes();
+  }, 150);
+}
+
 function selAno(ano){
   window._vendaAnoAtivo=String(ano);
   const db=loadVendas();
   const anos=[...new Set(db.map(v=>parseInt(v.data?v.data.substring(0,4):0)).filter(a=>a>2000))].sort((a,b)=>b-a);
   renderAnosBtns(anos);
   renderMesesBtns();
-  renderVendasPainel();
-  renderVendasLista();
-  renderVendasPendentes();
+  _vendasRenderDebounced();
 }
 
 function renderMesesBtns(){
@@ -80,9 +88,7 @@ function renderMesesBtns(){
 function selMes(mes){
   window._vendaMesAtivo=mes;
   renderMesesBtns();
-  renderVendasPainel();
-  renderVendasLista();
-  renderVendasPendentes();
+  _vendasRenderDebounced();
 }
 
 function showVendasTab(tab){

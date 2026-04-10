@@ -1,5 +1,15 @@
 // ─────────── APP INIT ───────────
 
+function _showSyncBar(msg) {
+  const bar = document.getElementById('sync-bar');
+  const txt = document.getElementById('sync-bar-text');
+  if (bar) { bar.style.display = ''; if (txt) txt.textContent = msg || '⏳ Sincronizando dados...'; }
+}
+function _hideSyncBar() {
+  const bar = document.getElementById('sync-bar');
+  if (bar) bar.style.display = 'none';
+}
+
 async function initApp() {
   window._lancAreaAtiva = 'todas';
   window._analiseAreaAtiva = null;
@@ -25,6 +35,7 @@ async function initApp() {
 
   // PASSO 3: Sincronizar com Supabase em background (não bloqueia a UI)
   setTimeout(async () => {
+    _showSyncBar('⏳ Sincronizando dados...');
     try {
       await Promise.all([
         loadDBFromSupabase(),
@@ -33,11 +44,14 @@ async function initApp() {
         loadClientesSupabase(),
         loadContratosSupabase()
       ]);
+      _hideSyncBar();
       // Re-renderizar a página atual com dados atualizados do Supabase
       const paginaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
       showPage(paginaAtual);
     } catch (e) {
+      _hideSyncBar();
       console.warn('Sync Supabase em background falhou — usando dados locais:', e.message);
+      showToast('⚠ Offline — usando dados locais');
     }
   }, 100);
 }
