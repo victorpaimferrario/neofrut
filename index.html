@@ -190,8 +190,8 @@
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-outline" onclick="abrirPrepararDia()">Preparar dia</button>
-      <button class="btn" id="nado-btn-pendentes" onclick="toggleValidacaoNado()" style="display:none;background:#fffbeb;color:#d97706;border:1px solid #d97706;font-weight:700">Validar Colheita</button>
+      <button class="btn btn-outline acao-edicao" onclick="abrirPrepararDia()">Preparar dia</button>
+      <button class="btn acao-edicao" id="nado-btn-pendentes" onclick="toggleValidacaoNado()" style="display:none;background:#fffbeb;color:#d97706;border:1px solid #d97706;font-weight:700">Validar Colheita</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
       <button class="btn btn-primary" onclick="window.open('nado.html','_blank')" style="display:flex;align-items:center;gap:6px;font-size:12px;flex:1;justify-content:center">
@@ -231,7 +231,7 @@
       <span style="font-size:12px;color:var(--muted)" id="lanc-fab-preview">Fábrica: 0</span>
       <span style="font-size:11px;color:var(--verde);font-family:var(--font-mono)" id="lanc-rascunho-status"></span>
     </div>
-    <button class="btn btn-primary" style="padding:10px 24px;font-size:14px" onclick="abrirRevisao()">Revisar e Confirmar →</button>
+    <button class="btn btn-primary acao-edicao" style="padding:10px 24px;font-size:14px" onclick="abrirRevisao()">Revisar e Confirmar →</button>
   </div>
 </div>
 
@@ -258,7 +258,7 @@
     <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-outline" onclick="closeModal('modal-preparar-nado')">Cancelar</button>
       <button class="btn btn-outline" onclick="limparProgramacaoNadoUI()" style="border-color:#dc2626;color:#dc2626">🗑 Limpar programação do dia</button>
-      <button class="btn btn-primary" onclick="salvarProgramacaoNadoUI()">Confirmar programacao</button>
+      <button class="btn btn-primary acao-edicao" onclick="salvarProgramacaoNadoUI()">Confirmar programacao</button>
     </div>
   </div>
 </div>
@@ -283,7 +283,7 @@
     </div>
     <div class="modal-actions" id="revisao-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-revisao')">← Voltar e Editar</button>
-      <button class="btn btn-green" onclick="confirmarLancamento()">✓ Confirmar e Salvar</button>
+      <button class="btn btn-green acao-edicao" onclick="confirmarLancamento()">✓ Confirmar e Salvar</button>
     </div>
     <div id="resumo-panel" style="display:none">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:10px;letter-spacing:0.06em">Resumo pronto para WhatsApp</div>
@@ -321,7 +321,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-vincular-clientes')">Fechar</button>
-      <button class="btn btn-green" onclick="salvarVinculacaoClientes()">💾 Salvar Alterações</button>
+      <button class="btn btn-green acao-edicao" onclick="salvarVinculacaoClientes()">💾 Salvar Alterações</button>
     </div>
   </div>
 </div>
@@ -335,7 +335,7 @@
       <div id="drawer-area-meta" style="color:var(--muted);font-size:12px;margin-top:2px"></div>
     </div>
     <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
-      <button class="btn btn-primary" onclick="openModalColheita(null)">+ Registrar Colheita</button>
+      <button class="btn btn-primary acao-edicao" onclick="openModalColheita(null)">+ Registrar Colheita</button>
       <button class="btn btn-outline" onclick="openModalPlantas()" title="Editar contagem de plantas de um eito" style="font-size:12px">✏️ Plantas</button>
       <button class="area-drawer-close" onclick="closeAreaDrawer()">✕</button>
     </div>
@@ -390,7 +390,7 @@
     </div>
     <div class="prog-header-actions" style="display:flex;gap:8px">
       <button class="btn btn-outline" onclick="progToggleHistorico()" style="font-size:12px;padding:8px 14px;min-height:44px">📋 Histórico</button>
-      <button class="btn btn-primary prog-btn-add-desktop" onclick="abrirModalProg()" style="font-size:12px;padding:8px 16px;min-height:44px">+ Carga</button>
+      <button class="btn btn-primary prog-btn-add-desktop acao-edicao" onclick="abrirModalProg()" style="font-size:12px;padding:8px 16px;min-height:44px">+ Carga</button>
     </div>
   </div>
 
@@ -459,7 +459,7 @@
   <div class="prog-grade" id="prog-grade"></div>
 
   <!-- FAB: Floating Action Button for mobile -->
-  <button class="prog-fab" id="prog-fab" onclick="abrirModalProg()" title="Nova carga">+</button>
+  <button class="prog-fab acao-edicao" id="prog-fab" onclick="abrirModalProg()" title="Nova carga">+</button>
 </div>
 
 <!-- MODAL: Nova/Editar Carga -->
@@ -620,14 +620,14 @@
     <!-- Ações de edição (só aparece ao editar) -->
     <div id="prog-acoes-editar" style="display:none;gap:6px;flex-wrap:wrap">
       <button class="btn btn-outline" id="prog-btn-status" type="button" style="flex:1;font-size:11px;padding:8px">✓ Confirmar</button>
-      <button class="btn btn-outline" onclick="progConfirmarCaminhao()" type="button" style="flex:1;font-size:11px;padding:8px">🚛 Caminhão OK</button>
+      <button class="btn btn-outline acao-edicao" onclick="progConfirmarCaminhao()" type="button" style="flex:1;font-size:11px;padding:8px">🚛 Caminhão OK</button>
       <button class="btn btn-outline" onclick="progEnviarWhatsApp()" type="button" style="flex:1;font-size:11px;padding:8px">📱 WhatsApp</button>
       <button class="btn" onclick="progCancelarCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:var(--vermelho);color:#fff">✕ Cancelar</button>
-      <button class="btn" onclick="progExcluirCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:#7f1d1d;color:#fff">🗑 Excluir</button>
-      <button class="btn" id="prog-btn-registrar-venda" onclick="progRegistrarVenda()" type="button" style="display:none;width:100%;font-size:12px;padding:10px;background:var(--forest);color:#fff;font-weight:800;margin-top:4px">📋 Registrar Venda a partir desta carga</button>
+      <button class="btn acao-edicao" onclick="progExcluirCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:#7f1d1d;color:#fff">🗑 Excluir</button>
+      <button class="btn acao-edicao" id="prog-btn-registrar-venda" onclick="progRegistrarVenda()" type="button" style="display:none;width:100%;font-size:12px;padding:10px;background:var(--forest);color:#fff;font-weight:800;margin-top:4px">📋 Registrar Venda a partir desta carga</button>
     </div>
 
-    <button class="btn btn-primary" id="prog-btn-salvar" onclick="salvarProgCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">✓ Agendar carga</button>
+    <button class="btn btn-primary acao-edicao" id="prog-btn-salvar" onclick="salvarProgCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">✓ Agendar carga</button>
   </div>
 </div>
 </div>
@@ -651,7 +651,7 @@
   </div>
 
   <!-- NOVO EITO -->
-  <div class="gestao-section active" id="gestao-novo-eito">
+  <div class="gestao-section active secao-edicao" id="gestao-novo-eito">
     <div class="gestao-card">
       <div style="font-size:15px;font-weight:800;margin-bottom:4px">Cadastrar novo eito</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">O eito será adicionado à área selecionada sem histórico de colheita.</div>
@@ -677,7 +677,7 @@
   </div>
 
   <!-- NOVA ÁREA -->
-  <div class="gestao-section" id="gestao-nova-area">
+  <div class="gestao-section secao-edicao" id="gestao-nova-area">
     <div class="gestao-card">
       <div style="font-size:15px;font-weight:800;margin-bottom:4px">Criar nova área</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">A área será criada vazia. Adicione os eitos depois na seção anterior.</div>
@@ -717,11 +717,11 @@
   </div>
   <div class="vd-tabs">
     <button class="vd-tab active" onclick="showVendasTab('painel')">📊 Painel</button>
-    <button class="vd-tab" onclick="showVendasTab('nova')">➕ Nova Venda</button>
+    <button class="vd-tab acao-edicao" onclick="showVendasTab('nova')">➕ Nova Venda</button>
     <button class="vd-tab" onclick="showVendasTab('lista')">📋 Vendas</button>
     <button class="vd-tab" onclick="showVendasTab('pendentes')">⏳ Pendentes</button>
     <button class="vd-tab" onclick="showVendasTab('clientes')">👥 Clientes</button>
-    <button class="vd-tab" onclick="showVendasTab('simulador')">🔢 Simulador</button>
+    <button class="vd-tab acao-edicao" onclick="showVendasTab('simulador')">🔢 Simulador</button>
   </div>
 
   <!-- PAINEL -->
@@ -771,7 +771,7 @@
   </div>
 
   <!-- NOVA VENDA -->
-  <div class="vd-sec" id="vsec-nova">
+  <div class="vd-sec secao-edicao" id="vsec-nova">
     <div class="vform">
       <div style="font-size:15px;font-weight:800;margin-bottom:4px">Registrar Nova Venda</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Campos calculados atualizam automaticamente.</div>
@@ -885,7 +885,7 @@
       </div>
       <div id="v-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-bottom:12px"></div>
       <div class="modal-actions" style="justify-content:flex-start;margin-top:0">
-        <button class="btn btn-primary" onclick="salvarVenda()">✓ Registrar Venda</button>
+        <button class="btn btn-primary acao-edicao" onclick="salvarVenda()">✓ Registrar Venda</button>
         <button class="btn btn-outline" onclick="limparFormVenda()">Limpar</button>
       </div>
     </div>
@@ -956,7 +956,7 @@
   </div>
 
   <!-- SIMULADOR -->
-  <div class="vd-sec" id="vsec-simulador">
+  <div class="vd-sec secao-edicao" id="vsec-simulador">
     <!-- Sub-abas do simulador -->
     <div class="sim-sub-tabs">
       <button class="sim-sub-tab ativo" onclick="setSimTab('mesa',this)">🛒 Coco Posto no Local</button>
@@ -1252,7 +1252,7 @@
       <div class="form-group" style="margin-top:12px"><label class="form-label">Observações</label><textarea class="form-input" id="ctr-obs" rows="2" placeholder="Observações"></textarea></div>
     </div>
     <div class="modal-actions" style="margin-top:12px">
-      <button class="btn btn-primary" onclick="salvarContrato()">💾 Salvar Contrato</button>
+      <button class="btn btn-primary acao-edicao" onclick="salvarContrato()">💾 Salvar Contrato</button>
       <button class="btn btn-outline" onclick="closeModal('modal-contrato')">Cancelar</button>
     </div>
   </div>
@@ -1290,7 +1290,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-plantas')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarPlantas()">Salvar</button>
+      <button class="btn btn-primary acao-edicao" onclick="salvarPlantas()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1323,7 +1323,7 @@
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modal-colheita')">Cancelar</button>
-      <button class="btn btn-primary" onclick="salvarColheita()">Salvar</button>
+      <button class="btn btn-primary acao-edicao" onclick="salvarColheita()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1504,7 +1504,7 @@
     </div>
     <div id="cli-erro" style="display:none;color:var(--vermelho);font-size:12px;margin-top:8px"></div>
     <div style="display:flex;gap:10px;margin-top:14px">
-      <button class="btn btn-primary" onclick="salvarCliente()">💾 Salvar</button>
+      <button class="btn btn-primary acao-edicao" onclick="salvarCliente()">💾 Salvar</button>
       <button class="btn btn-outline" onclick="switchCliTab('historico')">Cancelar</button>
     </div>
   </div>
@@ -1653,7 +1653,7 @@
       <div class="vcalc-item"><div class="vcalc-label">R$/COCO</div><div class="vcalc-val" id="ev-calc-preco">—</div></div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarEditVenda()">Salvar Alterações</button>
+      <button class="btn btn-primary acao-edicao" style="flex:1;padding:12px" onclick="salvarEditVenda()">Salvar Alterações</button>
       <button class="btn" style="padding:12px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:8px" onclick="closeEditVendaPanel()">Cancelar</button>
     </div>
   </div>
@@ -1671,7 +1671,7 @@
 
 <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
   <span>🌤️ Previsão do Tempo</span>
-  <button onclick="abrirModalAddCidade()" style="font-size:11px;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--forest);border-radius:6px;cursor:pointer;font-weight:700">+ Cidade</button>
+  <button class="acao-edicao" onclick="abrirModalAddCidade()" style="font-size:11px;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--forest);border-radius:6px;cursor:pointer;font-weight:700">+ Cidade</button>
 </div>
 <p class="sec-desc">Dias +2 e +3 destacados — são os dias de chegada do coco ao destino. 🟡 = chegada normal · 🔴 = chuva prevista. Clique no card para ver 16 dias.</p>
 <div class="clima-grid" id="clima-grid">
@@ -1768,7 +1768,7 @@
     </div>
     <div id="addcid-erro" style="display:none;background:var(--vermelho-bg);color:var(--vermelho);padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:10px"></div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-primary" style="flex:1;padding:12px" onclick="salvarCidadeClima()">Adicionar</button>
+      <button class="btn btn-primary acao-edicao" style="flex:1;padding:12px" onclick="salvarCidadeClima()">Adicionar</button>
       <button class="btn" style="padding:12px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:8px" onclick="fecharModal('modal-add-cidade')">Cancelar</button>
     </div>
   </div>

@@ -1169,8 +1169,8 @@ function renderVendasLista(){
      +'<td style="font-family:var(--font-mono);color:var(--muted)">'+(pc!=='—'?'R$ '+pc:'—')+'</td>'
      +'<td>'+badge+'</td>'
      +'<td style="white-space:nowrap">'
-       +'<button class="btn-edit-venda" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;margin-right:4px" title="Editar">✏️</button>'
-       +'<button class="btn-del-venda" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px" title="Excluir">✕</button>'
+       +'<button class="btn-edit-venda acao-edicao" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;margin-right:4px" title="Editar">✏️</button>'
+       +'<button class="btn-del-venda acao-edicao" data-id="'+v.id+'" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px" title="Excluir">✕</button>'
      +'</td>';
     tr.addEventListener('click', function(e){ if(!e.target.closest('.btn-edit-venda,.btn-del-venda')) openClientePanel(this.dataset.cli); });
     tr.querySelector('.btn-edit-venda').addEventListener('click', function(){ editarVenda(parseInt(this.dataset.id)); });

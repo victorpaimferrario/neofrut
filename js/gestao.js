@@ -82,7 +82,7 @@ function renderListaAreas() {
         <div class="gestao-row-nome">${area}</div>
         <div class="gestao-row-sub">${eitos.length} eitos · ${fmtNum(totalPl)} plantas · ${comHist} com colheita</div>
       </div>
-      <button class="btn-danger" onclick="confirmarExcluirArea('${area}')">⚠️ Excluir</button>
+      <button class="btn-danger acao-edicao" onclick="confirmarExcluirArea('${area}')">⚠️ Excluir</button>
     </div>`;
   }).join('');
 }

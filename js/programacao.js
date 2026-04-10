@@ -462,7 +462,7 @@ function renderProgGrade() {
     cargasDia.forEach(c => col.appendChild(renderProgCard(c)));
 
     const btnAdd = document.createElement('button');
-    btnAdd.className = 'prog-btn-add';
+    btnAdd.className = 'prog-btn-add acao-edicao';
     btnAdd.innerHTML = '<span>+</span> Adicionar carga';
     btnAdd.onclick = () => { abrirModalProg(); _progSelecionarDia(dia.dataStr); };
     col.appendChild(btnAdd);

@@ -1031,23 +1031,8 @@
 /* ═══════════ SOMENTE LEITURA (permissões) ═══════════ */
 /* Quando uma .page tem .somente-leitura, esconde todos os elementos de edição */
 
-/* Botões de ação */
-.somente-leitura .btn-primary,
-.somente-leitura .btn-green,
-.somente-leitura .btn-danger,
-.somente-leitura .prog-fab,
-.somente-leitura .prog-btn-add,
-.somente-leitura .prog-btn-add-desktop,
-.somente-leitura .btn-add-carro,
-.somente-leitura [onclick*="salvar"],
-.somente-leitura [onclick*="Salvar"],
-.somente-leitura [onclick*="excluir"],
-.somente-leitura [onclick*="Excluir"],
-.somente-leitura [onclick*="abrirModal"],
-.somente-leitura [onclick*="confirmar"],
-.somente-leitura [onclick*="Confirmar"],
-.somente-leitura [onclick*="registrar"],
-.somente-leitura [onclick*="Registrar"] { display: none !important; }
+/* Botões e elementos de ação — classe explícita */
+.somente-leitura .acao-edicao { display: none !important; }
 
 /* Formulários e inputs dentro de páginas somente-leitura */
 .somente-leitura .form-input,
@@ -1062,16 +1047,12 @@
 .somente-leitura .prog-card { cursor: default; }
 
 /* Seções de formulário completas — Vendas */
-#page-vendas.somente-leitura .form-venda-container,
-#page-vendas.somente-leitura #sim-mesa-wrap,
-#page-vendas.somente-leitura #sim-fabrica-wrap,
-#page-vendas.somente-leitura .sim-section { display: none !important; }
+#page-vendas.somente-leitura .secao-edicao { display: none !important; }
 
 /* Gestão — esconde forms de cadastro */
-#page-gestao.somente-leitura .gestao-form,
-#page-gestao.somente-leitura .gestao-actions { display: none !important; }
+#page-gestao.somente-leitura .secao-edicao { display: none !important; }
 
-/* Lançamento — esconde sticky de ações e modais de colheita */
+/* Lançamento — esconde sticky de ações */
 #page-lancamento.somente-leitura .lancamento-sticky { display: none !important; }
 #page-lancamento.somente-leitura .planilha-input { pointer-events: none !important; opacity: .65; background: var(--surface2) !important; }
 
