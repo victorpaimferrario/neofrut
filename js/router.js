@@ -1,5 +1,12 @@
 // ─────────── ROUTER ───────────
 function showPage(id) {
+  // Verificar permissão de visualização
+  if (typeof podeVer === 'function' && !podeVer(id)) {
+    // Redirecionar para a primeira aba visível
+    const fallback = _userPermissoes.abas_visiveis[0] || 'dashboard';
+    if (id !== fallback) { showPage(fallback); return; }
+  }
+
   localStorage.setItem('neofrut_aba_ativa', id);
   const pageEl = document.getElementById('page-' + id);
   if (!pageEl) { console.warn('showPage: página não encontrada:', id); return; }
@@ -13,6 +20,15 @@ function showPage(id) {
   // Ativa a nav-tab correspondente via data-page (resiliente a reordenação)
   const navTab = document.querySelector('.nav-tab[data-page="' + id + '"]');
   if (navTab) navTab.classList.add('active');
+
+  // Aplicar somente-leitura na página ativa
+  if (typeof podeEditar === 'function') {
+    if (podeEditar(id)) {
+      pageEl.classList.remove('somente-leitura');
+    } else {
+      pageEl.classList.add('somente-leitura');
+    }
+  }
 
   if (id === 'dashboard') {
     if (!navTab) document.querySelector('.nav-tab')?.classList.add('active');
@@ -35,10 +51,6 @@ function showPage(id) {
       initMercados();
     }
   } else if (id === 'gestao') {
-    if (typeof isAdmin === 'function' && !isAdmin()) {
-      showPage('dashboard');
-      return;
-    }
     initGestao();
   }
 }

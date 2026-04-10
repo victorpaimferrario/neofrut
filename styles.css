@@ -1027,3 +1027,68 @@
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .cli-table{width:100%;border-collapse:collapse;}
 .cli-table th{padding:8px;font-size:10px;font-family:var(--font-mono);color:var(--muted);text-align:left;border-bottom:1px solid var(--border);}
+
+/* ═══════════ SOMENTE LEITURA (permissões) ═══════════ */
+/* Quando uma .page tem .somente-leitura, esconde todos os elementos de edição */
+
+/* Botões de ação */
+.somente-leitura .btn-primary,
+.somente-leitura .btn-green,
+.somente-leitura .btn-danger,
+.somente-leitura .prog-fab,
+.somente-leitura .prog-btn-add,
+.somente-leitura .prog-btn-add-desktop,
+.somente-leitura .btn-add-carro,
+.somente-leitura [onclick*="salvar"],
+.somente-leitura [onclick*="Salvar"],
+.somente-leitura [onclick*="excluir"],
+.somente-leitura [onclick*="Excluir"],
+.somente-leitura [onclick*="abrirModal"],
+.somente-leitura [onclick*="confirmar"],
+.somente-leitura [onclick*="Confirmar"],
+.somente-leitura [onclick*="registrar"],
+.somente-leitura [onclick*="Registrar"] { display: none !important; }
+
+/* Formulários e inputs dentro de páginas somente-leitura */
+.somente-leitura .form-input,
+.somente-leitura .form-select,
+.somente-leitura textarea {
+  pointer-events: none !important;
+  opacity: .7;
+  background: var(--surface2) !important;
+}
+
+/* Cards de programação: permitem click para visualizar, mas sem edição */
+.somente-leitura .prog-card { cursor: default; }
+
+/* Seções de formulário completas — Vendas */
+#page-vendas.somente-leitura .form-venda-container,
+#page-vendas.somente-leitura #sim-mesa-wrap,
+#page-vendas.somente-leitura #sim-fabrica-wrap,
+#page-vendas.somente-leitura .sim-section { display: none !important; }
+
+/* Gestão — esconde forms de cadastro */
+#page-gestao.somente-leitura .gestao-form,
+#page-gestao.somente-leitura .gestao-actions { display: none !important; }
+
+/* Lançamento — esconde sticky de ações e modais de colheita */
+#page-lancamento.somente-leitura .lancamento-sticky { display: none !important; }
+#page-lancamento.somente-leitura .planilha-input { pointer-events: none !important; opacity: .65; background: var(--surface2) !important; }
+
+/* Badge visual de somente-leitura */
+.somente-leitura::before {
+  content: '👁️ Somente visualização';
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--amarelo-bg);
+  border: 1px solid var(--amarelo-border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin: 8px 16px 0;
+}
+
+/* Não duplicar badge em sub-elementos */
+.somente-leitura .somente-leitura::before { display: none; }
