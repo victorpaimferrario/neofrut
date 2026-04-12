@@ -221,11 +221,15 @@ function _progOnSeguroInput(el) {
   _progAtualizarPreview();
 }
 function _progGetIcms() {
+  // ICMS só existe quando há frete
+  if (_progCalcFreteTotal() <= 0) return 0;
   const el = document.getElementById('prog-inp-icms');
   if (!el) return 0;
   return _progParseValor(el.dataset.digits || el.value);
 }
 function _progGetSeguro() {
+  // Seguro só existe quando há frete
+  if (_progCalcFreteTotal() <= 0) return 0;
   const el = document.getElementById('prog-inp-seguro');
   if (!el) return 0;
   return _progParseValor(el.dataset.digits || el.value);
@@ -233,9 +237,16 @@ function _progGetSeguro() {
 function _progAutoSeguro() {
   const el = document.getElementById('prog-inp-seguro');
   if (!el || el.dataset.manual === '1') return;
+  const freteTotal = _progCalcFreteTotal();
+  // Sem frete → sem seguro
+  if (freteTotal <= 0) {
+    el.value = ''; el.dataset.digits = '';
+    const nota = document.getElementById('prog-seguro-nota');
+    if (nota) nota.textContent = '';
+    return;
+  }
   const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
   const bruto = _progGetValorBruto();
-  const freteTotal = _progCalcFreteTotal();
   const baseNF = (bruto * qtde) + freteTotal;
   const seg = baseNF * 0.007;
   if (seg > 0) {
