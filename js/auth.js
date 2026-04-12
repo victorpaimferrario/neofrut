@@ -183,18 +183,19 @@ async function logout() {
 // FLUXO DE AUTH — getSession() + onAuthStateChange
 // ═══════════════════════════════════════════════════
 
-// 1. Check inicial: existe sessão salva?
-//    Usa getSession() que é mais confiável que depender do evento INITIAL_SESSION
+// Limpar URL após OAuth (PKCE usa ?code= na query, implicit usa #access_token)
+function _limparUrlOAuth() {
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('code') || url.hash.includes('access_token')) {
+    window.history.replaceState(null, '', url.pathname);
+  }
+}
+
+// 1. Check inicial via getSession() — mais confiável que INITIAL_SESSION
 (async function _initAuth() {
   try {
-    // Aguardar processamento da URL OAuth (se houver #access_token)
-    // O Supabase processa automaticamente com detectSessionInUrl: true
     const { data: { session } } = await _SB.auth.getSession();
-
-    // Limpar hash OAuth da URL para evitar reprocessamento no próximo refresh
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
+    _limparUrlOAuth();
 
     if (session) {
       await enterApp(session);
@@ -207,17 +208,12 @@ async function logout() {
   }
 })();
 
-// 2. Listener para eventos de auth (login novo, logout, refresh)
+// 2. Listener para login/logout (ignora INITIAL_SESSION — já tratado acima)
 _SB.auth.onAuthStateChange(async (event, session) => {
-  // SIGNED_IN: usuário acabou de fazer login (OAuth redirect)
   if (event === 'SIGNED_IN' && session) {
-    // Limpar hash OAuth
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
+    _limparUrlOAuth();
     await enterApp(session);
   }
-  // SIGNED_OUT: usuário fez logout
   else if (event === 'SIGNED_OUT') {
     _appIniciado = false;
     showLogin();
