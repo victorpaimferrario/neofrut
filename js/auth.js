@@ -1,7 +1,7 @@
 // ─────────── AUTH + PERMISSÕES ───────────
-const ADMIN_EMAIL = 'victorpaim@pasf.com.br';
 let _appIniciado = false;
 let _abaParaRestaurar = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+let _authEmAndamento = false;
 
 // ── PERMISSÕES DO USUÁRIO LOGADO ──
 let _userPermissoes = {
@@ -31,9 +31,9 @@ function abaAtualSomenteLeitura() {
   return !podeEditar(aba);
 }
 
-// ── CARREGAR PERMISSÕES (Supabase → fallback localStorage) ──
+// ── CARREGAR PERMISSÕES (cache local → Supabase) ──
 async function _carregarPermissoes(email) {
-  // Tentar cache local primeiro (instantâneo, funciona offline)
+  // 1. Tentar cache local primeiro (instantâneo, funciona offline)
   let cached = null;
   try {
     const raw = localStorage.getItem('neofrut_user_perms');
@@ -43,7 +43,7 @@ async function _carregarPermissoes(email) {
     }
   } catch(e) {}
 
-  // Tentar Supabase para dados atualizados
+  // 2. Tentar Supabase para dados atualizados
   try {
     const { data, error } = await _SB
       .from('usuarios')
@@ -70,17 +70,13 @@ async function _carregarPermissoes(email) {
 
     // Supabase retornou erro — usar cache se disponível
     if (cached) {
-      console.warn('Supabase indisponível, usando cache de permissões para:', email);
+      console.warn('Supabase indisponível, usando cache de permissões');
       _userPermissoes = cached;
       return _userPermissoes;
     }
-
-    // Sem cache e sem Supabase: acesso negado de verdade
-    console.warn('Usuário não encontrado na tabela usuarios:', email);
     return null;
   } catch (e) {
     console.warn('Erro ao carregar permissões:', e.message);
-    // Fallback: usar cache local
     if (cached) {
       _userPermissoes = cached;
       return _userPermissoes;
@@ -108,14 +104,6 @@ function _aplicarPermissoes() {
   }
 }
 
-// ── LIMPAR URL APÓS OAUTH ──
-function _limparUrlOAuth() {
-  // Remove #access_token=... da URL após login do Google
-  if (window.location.hash && window.location.hash.includes('access_token')) {
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-}
-
 // ── LOGIN / SESSÃO ──
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
@@ -133,42 +121,45 @@ function _showAcessoNegado(email) {
     msg.style.cssText = 'background:#ffebee;color:#c62828;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;max-width:320px';
     loginScreen.appendChild(msg);
   }
-  msg.innerHTML = `Acesso negado para <strong>${escapeHtml(email)}</strong><br><span style="font-weight:400;font-size:11px">Contate o administrador para solicitar acesso.</span>`;
-  // NÃO faz logout automático — preserva a sessão para caso seja erro temporário
+  msg.innerHTML = 'Acesso negado para <strong>' + escapeHtml(email) + '</strong><br><span style="font-weight:400;font-size:11px">Contate o administrador para solicitar acesso.</span>';
 }
 
 async function enterApp(session) {
-  const email = session.user.email;
+  if (_authEmAndamento) return;
+  _authEmAndamento = true;
 
-  // Limpar hash do OAuth da URL para evitar reprocessamento no refresh
-  _limparUrlOAuth();
+  try {
+    const email = session.user.email;
 
-  // Carregar permissões (Supabase + fallback cache)
-  const perms = await _carregarPermissoes(email);
+    // Carregar permissões (cache + Supabase)
+    const perms = await _carregarPermissoes(email);
 
-  if (!perms) {
-    _showAcessoNegado(email);
-    return;
-  }
-
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-email').textContent = email;
-
-  // Remover mensagem de acesso negado se existir (de tentativa anterior)
-  const negado = document.getElementById('login-negado');
-  if (negado) negado.remove();
-
-  _aplicarPermissoes();
-
-  if (!_appIniciado) {
-    _appIniciado = true;
-    try {
-      await initApp();
-    } catch(e) {
-      console.error('Erro ao iniciar app:', e);
-      showPage('dashboard');
+    if (!perms) {
+      _showAcessoNegado(email);
+      return;
     }
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('user-email').textContent = email;
+
+    // Remover mensagem de acesso negado de tentativa anterior
+    const negado = document.getElementById('login-negado');
+    if (negado) negado.remove();
+
+    _aplicarPermissoes();
+
+    if (!_appIniciado) {
+      _appIniciado = true;
+      try {
+        await initApp();
+      } catch(e) {
+        console.error('Erro ao iniciar app:', e);
+        showPage('dashboard');
+      }
+    }
+  } finally {
+    _authEmAndamento = false;
   }
 }
 
@@ -188,13 +179,49 @@ async function logout() {
   location.reload();
 }
 
-// Unico ponto de controle de auth
-_SB.auth.onAuthStateChange(async (event, session) => {
-  if (session) {
-    await enterApp(session);
-  } else if (event === 'INITIAL_SESSION') {
-    showLogin();
-  } else if (event === 'SIGNED_OUT') {
+// ═══════════════════════════════════════════════════
+// FLUXO DE AUTH — getSession() + onAuthStateChange
+// ═══════════════════════════════════════════════════
+
+// 1. Check inicial: existe sessão salva?
+//    Usa getSession() que é mais confiável que depender do evento INITIAL_SESSION
+(async function _initAuth() {
+  try {
+    // Aguardar processamento da URL OAuth (se houver #access_token)
+    // O Supabase processa automaticamente com detectSessionInUrl: true
+    const { data: { session } } = await _SB.auth.getSession();
+
+    // Limpar hash OAuth da URL para evitar reprocessamento no próximo refresh
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
+    if (session) {
+      await enterApp(session);
+    } else {
+      showLogin();
+    }
+  } catch(e) {
+    console.error('Erro na inicialização de auth:', e);
     showLogin();
   }
+})();
+
+// 2. Listener para eventos de auth (login novo, logout, refresh)
+_SB.auth.onAuthStateChange(async (event, session) => {
+  // SIGNED_IN: usuário acabou de fazer login (OAuth redirect)
+  if (event === 'SIGNED_IN' && session) {
+    // Limpar hash OAuth
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    await enterApp(session);
+  }
+  // SIGNED_OUT: usuário fez logout
+  else if (event === 'SIGNED_OUT') {
+    _appIniciado = false;
+    showLogin();
+  }
+  // TOKEN_REFRESHED: sessão renovada automaticamente — não precisa fazer nada
+  // INITIAL_SESSION: ignorado — já tratado pelo getSession() acima
 });
