@@ -1,171 +1,97 @@
 // ─────────── AUTH + PERMISSÕES ───────────
 let _appIniciado = false;
-let _abaParaRestaurar = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
 let _authEmAndamento = false;
+let _abaParaRestaurar = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
 
-// ── PERMISSÕES DO USUÁRIO LOGADO ──
+// ── PERMISSÕES ──
 let _userPermissoes = {
-  email: '',
-  nome: '',
-  perfil: 'restrito',
-  abas_visiveis: [],
-  abas_editaveis: []
+  email: '', nome: '', perfil: 'restrito',
+  abas_visiveis: [], abas_editaveis: []
 };
 
-function isAdmin() {
-  return _userPermissoes.perfil === 'admin';
-}
+function isAdmin() { return _userPermissoes.perfil === 'admin'; }
+function podeVer(aba) { return isAdmin() || _userPermissoes.abas_visiveis.includes(aba); }
+function podeEditar(aba) { return isAdmin() || _userPermissoes.abas_editaveis.includes(aba); }
+function abaAtualSomenteLeitura() { return !podeEditar(localStorage.getItem('neofrut_aba_ativa') || 'dashboard'); }
 
-function podeVer(aba) {
-  if (_userPermissoes.perfil === 'admin') return true;
-  return _userPermissoes.abas_visiveis.includes(aba);
-}
-
-function podeEditar(aba) {
-  if (_userPermissoes.perfil === 'admin') return true;
-  return _userPermissoes.abas_editaveis.includes(aba);
-}
-
-function abaAtualSomenteLeitura() {
-  const aba = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
-  return !podeEditar(aba);
-}
-
-// ── CARREGAR PERMISSÕES (cache local → Supabase) ──
 async function _carregarPermissoes(email) {
-  // 1. Tentar cache local primeiro (instantâneo, funciona offline)
-  let cached = null;
+  // Cache local primeiro
+  var cached = null;
   try {
-    const raw = localStorage.getItem('neofrut_user_perms');
-    if (raw) {
-      const c = JSON.parse(raw);
-      if (c && c.email === email) cached = c;
-    }
+    var raw = localStorage.getItem('neofrut_user_perms');
+    if (raw) { var c = JSON.parse(raw); if (c && c.email === email) cached = c; }
   } catch(e) {}
 
-  // 2. Tentar Supabase para dados atualizados
+  // Tentar Supabase
   try {
-    const { data, error } = await _SB
-      .from('usuarios')
-      .select('*')
-      .eq('email', email)
-      .eq('ativo', true)
-      .single();
-
-    if (!error && data) {
+    var r = await _SB.from('usuarios').select('*').eq('email', email).eq('ativo', true).single();
+    if (!r.error && r.data) {
+      var d = r.data;
       _userPermissoes = {
-        email: data.email,
-        nome: data.nome,
-        perfil: data.perfil,
-        abas_visiveis: (data.abas_visiveis || []).includes('*')
+        email: d.email, nome: d.nome, perfil: d.perfil,
+        abas_visiveis: (d.abas_visiveis || []).includes('*')
           ? ['dashboard','programacao','analise','lancamento','vendas','gestao','mercados']
-          : (data.abas_visiveis || []),
-        abas_editaveis: (data.abas_editaveis || []).includes('*')
+          : (d.abas_visiveis || []),
+        abas_editaveis: (d.abas_editaveis || []).includes('*')
           ? ['dashboard','programacao','analise','lancamento','vendas','gestao','mercados']
-          : (data.abas_editaveis || [])
+          : (d.abas_editaveis || [])
       };
       localStorage.setItem('neofrut_user_perms', JSON.stringify(_userPermissoes));
       return _userPermissoes;
     }
+  } catch(e) { /* fallback abaixo */ }
 
-    // Supabase retornou erro — usar cache se disponível
-    if (cached) {
-      console.warn('Supabase indisponível, usando cache de permissões');
-      _userPermissoes = cached;
-      return _userPermissoes;
-    }
-    return null;
-  } catch (e) {
-    console.warn('Erro ao carregar permissões:', e.message);
-    if (cached) {
-      _userPermissoes = cached;
-      return _userPermissoes;
-    }
-    return null;
-  }
+  // Fallback: cache
+  if (cached) { _userPermissoes = cached; return cached; }
+  return null;
 }
 
-// ── APLICAR PERMISSÕES NA UI ──
 function _aplicarPermissoes() {
-  document.querySelectorAll('.nav-tab[data-page]').forEach(tab => {
-    tab.style.display = podeVer(tab.dataset.page) ? '' : 'none';
-  });
-  document.querySelectorAll('.mob-tab[data-page]').forEach(tab => {
-    tab.style.display = podeVer(tab.dataset.page) ? '' : 'none';
-  });
-  document.querySelectorAll('.page[id^="page-"]').forEach(pageEl => {
-    const aba = pageEl.id.replace('page-', '');
-    pageEl.classList.toggle('somente-leitura', !podeEditar(aba));
-  });
-  const emailEl = document.getElementById('user-email');
-  if (emailEl && _userPermissoes.nome) {
-    emailEl.textContent = _userPermissoes.nome;
-    emailEl.title = _userPermissoes.email;
-  }
+  document.querySelectorAll('.nav-tab[data-page]').forEach(function(t) { t.style.display = podeVer(t.dataset.page) ? '' : 'none'; });
+  document.querySelectorAll('.mob-tab[data-page]').forEach(function(t) { t.style.display = podeVer(t.dataset.page) ? '' : 'none'; });
+  document.querySelectorAll('.page[id^="page-"]').forEach(function(p) { var a = p.id.replace('page-',''); p.classList.toggle('somente-leitura', !podeEditar(a)); });
+  var el = document.getElementById('user-email');
+  if (el && _userPermissoes.nome) { el.textContent = _userPermissoes.nome; el.title = _userPermissoes.email; }
 }
 
-// ── LOGIN / SESSÃO ──
+// ── UI ──
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
 }
 
 function _showAcessoNegado(email) {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  const loginScreen = document.getElementById('login-screen');
-  let msg = document.getElementById('login-negado');
-  if (!msg) {
-    msg = document.createElement('div');
-    msg.id = 'login-negado';
-    msg.style.cssText = 'background:#ffebee;color:#c62828;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;max-width:320px';
-    loginScreen.appendChild(msg);
-  }
-  msg.innerHTML = 'Acesso negado para <strong>' + escapeHtml(email) + '</strong><br><span style="font-weight:400;font-size:11px">Contate o administrador para solicitar acesso.</span>';
+  showLogin();
+  var s = document.getElementById('login-screen');
+  var m = document.getElementById('login-negado');
+  if (!m) { m = document.createElement('div'); m.id = 'login-negado'; m.style.cssText = 'background:#ffebee;color:#c62828;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:700;text-align:center;max-width:320px'; s.appendChild(m); }
+  m.innerHTML = 'Acesso negado para <strong>' + email + '</strong><br><span style="font-weight:400;font-size:11px">Contate o administrador.</span>';
 }
 
 async function enterApp(session) {
   if (_authEmAndamento) return;
   _authEmAndamento = true;
-
   try {
-    const email = session.user.email;
-
-    // Carregar permissões (cache + Supabase)
-    const perms = await _carregarPermissoes(email);
-
-    if (!perms) {
-      _showAcessoNegado(email);
-      return;
-    }
+    var email = session.user.email;
+    var perms = await _carregarPermissoes(email);
+    if (!perms) { _showAcessoNegado(email); return; }
 
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('user-email').textContent = email;
-
-    // Remover mensagem de acesso negado de tentativa anterior
-    const negado = document.getElementById('login-negado');
-    if (negado) negado.remove();
+    var neg = document.getElementById('login-negado'); if (neg) neg.remove();
 
     _aplicarPermissoes();
 
     if (!_appIniciado) {
       _appIniciado = true;
-      try {
-        await initApp();
-      } catch(e) {
-        console.error('Erro ao iniciar app:', e);
-        showPage('dashboard');
-      }
+      try { await initApp(); } catch(e) { console.error('Erro initApp:', e); showPage('dashboard'); }
     }
-  } finally {
-    _authEmAndamento = false;
-  }
+  } finally { _authEmAndamento = false; }
 }
 
 async function loginGoogle() {
-  const abaAtual = localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
-  localStorage.setItem('neofrut_aba_ativa', abaAtual);
+  localStorage.setItem('neofrut_aba_ativa', localStorage.getItem('neofrut_aba_ativa') || 'dashboard');
   await _SB.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin + window.location.pathname }
@@ -179,45 +105,35 @@ async function logout() {
   location.reload();
 }
 
-// ═══════════════════════════════════════════════════
-// FLUXO DE AUTH — getSession() + onAuthStateChange
-// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════
+// FLUXO DE AUTH — ROBUSTO COM MÚLTIPLOS FALLBACKS
+// ═══════════════════════════════════════════
 
-// Limpar URL após OAuth (PKCE usa ?code= na query, implicit usa #access_token)
-function _limparUrlOAuth() {
-  const url = new URL(window.location.href);
-  if (url.searchParams.has('code') || url.hash.includes('access_token')) {
-    window.history.replaceState(null, '', url.pathname);
+// Limpar fragmentos OAuth da URL
+function _limparUrl() {
+  if (window.location.hash.indexOf('access_token') >= 0) {
+    history.replaceState(null, '', location.pathname);
+  }
+  if (window.location.search.indexOf('code=') >= 0) {
+    history.replaceState(null, '', location.pathname);
   }
 }
 
-// 1. Check inicial via getSession() — mais confiável que INITIAL_SESSION
-(async function _initAuth() {
-  try {
-    const { data: { session } } = await _SB.auth.getSession();
-    _limparUrlOAuth();
+// onAuthStateChange é o mecanismo PRINCIPAL do Supabase
+// Ele dispara para todos os eventos: INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
+_SB.auth.onAuthStateChange(function(event, session) {
+  console.log('[AUTH]', event, session ? session.user.email : 'sem sessão');
 
-    if (session) {
-      await enterApp(session);
-    } else {
-      showLogin();
-    }
-  } catch(e) {
-    console.error('Erro na inicialização de auth:', e);
-    showLogin();
-  }
-})();
-
-// 2. Listener para login/logout (ignora INITIAL_SESSION — já tratado acima)
-_SB.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session) {
-    _limparUrlOAuth();
-    await enterApp(session);
-  }
-  else if (event === 'SIGNED_OUT') {
+  if (session) {
+    // Sessão válida — entrar no app (INITIAL_SESSION, SIGNED_IN, TOKEN_REFRESHED)
+    _limparUrl();
+    enterApp(session);
+  } else if (event === 'SIGNED_OUT') {
+    // Logout explícito
     _appIniciado = false;
     showLogin();
+  } else if (event === 'INITIAL_SESSION') {
+    // Sem sessão no carregamento — mostrar login
+    showLogin();
   }
-  // TOKEN_REFRESHED: sessão renovada automaticamente — não precisa fazer nada
-  // INITIAL_SESSION: ignorado — já tratado pelo getSession() acima
 });

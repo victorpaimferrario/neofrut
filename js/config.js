@@ -1,7 +1,7 @@
 // ─────────── CONFIG ───────────
 const _SB = supabase.createClient('https://gdskveecuarclajuchfx.supabase.co', 'sb_publishable_ocksk4S_Gw9cAXCZSHtFmw_l0IqAERL', {
   auth: {
-    flowType: 'pkce',
+    flowType: 'implicit',
     detectSessionInUrl: true,
     persistSession: true,
     autoRefreshToken: true
