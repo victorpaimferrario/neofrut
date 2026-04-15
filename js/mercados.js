@@ -462,7 +462,10 @@ async function carregarClima(){
   grid.innerHTML='';
   resultados.forEach(r=>{
     const card=document.createElement('div');
-    card.className='clima-card'+(r.chegadaRuim?' ruim':(!r.dias||!r.dias[0]||r.dias[0].chuva||r.dias[0].tmax<28)?'':' otimo');
+    const _d0 = r.dias && r.dias[0];
+    const _altaDemanda = _d0 && !_d0.chuva && _d0.tmax >= 30;
+    const _favoravel = _d0 && !_d0.chuva && _d0.tmax >= 28 && _d0.tmax < 30;
+    card.className='clima-card'+(r.chegadaRuim?' ruim':_altaDemanda?' alta-demanda':_favoravel?' otimo':'');
     if(!r.ok||!r.dias||!r.dias.length){
       const safeNome = escapeHtml(r.c.nome);
       const safeUf = escapeHtml(r.c.uf);
@@ -471,8 +474,8 @@ async function carregarClima(){
     }
     if(r.stale){card.style.opacity='0.75';card.title='Dados em cache (API indisponível)';}
     const diasCard=r.dias.slice(0,7);
-    const bCls=r.chegadaRuim?'ruim':r.dias[0].tmax>=28?'ok':'neutro';
-    const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':r.dias[0].tmax>=28?'☀️ FAVORÁVEL':'🌤️ NEUTRO';
+    const bCls=r.chegadaRuim?'ruim':_altaDemanda?'alta':_favoravel?'ok':'neutro';
+    const bTxt=r.chegadaRuim?'🌧️ CHUVA NA CHEGADA':_altaDemanda?'🔥 ALTA DEMANDA':_favoravel?'☀️ FAVORÁVEL':'🌤️ NEUTRO';
     const hdr=document.createElement('div');hdr.className='card-header';hdr.style.position='relative';
     const safeNomeR=escapeHtml(r.c.nome);
     const safeUfR=escapeHtml(r.c.uf);

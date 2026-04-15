@@ -957,11 +957,13 @@
 .clima-card:hover{box-shadow:0 6px 20px rgba(0,0,0,0.13);transform:translateY(-2px);}
 .clima-card.ruim{border-color:var(--vermelho);border-width:2px;}
 .clima-card.otimo{border-color:var(--verde-border);background:#fafff8;}
+.clima-card.alta-demanda{border-color:#ff6b1a;border-width:2px;background:#fff8f3;}
 .card-header{padding:8px 10px 6px;border-bottom:1px solid var(--border);text-align:center;}
 .card-cidade{font-size:12px;font-weight:800;display:block;}
 .card-uf{font-size:10px;font-family:var(--font-mono);color:var(--muted);}
 .card-badge{font-size:9px;font-weight:800;padding:3px 6px;border-radius:5px;margin:6px 8px 2px;text-align:center;display:block;}
 .card-badge.ok{background:#d4edda;color:#1e7e34;}
+.card-badge.alta{background:#ff6b1a;color:#fff;font-weight:900;letter-spacing:.03em;}
 .card-badge.ruim{background:#fde8ea;color:#dc3545;}
 .card-badge.neutro{background:#fff3cd;color:#856404;}
 .dias-table{width:100%;border-collapse:collapse;}
