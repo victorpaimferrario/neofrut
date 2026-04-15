@@ -1128,6 +1128,32 @@ async function progCancelarCarga() {
 }
 
 // ── EXCLUIR CARGA (permanente) ──
+// ── DUPLICAR CARGA ──
+function progDuplicarCarga() {
+  if (!_progEditandoId) return;
+  const c = _progSemana.find(x => x.id === _progEditandoId);
+  if (!c) return;
+
+  // Mudar para modo INSERT (nova carga)
+  _progEditandoId = null;
+
+  // Título e botões
+  document.getElementById('prog-modal-titulo').textContent = '📋 Duplicar Carga';
+  document.getElementById('prog-btn-salvar').textContent = '✓ Agendar carga';
+  document.getElementById('prog-acoes-editar').style.display = 'none';
+
+  // Limpar dia — usuário escolhe o novo dia
+  _progDiaSel = null;
+  _progRenderDiasBtns();
+
+  // Limpar obs (cada carga pode ter obs diferente)
+  document.getElementById('prog-inp-obs').value = '';
+  document.getElementById('prog-inp-obs').style.display = 'none';
+
+  // Manter tudo o resto (cliente, qtde, valor, frete, ICMS, seguro, veículo, área, motorista, caminhão)
+  showToast('Selecione o dia para a nova carga');
+}
+
 async function progExcluirCarga() {
   if (!_progEditandoId) return;
   if (!confirm('Excluir esta carga permanentemente? Esta ação não pode ser desfeita.')) return;

@@ -281,13 +281,15 @@ function renderProjecao() {
     'MAMÃO DE CIMA':'MD CIMA','MAMÃO DE BAIXO':'MD BAIXO','MARACUJÁ':'MARACUJÁ'
   };
 
-  // Média histórica do eito (exclui parciais)
+  // Média das últimas 3 colheitas do eito (exclui parciais)
   function mediaEito(e) {
     const hist = (e.historico || []).filter(h => !h.parcial);
-    const ult  = getUltimaCompleta(e);
-    return hist.length > 0
-      ? Math.round(hist.reduce((s,h) => s+h.total, 0) / hist.length)
-      : (ult ? ult.total : 0);
+    if (hist.length === 0) {
+      const ult = getUltimaCompleta(e);
+      return ult ? ult.total : 0;
+    }
+    const ultimas = hist.slice(-3);
+    return Math.round(ultimas.reduce((s,h) => s+h.total, 0) / ultimas.length);
   }
 
   // Formato ISO seguro (sem problemas de timezone do toISOString)
@@ -563,6 +565,50 @@ function renderProjecao() {
     </div>`;
   }
 
+  // Card Próxima Semana com ajuste dinâmico
+  function buildCardProxSemana(projecaoEsta, rProx, colhidoReal, sublabel) {
+    const delta = colhidoReal - projecaoEsta; // positivo = colheu mais
+    const totalAjustado = Math.max(0, rProx.total - delta);
+    const totalEitos = Object.values(rProx.porArea).reduce((s,v) => s + v.nEitos, 0);
+    const cardId = 'proj-gen-prox';
+
+    // Ajustar totais por área proporcionalmente
+    const porAreaAjustada = {};
+    const fator = rProx.total > 0 ? totalAjustado / rProx.total : 1;
+    for (const [area, info] of Object.entries(rProx.porArea)) {
+      porAreaAjustada[area] = { ...info, cocos: Math.round(info.cocos * fator) };
+    }
+    const breakdown = buildBreakdown(porAreaAjustada);
+
+    let ajusteHtml = '';
+    if (colhidoReal > 0 && delta !== 0) {
+      const sinal = delta > 0 ? '-' : '+';
+      const cor = delta > 0 ? 'var(--verde)' : 'var(--vermelho)';
+      const label = delta > 0 ? 'excedente colhido' : 'acumulado não colhido';
+      ajusteHtml = `<div style="font-size:10px;color:${cor};font-weight:700;font-family:var(--font-mono);margin-top:2px">
+        base ${fmtNum(rProx.total)} ${sinal} ${fmtNum(Math.abs(delta))} (${label})
+      </div>`;
+    }
+
+    return `
+      <div class="proj-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <div class="proj-card-label" style="margin-bottom:0">📆 Próxima semana</div>
+          <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${sublabel}</div>
+        </div>
+        <div class="proj-card-val">${fmtNum(totalAjustado)}</div>
+        <div class="proj-card-sub">${totalEitos} eito${totalEitos!==1?'s':''} prontos</div>
+        ${ajusteHtml}
+        <div style="margin-top:8px;text-align:center">
+          <button onclick="var d=document.getElementById('${cardId}');d.style.display=d.style.display==='none'?'block':'none';this.textContent=d.style.display==='none'?'▸ Ver áreas':'▾ Ocultar'" style="background:none;border:none;cursor:pointer;font-size:10px;font-weight:700;color:var(--accent2);font-family:var(--font-main)">▸ Ver áreas</button>
+        </div>
+        <div id="${cardId}" style="display:none">
+          ${buildHeader()}
+          <div class="proj-breakdown">${breakdown || '<span style="font-size:11px;color:var(--muted)">Nenhum eito previsto</span>'}</div>
+        </div>
+      </div>`;
+  }
+
   // Cards genéricos (próxima semana, 21 dias)
   let _projCardIdx = 0;
   function buildCardGenerico(r, icon, label, sublabel) {
@@ -805,11 +851,11 @@ function renderProjecao() {
 
   wrap.innerHTML = `
     <div class="proj-wrap">
-      <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média histórica por eito</span></div>
+      <div class="proj-header">🔮 Projeção de Colheita <span>— baseada na média das últimas 3 colheitas</span></div>
       <div class="proj-cards">
         ${cardEsta}
         ${cardColhido}
-        ${buildCardGenerico(r2, '📆', 'Próxima semana', fmtSemana(segProx, sexProx))}
+        ${buildCardProxSemana(r1.total, r2, totalColhidoSemana, fmtSemana(segProx, sexProx))}
       </div>
     </div>`;
 }
