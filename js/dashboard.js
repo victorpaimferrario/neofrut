@@ -330,81 +330,42 @@ function renderProjecao() {
     return { totalUrg, totalSem, total: totalUrg + totalSem, nUrg, nSem, nTotal: nUrg + nSem, porArea };
   }
 
-  // Card — Próxima semana: eitos que vencem + acumulados não colhidos desta semana
-  // Retorna mesma estrutura que calcEsta (urgente/semana/eitos) para usar mesmo layout
+  // Card — Próxima semana: APENAS eitos que completam 21 dias entre seg–sex da próxima semana
+  // Não inclui acumulados (esses ficam no Card 1 como urgentes)
+  // Usa a última colheita real como referência (se colheu esta semana, usa essa data)
   function calcProxima() {
     const porArea = {};
-    let totalAcum = 0, totalNovo = 0, nAcum = 0, nNovo = 0;
+    let totalGeral = 0, nTotal = 0;
     const segProxISO = toISO(segProx);
     const sexProxISO = toISO(sexProx);
-    const segISO = toISO(segEsta);
-    const sexISO = toISO(sexEsta);
     for (const [area, eitos] of Object.entries(DB)) {
-      let cocosAcum = 0, cocosNovo = 0, nAcumArea = 0, nNovoArea = 0, maxDiasArea = 0;
+      let totalArea = 0, maxDiasArea = 0, nArea = 0;
       const eitosDetalhe = [];
       for (const e of eitos) {
-        const hist = e.historico || [];
-        const anteriores = hist.filter(h => h.data < segISO);
-        const ultAnterior = anteriores.length > 0 ? anteriores[anteriores.length - 1] : null;
-        const colhidoEstaSemana = hist.filter(h => h.data >= segISO && h.data <= sexISO);
-
-        let entra = false;
-        let diasRef = 0;
-        let tipo = 'novo'; // 'acum' ou 'novo'
-
-        if (ultAnterior) {
-          const proxColheita = new Date(ultAnterior.data + 'T00:00:00');
-          proxColheita.setDate(proxColheita.getDate() + 21);
-          const proxISO = toISO(proxColheita);
-
-          const deviaColherEstaSemana = proxISO <= sexISO;
-          if (deviaColherEstaSemana && colhidoEstaSemana.length === 0) {
-            entra = true; tipo = 'acum';
-            diasRef = Math.round((sexProx - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
-          } else if (proxISO >= segProxISO && proxISO <= sexProxISO) {
-            entra = true; tipo = 'novo';
-            diasRef = Math.round((sexProx - new Date(ultAnterior.data + 'T00:00:00')) / 86400000);
-          }
-        } else {
-          const ult = getUltima(e);
-          if (ult) {
-            const proxColheita = new Date(ult.data + 'T00:00:00');
-            proxColheita.setDate(proxColheita.getDate() + 21);
-            const proxISO = toISO(proxColheita);
-            if (proxISO >= segProxISO && proxISO <= sexProxISO) {
-              entra = true; tipo = 'novo';
-              diasRef = Math.round((sexProx - new Date(ult.data + 'T00:00:00')) / 86400000);
-            }
-          }
-        }
-
-        if (!entra && colhidoEstaSemana.length > 0) {
-          const ultEstaSemana = colhidoEstaSemana[colhidoEstaSemana.length - 1];
-          const proxColheita = new Date(ultEstaSemana.data + 'T00:00:00');
-          proxColheita.setDate(proxColheita.getDate() + 21);
-          const proxISO = toISO(proxColheita);
-          if (proxISO >= segProxISO && proxISO <= sexProxISO) {
-            entra = true; tipo = 'novo';
-            diasRef = Math.round((sexProx - new Date(ultEstaSemana.data + 'T00:00:00')) / 86400000);
-          }
-        }
-
-        if (entra) {
+        const ult = getUltima(e); // última colheita real (inclui desta semana)
+        if (!ult) continue;
+        // Quando este eito completa 21 dias?
+        const proxColheita = new Date(ult.data + 'T00:00:00');
+        proxColheita.setDate(proxColheita.getDate() + 21);
+        const proxISO = toISO(proxColheita);
+        // Só entra se vence entre seg e sex da PRÓXIMA semana
+        if (proxISO >= segProxISO && proxISO <= sexProxISO) {
+          const diasHoje = diasDesde(ult.data);
           const m = mediaEito(e);
-          if (tipo === 'acum') { cocosAcum += m; nAcumArea++; }
-          else { cocosNovo += m; nNovoArea++; }
-          if (diasRef > maxDiasArea) maxDiasArea = diasRef;
-          eitosDetalhe.push({ id: e.id, dias: diasRef, tipo: tipo, cocos: m });
+          totalArea += m;
+          nArea++;
+          if (diasHoje > maxDiasArea) maxDiasArea = diasHoje;
+          eitosDetalhe.push({ id: e.id, dias: diasHoje, tipo: 'sem', cocos: m });
         }
       }
-      if (cocosAcum + cocosNovo > 0) {
+      if (totalArea > 0) {
         eitosDetalhe.sort((a,b) => b.dias - a.dias);
-        porArea[area] = { cocosUrg: cocosAcum, cocosSem: cocosNovo, nUrg: nAcumArea, nSem: nNovoArea, maxDias: maxDiasArea, eitos: eitosDetalhe };
-        totalAcum += cocosAcum; totalNovo += cocosNovo;
-        nAcum += nAcumArea; nNovo += nNovoArea;
+        porArea[area] = { cocosUrg: 0, cocosSem: totalArea, nUrg: 0, nSem: nArea, maxDias: maxDiasArea, eitos: eitosDetalhe };
+        totalGeral += totalArea;
+        nTotal += nArea;
       }
     }
-    return { totalUrg: totalAcum, totalSem: totalNovo, total: totalAcum + totalNovo, nUrg: nAcum, nSem: nNovo, nTotal: nAcum + nNovo, porArea };
+    return { totalUrg: 0, totalSem: totalGeral, total: totalGeral, nUrg: 0, nSem: nTotal, nTotal, porArea };
   }
 
   // Card 3 — Próximos 21 dias: todos que vencem em até 21 dias a partir de hoje (inclui acumulados)
@@ -568,67 +529,34 @@ function renderProjecao() {
     </div>`;
   }
 
-  // Card Próxima Semana — mesmo design do Card Esta Semana + ajuste dinâmico
-  function buildCardProxSemana(projecaoEsta, rProx, colhidoReal, sublabel) {
-    const delta = colhidoReal - projecaoEsta;
-    const totalAjustado = Math.max(0, rProx.total - delta);
-    const fator = rProx.total > 0 ? totalAjustado / rProx.total : 1;
-
-    // Ajustar cocos por área proporcionalmente
-    const totalAcumAjust = Math.round(rProx.totalUrg * fator);
-    const totalNovoAjust = Math.round(rProx.totalSem * fator);
-
-    // Reutilizar buildAreaRow com dados ajustados
+  // Card Próxima Semana — mesmo design do Card Esta Semana
+  // Mostra apenas eitos que vencem na próxima semana (sem acumulados, sem ajuste artificial)
+  function buildCardProxSemana(rProx, sublabel) {
     const areasProx = Object.entries(rProx.porArea)
       .sort((a,b) => b[1].maxDias - a[1].maxDias)
-      .map(([area, info]) => {
-        const infoAjust = {
-          cocosUrg: Math.round(info.cocosUrg * fator),
-          cocosSem: Math.round(info.cocosSem * fator),
-          nUrg: info.nUrg, nSem: info.nSem,
-          maxDias: info.maxDias,
-          eitos: info.eitos.map(ei => ({ ...ei, cocos: Math.round(ei.cocos * fator) }))
-        };
-        return buildAreaRow(area, infoAjust, 'prox_' + area);
-      }).join('');
+      .map(([area, info]) => buildAreaRow(area, info, 'prox_' + area))
+      .join('');
 
-    let ajusteHtml = '';
-    if (colhidoReal > 0 && delta !== 0) {
-      const sinal = delta > 0 ? '−' : '+';
-      const cor = delta > 0 ? 'var(--verde)' : 'var(--vermelho)';
-      const label = delta > 0 ? 'excedente colhido esta semana' : 'acumulado não colhido';
-      ajusteHtml = `<div style="font-size:10px;color:${cor};font-weight:700;font-family:var(--font-mono);margin:4px 0;padding:4px 8px;background:${delta>0?'rgba(30,126,52,.06)':'rgba(185,28,28,.06)'};border-radius:6px;text-align:center">
-        ${sinal} ${fmtNum(Math.abs(delta))} ${label}
-      </div>`;
-    }
-
-    // Labels: "acumulado" (não colhido esta semana) e "novo" (vence na próxima)
     return `
       <div class="proj-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
           <div class="proj-card-label" style="margin-bottom:0">📆 Próxima semana</div>
           <div style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)">${sublabel}</div>
         </div>
-        <div class="proj-inner-grid">
-          <div style="text-align:center;padding:6px 4px;background:rgba(220,53,69,0.06);border-radius:6px;border:1px solid rgba(220,53,69,0.15)">
-            <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--vermelho)">🔴 Acumulado</div>
-            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--vermelho);margin:2px 0">${fmtNum(totalAcumAjust)}</div>
-            <div style="font-size:8px;color:var(--muted)">${rProx.nUrg} eito${rProx.nUrg!==1?'s':''} · não colhidos</div>
-          </div>
+        <div class="proj-inner-grid" style="grid-template-columns:1fr 1fr">
           <div style="text-align:center;padding:6px 4px;background:rgba(224,168,0,0.06);border-radius:6px;border:1px solid rgba(224,168,0,0.15)">
-            <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amarelo)">🟡 Novos</div>
-            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--amarelo);margin:2px 0">${fmtNum(totalNovoAjust)}</div>
-            <div style="font-size:8px;color:var(--muted)">${rProx.nSem} eito${rProx.nSem!==1?'s':''} · vencem</div>
+            <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--amarelo)">🟡 Vão vencer</div>
+            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--amarelo);margin:2px 0">${fmtNum(rProx.total)}</div>
+            <div style="font-size:8px;color:var(--muted)">${rProx.nTotal} eito${rProx.nTotal!==1?'s':''} · completam 21d</div>
           </div>
           <div style="text-align:center;padding:6px 4px;background:rgba(26,122,110,0.06);border-radius:6px;border:1px solid rgba(26,122,110,0.15)">
-            <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--forest)">📦 Total</div>
-            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--forest);margin:2px 0">${fmtNum(totalAjustado)}</div>
-            <div style="font-size:8px;color:var(--muted)">${rProx.nTotal} eito${rProx.nTotal!==1?'s':''}</div>
+            <div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--forest)">📦 Cocos est.</div>
+            <div style="font-size:18px;font-weight:800;font-family:var(--font-mono);color:var(--forest);margin:2px 0">${fmtNum(rProx.total)}</div>
+            <div style="font-size:8px;color:var(--muted)">média últimas 3</div>
           </div>
         </div>
-        ${ajusteHtml}
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:4px">Mapa por área</div>
-        ${areasProx || '<div style="font-size:10px;color:var(--muted);padding:4px">Nenhum eito previsto</div>'}
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:4px;margin-top:8px">Mapa por área</div>
+        ${areasProx || '<div style="font-size:10px;color:var(--muted);padding:4px">Nenhum eito previsto para a próxima semana</div>'}
       </div>`;
   }
 
@@ -878,7 +806,7 @@ function renderProjecao() {
       <div class="proj-cards">
         ${cardEsta}
         ${cardColhido}
-        ${buildCardProxSemana(r1.total, r2, totalColhidoSemana, fmtSemana(segProx, sexProx))}
+        ${buildCardProxSemana(r2, fmtSemana(segProx, sexProx))}
       </div>
     </div>`;
 }
