@@ -1088,6 +1088,7 @@ async function confirmarContagemNado() {
 
   const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
   const idsConfirmados = [];
+  const falhados = []; // Rastrear contagens que falharam para não marcar como confirmado
   let count = 0;
 
   for (let i = 0; i < _nadoPendentes.length; i++) {
@@ -1102,36 +1103,50 @@ async function confirmarContagemNado() {
     const area = p.area;
     const eitoId = p.eito_id;
     const eito = (DB[area] || []).find(e => e.id === eitoId);
-    if (!eito) continue;
+    if (!eito) {
+      falhados.push({ id: p.id, motivo: 'eito não encontrado no cache local' });
+      continue;
+    }
 
     // Verificar parcial pendente para merge
     const pend = getParcialPendente(eito);
-    if (pend && !parcial) {
-      const mergedTotal = pend.total + total;
-      const mergedMesa = (pend.mesa || 0) + mesa;
-      const mergedFab = (pend.fabrica || 0) + fab;
-      // Remover parcial antigo
-      if (pend._id) {
-        try { await _SB.from('colheitas').delete().eq('id', pend._id); } catch(e) { console.warn('Erro ao deletar parcial Nado:', e); }
-      }
-      eito.historico = eito.historico.filter(h => h !== pend);
-      eito.historico.push({ data, total: mergedTotal, mesa: mergedMesa, fabrica: mergedFab, cliente, lancamento_id: lancId });
-    } else {
-      const entry = { data, total, mesa, fabrica: fab, cliente, lancamento_id: lancId };
-      if (parcial) entry.parcial = true;
-      eito.historico.push(entry);
+    const entryHist = pend && !parcial
+      ? { data, total: pend.total + total, mesa: (pend.mesa || 0) + mesa, fabrica: (pend.fabrica || 0) + fab, cliente, lancamento_id: lancId }
+      : { data, total, mesa, fabrica: fab, cliente, lancamento_id: lancId, ...(parcial ? { parcial: true } : {}) };
+
+    // Salvar no Supabase PRIMEIRO — só aplica no histórico local se Supabase confirmar
+    const colheita = {
+      data,
+      total: parcial ? total : (pend && !parcial ? (pend.total || 0) + total : total),
+      mesa: parcial ? mesa : (pend && !parcial ? (pend.mesa || 0) + mesa : mesa),
+      fabrica: parcial ? fab : (pend && !parcial ? (pend.fabrica || 0) + fab : fab),
+      cliente, lancamento_id: lancId
+    };
+    if (parcial) colheita.parcial = true;
+
+    // Se tem parcial, deletar do Supabase antes do merge
+    if (pend && !parcial && pend._id) {
+      try { await _SB.from('colheitas').delete().eq('id', pend._id); }
+      catch(e) { console.warn('Erro ao deletar parcial Nado:', e); }
     }
 
-    // Salvar no Supabase
-    const colheita = { data, total: parcial ? total : (pend && !parcial ? (pend.total||0)+total : total), mesa: parcial ? mesa : (pend && !parcial ? (pend.mesa||0)+mesa : mesa), fabrica: parcial ? fab : (pend && !parcial ? (pend.fabrica||0)+fab : fab), cliente, lancamento_id: lancId };
-    if (parcial) colheita.parcial = true;
-    await salvarColheitaSupabase(area, eitoId, colheita);
+    const resultado = await salvarColheitaSupabase(area, eitoId, colheita);
+    if (!resultado || !resultado.ok) {
+      // FALHA — NÃO marcar como confirmado, manter pendente para retentar
+      falhados.push({ id: p.id, motivo: resultado?.error || 'erro desconhecido' });
+      console.error(`Falha ao salvar Nado ${area}/${eitoId}:`, resultado?.error);
+      continue;
+    }
+
+    // Sucesso — aplicar no histórico local
+    if (pend && !parcial) eito.historico = eito.historico.filter(h => h !== pend);
+    eito.historico.push(entryHist);
 
     idsConfirmados.push(p.id);
     count++;
   }
 
-  // Marcar como confirmado
+  // Marcar como confirmado APENAS os que realmente salvaram
   if (idsConfirmados.length > 0) {
     await atualizarStatusNado(idsConfirmados, 'confirmado');
   }
@@ -1142,5 +1157,9 @@ async function confirmarContagemNado() {
   renderNadoCard();
   renderLancamento();
   renderDashboard();
-  showToast(`✓ ${count} eito${count > 1 ? 's' : ''} lancado${count > 1 ? 's' : ''} do Nado`);
+  if (falhados.length > 0) {
+    showToast(`⚠ ${count} salvos · ${falhados.length} falharam — continuam pendentes`);
+  } else {
+    showToast(`✓ ${count} eito${count > 1 ? 's' : ''} lancado${count > 1 ? 's' : ''} do Nado`);
+  }
 }
