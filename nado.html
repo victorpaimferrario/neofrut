@@ -590,7 +590,9 @@ async function sincronizarDados() {
     try {
       const { data: colhDb } = await _SB.from('colheitas').select('area,eito_id,data').order('data', { ascending: false }).limit(2000);
       if (colhDb && colhDb.length > 0) {
-        // Pegar data mais recente por eito
+        // Resetar cache para refletir exatamente o estado do banco (evita dados congelados)
+        ultimaColheita = {};
+        // Como vem ordenado por data DESC, a primeira ocorrência de cada eito é a mais recente
         colhDb.forEach(c => {
           const k = chaveEito(c.area, c.eito_id);
           if (!ultimaColheita[k]) ultimaColheita[k] = c.data;
