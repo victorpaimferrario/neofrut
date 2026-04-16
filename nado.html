@@ -529,9 +529,21 @@ function _carroRemove(id) {
 }
 
 // ── UTILS ──
+// Retorna data de HOJE no fuso da fazenda (Brasil/Sergipe, UTC-3).
+// Evita que celular com timezone errado (UTC ou outro fuso) registre
+// contagem em dia diferente — crucial perto da meia-noite.
 function hoje() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  try {
+    // Intl retorna 'YYYY-MM-DD' no fuso solicitado (sv-SE = formato ISO)
+    return new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Maceio',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+  } catch (e) {
+    // Fallback: timezone local do dispositivo
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
 }
 function fmtData() {
   const d = new Date();
@@ -561,6 +573,48 @@ function diasPrazo(dias) {
 }
 function chaveEito(area, id) { return area + '||' + id; }
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Storage seguro com tratamento de quota — limpa dados antigos quando estoura
+function safeStorageSet(chave, valor) {
+  try {
+    localStorage.setItem(chave, valor);
+    return true;
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
+      console.warn('Storage cheio — limpando dados antigos...');
+      try {
+        // Remover colheitas/cache histórico primeiro (pode ser recarregado do servidor)
+        localStorage.removeItem(SK_COLHEITAS);
+        localStorage.removeItem(SK_EITOS);
+        // Tentar de novo
+        try {
+          localStorage.setItem(chave, valor);
+          toast('Limpei dados antigos — espaço liberado');
+          return true;
+        } catch (e2) {
+          // Ainda cheio — remover resultados de outros dias
+          try {
+            const hoj = hoje();
+            const res = JSON.parse(localStorage.getItem(SK_RESULTADOS) || '{}');
+            Object.keys(res).forEach(k => { if (res[k].data !== hoj) delete res[k]; });
+            localStorage.setItem(SK_RESULTADOS, JSON.stringify(res));
+            localStorage.setItem(chave, valor);
+            return true;
+          } catch (e3) {
+            toast('⚠️ Memória cheia — vá até o escritório sincronizar');
+            console.error('Falha crítica ao gravar:', e3);
+            return false;
+          }
+        }
+      } catch (cleanupErr) {
+        toast('⚠️ Erro ao salvar — tente novamente');
+        return false;
+      }
+    }
+    console.error('Erro storage:', e);
+    return false;
+  }
+}
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -679,7 +733,7 @@ async function enviarFila() {
       }
     }
     filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
-    localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+    safeStorageSet(SK_FILA, JSON.stringify(filaEnvio));
     if (filaEnvio.length === 0 && enviados.length > 0) {
       atualizarSyncBadge('enviado');
       toast('Dados enviados!');
@@ -773,7 +827,7 @@ function carregarCache() {
 }
 
 function salvarResultados() {
-  localStorage.setItem(SK_RESULTADOS, JSON.stringify(resultados));
+  safeStorageSet(SK_RESULTADOS, JSON.stringify(resultados));
 }
 
 // ── BADGE SYNC ──
@@ -784,17 +838,43 @@ function atualizarSyncBadge(estado) {
   el.textContent = labels[estado] || estado;
 }
 
+// Traduz mensagens de erro técnicas para português simples
+function msgErroAmigavel(erro) {
+  if (!erro) return 'erro desconhecido';
+  const e = String(erro).toLowerCase();
+  if (e.includes('network') || e.includes('fetch') || e.includes('failed to fetch')) return 'sem conexão';
+  if (e.includes('timeout')) return 'conexão lenta';
+  if (e.includes('jwt') || e.includes('401') || e.includes('auth')) return 'sessão expirada — faça login';
+  if (e.includes('duplicate') || e.includes('conflict')) return 'já enviado antes';
+  if (e.includes('permission') || e.includes('403')) return 'sem permissão';
+  if (e.includes('500') || e.includes('server')) return 'servidor indisponível';
+  return 'tente novamente';
+}
+
 function atualizarSyncStatus() {
   const el = document.getElementById('sync-status');
-  if (filaEnvio.length === 0 && Object.keys(resultados).length > 0) {
-    el.innerHTML = '✅ Todos os dados foram enviados';
-    atualizarSyncBadge('enviado');
-  } else if (filaEnvio.length > 0) {
-    el.innerHTML = `⏳ ${filaEnvio.length} eito(s) aguardando envio`;
-    atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
-  } else {
+  if (!el) return;
+  const totalContagens = Object.keys(resultados).length;
+  const pendentes = filaEnvio.length;
+  const enviados = totalContagens - pendentes;
+  const comErro = filaEnvio.filter(r => (r._tentativas || 0) >= 2).length;
+
+  if (totalContagens === 0) {
     el.innerHTML = 'Nenhuma contagem realizada';
     atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
+  } else if (pendentes === 0) {
+    el.innerHTML = `✅ Tudo enviado (${enviados} ${enviados===1?'eito':'eitos'})`;
+    atualizarSyncBadge('enviado');
+  } else {
+    const partes = [];
+    if (enviados > 0) partes.push(`✓ ${enviados} enviado${enviados!==1?'s':''}`);
+    if (pendentes > 0) {
+      const icone = !navigator.onLine ? '📡' : (comErro > 0 ? '⚠️' : '⏳');
+      const txt = !navigator.onLine ? 'aguardando sinal' : (comErro > 0 ? `${comErro} com erro` : 'aguardando envio');
+      partes.push(`${icone} ${pendentes} ${pendentes!==1?'pendentes':'pendente'} (${txt})`);
+    }
+    el.innerHTML = partes.join(' · ');
+    atualizarSyncBadge(navigator.onLine ? (comErro > 0 ? 'offline' : 'online') : 'offline');
   }
 }
 
@@ -1058,7 +1138,7 @@ function salvarRascunho() {
     obs: (document.getElementById('inp-obs').value || '').trim(),
     timestamp: Date.now(), data: hoje()
   };
-  localStorage.setItem(SK_RASCUNHO, JSON.stringify(rascunho));
+  safeStorageSet(SK_RASCUNHO, JSON.stringify(rascunho));
 }
 
 function verificarRascunho() {
@@ -1151,7 +1231,7 @@ function confirmarEitoDefinitivo() {
   // Adicionar a fila de envio
   filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
   filaEnvio.push(resultado);
-  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  safeStorageSet(SK_FILA, JSON.stringify(filaEnvio));
 
   // Limpar rascunho
   localStorage.removeItem(SK_RASCUNHO);
@@ -1177,7 +1257,7 @@ function limparEito() {
   salvarResultados();
   // Remover da fila de envio
   filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
-  localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
+  safeStorageSet(SK_FILA, JSON.stringify(filaEnvio));
   localStorage.removeItem(SK_RASCUNHO);
   if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
   toast('Contagem apagada');
@@ -1209,10 +1289,25 @@ function mostrarResumo() {
     totalDia += r.total;
     const div = document.createElement('div');
     div.className = 'resumo-card';
+    // Verificar status de envio
+    const naFila = filaEnvio.find(f => f.area === r.area && f.id === r.id && f.data === r.data);
+    let statusBadge = '';
+    if (naFila) {
+      const tent = naFila._tentativas || 0;
+      if (tent >= 2) {
+        const erro = msgErroAmigavel(naFila._ultimoErro);
+        statusBadge = `<span style="background:#fde8ea;color:#dc3545;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;margin-left:auto">⚠️ ${escHtml(erro)}</span>`;
+      } else {
+        statusBadge = `<span style="background:#fff3cd;color:#856404;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;margin-left:auto">⏳ aguardando</span>`;
+      }
+    } else {
+      statusBadge = `<span style="background:#d4edda;color:#155724;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:800;margin-left:auto">✓ enviado</span>`;
+    }
     div.innerHTML = `
-      <div class="resumo-card-header">
-        <span class="resumo-card-area">${r.area}</span>
-        <span class="resumo-card-id">Eito ${r.id}</span>
+      <div class="resumo-card-header" style="display:flex;align-items:center;gap:8px">
+        <span class="resumo-card-area">${escHtml(r.area)}</span>
+        <span class="resumo-card-id">Eito ${escHtml(r.id)}</span>
+        ${statusBadge}
       </div>
       <div class="resumo-card-body">
         <div><div class="r-label">Mesa</div><div class="r-val verde">${fmtN(r.mesa)}</div></div>
@@ -1246,12 +1341,7 @@ function desativarWakeLock() {
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
 }
 
-// ── ONLINE/OFFLINE LISTENERS ──
-window.addEventListener('online', () => {
-  atualizarSyncBadge('online');
-  if (filaEnvio.length > 0) enviarFila().catch(() => {});
-});
-window.addEventListener('offline', () => atualizarSyncBadge('offline'));
+// Listeners de online/offline já definidos em "AUTO-RETRY" acima
 
 // ── BOTAO RESUMO (adicionar dinamicamente) ──
 function addBtnResumo() {
