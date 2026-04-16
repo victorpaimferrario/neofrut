@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neofrut-campo-v3';
+const CACHE_NAME = 'neofrut-campo-v4';
 const URLS_TO_CACHE = [
   '/nado.html',
   '/logo.png',
