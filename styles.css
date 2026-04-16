@@ -101,6 +101,25 @@
   .kpi.critico .kpi-value { color: var(--critico); }
   .kpi.accent .kpi-value { color: var(--accent); }
 
+  /* KPI de status (Crítico/Vencidos/Atenção/Em dia) — eitos + cocos lado a lado */
+  .kpi-status { padding: 12px 14px; }
+  .kpi-status .kpi-label { text-align: center; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .kpi-status .kpi-legenda { font-size: 9px; font-weight: 500; color: var(--muted); letter-spacing: 0; text-transform: none; opacity: 0.85; }
+  .kpi-status-body { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; align-items: start; }
+  .kpi-status-cell { text-align: center; }
+  .kpi-status-cell .kpi-value { font-size: 22px; line-height: 1.1; }
+  .kpi-status-unit { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+  @media (max-width: 700px) {
+    .kpi-status-cell .kpi-value { font-size: 16px; }
+    .kpi-status-unit { font-size: 9px; }
+    .kpi-status .kpi-label { font-size: 9px; gap: 4px; }
+    .kpi-status .kpi-legenda { font-size: 8px; }
+  }
+  @media (max-width: 400px) {
+    .kpi-status-cell .kpi-value { font-size: 14px; }
+    .kpi-status { padding: 10px 8px; }
+  }
+
   .areas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
   .area-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
   .area-card:hover { border-color: var(--forest); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(30,126,52,0.18); }
