@@ -442,8 +442,8 @@ function abrirRevisao() {
     const parcialTag = l.parcial ? '<span style="font-size:8px;font-weight:800;background:#ffc107;color:#856404;padding:1px 5px;border-radius:3px;margin-left:4px">PARCIAL</span>' : '';
     const mergeTag = pend && !l.parcial ? '<span style="font-size:8px;font-weight:800;background:var(--verde);color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px">+'+fmtNum(pend.total)+' pendente = '+fmtNum(total+pend.total)+'</span>' : '';
     return `<tr>
-      <td style="color:var(--accent2)">${l.area}</td>
-      <td style="font-weight:600">${l.eitoId}${parcialTag}${mergeTag}</td>
+      <td style="color:var(--accent2)">${escapeHtml(l.area)}</td>
+      <td style="font-weight:600">${escapeHtml(l.eitoId)}${parcialTag}${mergeTag}</td>
       <td>${fmtNum(l.mesa)}</td>
       <td>${fmtNum(l.fabrica)}</td>
       <td style="font-weight:700;color:var(--verde)">${fmtNum(total)}</td>
@@ -476,23 +476,27 @@ function abrirRevisao() {
 let _confirmandoLanc = false;
 async function confirmarLancamento() {
   if (_confirmandoLanc) return;
-  // Validar ANTES de travar o flag, para permitir novas tentativas
-  const data = document.getElementById('lanc-data').value;
-  const cliente = document.getElementById('revisao-cliente').value;
-  if (!cliente) {
-    document.getElementById('revisao-cliente-erro').style.display = 'block';
-    document.getElementById('revisao-cliente').focus();
-    return;
-  }
-  const lotes = getLancamentos();
-  if (!lotes || !lotes.length) {
-    showToast('Nenhum eito para lançar');
-    return;
-  }
-  _confirmandoLanc = true;
   const btn = document.querySelector('#modal-revisao .btn-green');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  // Desabilita imediatamente para feedback visual e evitar double-click
+  if (btn) btn.disabled = true;
   try {
+    // Validar ANTES de travar o flag, para permitir novas tentativas
+    const data = document.getElementById('lanc-data').value;
+    const cliente = document.getElementById('revisao-cliente').value;
+    if (!cliente) {
+      document.getElementById('revisao-cliente-erro').style.display = 'block';
+      document.getElementById('revisao-cliente').focus();
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const lotes = getLancamentos();
+    if (!lotes || !lotes.length) {
+      showToast('Nenhum eito para lançar');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    _confirmandoLanc = true;
+    if (btn) btn.textContent = '⏳ Salvando...';
     const lancId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
     let count = 0;
     const parcialMerges = []; // {area, eitoId, oldId} para deletar do Supabase
@@ -989,11 +993,11 @@ function renderValidacaoNado() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
         <div>
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Mesa</div>
-          <input type="number" value="${p.mesa||0}" id="nado-val-mesa-${i}" data-orig="${p.mesa||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
+          <input type="number" min="0" max="99999" value="${p.mesa||0}" id="nado-val-mesa-${i}" data-orig="${p.mesa||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
         </div>
         <div>
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Fabrica</div>
-          <input type="number" value="${p.fabrica||0}" id="nado-val-fab-${i}" data-orig="${p.fabrica||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
+          <input type="number" min="0" max="99999" value="${p.fabrica||0}" id="nado-val-fab-${i}" data-orig="${p.fabrica||0}" oninput="onEditNado(${i})" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font-mono);font-size:14px;font-weight:700;text-align:center" inputmode="numeric">
         </div>
         <div>
           <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Total</div>
@@ -1021,22 +1025,39 @@ function renderValidacaoNado() {
   wrap.innerHTML = html;
 }
 
+// Sanitiza quantidade: força inteiro >= 0, máximo 99999
+function _nadoSanitizeQtd(v) {
+  const n = parseInt(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(99999, n);
+}
+
 function onEditNado(i) {
-  const m = parseInt(document.getElementById(`nado-val-mesa-${i}`).value) || 0;
-  const f = parseInt(document.getElementById(`nado-val-fab-${i}`).value) || 0;
+  const mesaEl = document.getElementById(`nado-val-mesa-${i}`);
+  const fabEl = document.getElementById(`nado-val-fab-${i}`);
+  if (!mesaEl || !fabEl) return;
+  // Sanitizar (evita negativos, NaN, decimais) e atualizar visualmente se foi corrigido
+  const mRaw = mesaEl.value, fRaw = fabEl.value;
+  const m = _nadoSanitizeQtd(mRaw);
+  const f = _nadoSanitizeQtd(fRaw);
+  if (String(m) !== mRaw) mesaEl.value = m;
+  if (String(f) !== fRaw) fabEl.value = f;
   document.getElementById(`nado-val-tot-${i}`).value = m + f;
   document.getElementById(`nado-val-total-${i}`).textContent = (m + f) + ' cocos';
 
-  const origM = parseInt(document.getElementById(`nado-val-mesa-${i}`).dataset.orig) || 0;
-  const origF = parseInt(document.getElementById(`nado-val-fab-${i}`).dataset.orig) || 0;
+  const origM = _nadoSanitizeQtd(mesaEl.dataset.orig);
+  const origF = _nadoSanitizeQtd(fabEl.dataset.orig);
   const editou = (m !== origM || f !== origF);
-  document.getElementById(`nado-editado-${i}`).style.display = editou ? 'inline' : 'none';
+  const edEl = document.getElementById(`nado-editado-${i}`);
+  if (edEl) edEl.style.display = editou ? 'inline' : 'none';
 
   // Atualizar KPIs
   let tMesa = 0, tFab = 0;
   _nadoPendentes.forEach((_, j) => {
-    tMesa += parseInt(document.getElementById(`nado-val-mesa-${j}`).value) || 0;
-    tFab += parseInt(document.getElementById(`nado-val-fab-${j}`).value) || 0;
+    const mEl = document.getElementById(`nado-val-mesa-${j}`);
+    const fEl = document.getElementById(`nado-val-fab-${j}`);
+    tMesa += mEl ? _nadoSanitizeQtd(mEl.value) : 0;
+    tFab += fEl ? _nadoSanitizeQtd(fEl.value) : 0;
   });
   document.getElementById('nado-kpi-total').textContent = fmtNum(tMesa + tFab);
   document.getElementById('nado-kpi-mesa').textContent = fmtNum(tMesa);

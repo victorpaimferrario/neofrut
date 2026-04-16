@@ -646,7 +646,15 @@ async function enviarFila() {
   try {
     atualizarSyncBadge('enviando');
     const enviados = [];
+    const agora = Date.now();
     for (const r of filaEnvio) {
+      // Backoff exponencial: aguardar antes de reenviar itens que falharam
+      // 1ª falha: espera 5s, 2ª: 15s, 3ª: 45s, 4ª: 2min, 5ª+: 5min (cap)
+      const tentativas = r._tentativas || 0;
+      const ultimaTent = r._ultimaTentativa || 0;
+      const esperaMs = tentativas === 0 ? 0 : Math.min(300000, 5000 * Math.pow(3, tentativas - 1));
+      if (tentativas > 0 && (agora - ultimaTent) < esperaMs) continue;
+
       try {
         const payload = {
           data: r.data, area: r.area, eito_id: r.id,
@@ -655,19 +663,57 @@ async function enviarFila() {
         };
         if (r.obs) payload.obs = r.obs;
         const { error } = await _SB.from('nado_contagens').upsert(payload, { onConflict: 'data,area,eito_id' });
-        if (!error) enviados.push(r);
-      } catch (e) { console.error('Envio erro:', e); }
+        if (!error) {
+          enviados.push(r);
+        } else {
+          r._tentativas = tentativas + 1;
+          r._ultimaTentativa = agora;
+          r._ultimoErro = error.message || 'erro desconhecido';
+          console.warn('Envio falhou (tentativa ' + r._tentativas + '):', error);
+        }
+      } catch (e) {
+        r._tentativas = tentativas + 1;
+        r._ultimaTentativa = agora;
+        r._ultimoErro = e.message || String(e);
+        console.error('Envio erro:', e);
+      }
     }
     filaEnvio = filaEnvio.filter(r => !enviados.includes(r));
     localStorage.setItem(SK_FILA, JSON.stringify(filaEnvio));
     if (filaEnvio.length === 0 && enviados.length > 0) {
       atualizarSyncBadge('enviado');
       toast('Dados enviados!');
+    } else if (filaEnvio.length > 0) {
+      // Alguns falharam — marcar badge como pendente
+      atualizarSyncBadge('offline');
     }
   } finally {
     _enviando = false;
   }
 }
+
+// AUTO-RETRY: tentar enviar fila periodicamente quando tem dados pendentes
+let _autoRetryInterval = null;
+function iniciarAutoRetry() {
+  if (_autoRetryInterval) return;
+  _autoRetryInterval = setInterval(async () => {
+    if (filaEnvio.length === 0) return;
+    if (!navigator.onLine) return;
+    if (_enviando || _syncManualEmAndamento) return;
+    try {
+      await enviarFila();
+    } catch(e) { console.warn('Auto-retry falhou:', e); }
+  }, 30000); // tenta a cada 30s
+}
+
+// Dispara retry imediato quando conexão volta
+window.addEventListener('online', () => {
+  atualizarSyncBadge('online');
+  if (filaEnvio.length > 0) {
+    setTimeout(() => { if (!_enviando) enviarFila(); }, 1000);
+  }
+});
+window.addEventListener('offline', () => atualizarSyncBadge('offline'));
 
 async function tentarSync() {
   if (!navigator.onLine) { toast('Sem conexao'); return; }
@@ -911,8 +957,8 @@ function abrirContagem(area, eito) {
   document.getElementById('cnt-area').textContent = area;
   document.getElementById('cnt-id').textContent = 'Eito ' + eito.id;
   document.getElementById('cnt-plantas').textContent = eito.plantas + ' plantas';
-  _valMesa = existente ? existente.mesa : 0;
-  _valFabrica = existente ? existente.fabrica : 0;
+  _valMesa = existente ? sanitizeQtd(existente.mesa) : 0;
+  _valFabrica = existente ? sanitizeQtd(existente.fabrica) : 0;
   _campoAtivo = 'mesa';
   selecionarCampo('mesa');
   atualizarDisplay();
@@ -939,6 +985,13 @@ function abrirContagem(area, eito) {
 // ── TECLADO NUMÉRICO ──
 let _campoAtivo = 'mesa'; // 'mesa' ou 'fabrica'
 let _valMesa = 0, _valFabrica = 0;
+
+// Sanitiza quantidade: força inteiro >= 0, máximo 99999
+function sanitizeQtd(v) {
+  const n = parseInt(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(99999, n);
+}
 
 function selecionarCampo(campo) {
   _campoAtivo = campo;
@@ -1031,8 +1084,8 @@ function restaurarRascunho() {
     const eito = (todosEitos[r.area] || []).find(e => e.id === r.id);
     if (!eito) { toast('Eito não encontrado'); descartarRascunho(); return; }
     abrirContagem(r.area, eito);
-    _valMesa = r.mesa || 0;
-    _valFabrica = r.fabrica || 0;
+    _valMesa = sanitizeQtd(r.mesa);
+    _valFabrica = sanitizeQtd(r.fabrica);
     atualizarDisplay();
     if (r.obs) {
       document.getElementById('inp-obs').value = r.obs;
@@ -1235,10 +1288,8 @@ atualizarSyncBadge(navigator.onLine ? 'online' : 'offline');
 // Sync ao iniciar
 if (navigator.onLine) sincronizarDados().then(() => { renderLista(); addBtnResumo(); });
 
-// Retry a cada 30s para enviar fila pendente quando online
-setInterval(() => {
-  if (navigator.onLine && filaEnvio.length > 0) enviarFila().catch(() => {});
-}, 30000);
+// Retry automático com backoff — evita duplo envio e respeita tempo de espera
+iniciarAutoRetry();
 
 // Auto-refresh quando o app volta ao foco (Nado abriu, pôs o celular no bolso,
 // e voltou — se tem internet, atualiza programação/colheitas e tenta enviar)
