@@ -154,6 +154,12 @@ async function saveData() {
   }
 }
 
+// Retorna objeto com status claro para quem chamou:
+//   { ok: true,  duplicate: false }  → inserido com sucesso
+//   { ok: true,  duplicate: true  }  → já existia (não re-inseriu, mas estado final está correto)
+//   { ok: false, error: 'mensagem' } → FALHOU (quem chamou NÃO DEVE marcar como confirmado)
+// Antes: retornava undefined em todos os casos → confirmarContagemNado marcava 'confirmado'
+// mesmo quando o insert falhava silenciosamente. Isso causou a perda de 5 contagens.
 async function salvarColheitaSupabase(area, eitoId, colheita) {
   try {
     await _SB.from('eitos').upsert(
@@ -161,15 +167,19 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
       { onConflict: 'area,eito_id' }
     );
     // Verificar se já existe colheita para este eito/data (evitar duplicata)
-    const { data: existing } = await _SB.from('colheitas')
+    const { data: existing, error: errSel } = await _SB.from('colheitas')
       .select('id')
       .eq('area', area)
       .eq('eito_id', eitoId)
       .eq('data', colheita.data)
       .limit(1);
+    if (errSel) {
+      if (_isAuthError(errSel)) { _tratarSessaoExpirada(); return { ok: false, error: 'sessão expirada' }; }
+      return { ok: false, error: errSel.message || 'erro ao verificar duplicata' };
+    }
     if (existing && existing.length > 0) {
       console.warn('Colheita já existe:', area, eitoId, colheita.data, '— ignorando duplicata');
-      return;
+      return { ok: true, duplicate: true, id: existing[0].id };
     }
     const row = {
       area, eito_id: eitoId,
@@ -181,11 +191,19 @@ async function salvarColheitaSupabase(area, eitoId, colheita) {
     if (colheita.cliente) row.cliente = colheita.cliente;
     if (colheita.lancamento_id) row.lancamento_id = colheita.lancamento_id;
     if (colheita.parcial) row.parcial = true;
-    const r = await _SB.from('colheitas').insert(row);
-    if(r.error && _isAuthError(r.error)) { _tratarSessaoExpirada(); return; }
+    const r = await _SB.from('colheitas').insert(row).select();
+    if (r.error) {
+      if (_isAuthError(r.error)) { _tratarSessaoExpirada(); return { ok: false, error: 'sessão expirada' }; }
+      console.error('Erro ao salvar colheita:', r.error);
+      showToast('⚠ Erro ao salvar colheita — tente novamente');
+      return { ok: false, error: r.error.message || String(r.error) };
+    }
+    return { ok: true, duplicate: false, id: r.data?.[0]?.id };
   } catch(err) {
-    if(_isAuthError(err)) { _tratarSessaoExpirada(); return; }
-    console.error('Erro ao salvar colheita:', err); showToast('⚠ Erro ao salvar — tente novamente');
+    if (_isAuthError(err)) { _tratarSessaoExpirada(); return { ok: false, error: 'sessão expirada' }; }
+    console.error('Erro ao salvar colheita:', err);
+    showToast('⚠ Erro ao salvar — tente novamente');
+    return { ok: false, error: err.message || String(err) };
   }
 }
 
