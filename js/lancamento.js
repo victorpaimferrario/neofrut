@@ -856,9 +856,15 @@ function renderPrepLista() {
   const areas = Object.keys(DB);
   areas.forEach(area => {
     const eitos = DB[area] || [];
+    const selNaArea = eitos.filter(e => _nadoSelPrep.has(area + '||' + e.id)).length;
+    const todosSelecionados = selNaArea === eitos.length && eitos.length > 0;
+    const areaEsc = area.replace(/'/g, "\\'");
     const secHtml = document.createElement('div');
     secHtml.style.marginBottom = '12px';
-    let h = `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">${area} (${eitos.length})</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+    let h = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase">${area} <span style="color:var(--verde)">${selNaArea > 0 ? '('+selNaArea+'/'+eitos.length+')' : '('+eitos.length+')'}</span></span>
+      <button onclick="toggleAreaPrepNado('${areaEsc}')" style="font-size:10px;padding:3px 8px;border-radius:4px;background:${todosSelecionados ? 'var(--verde)' : 'var(--surface2)'};color:${todosSelecionados ? '#fff' : 'var(--forest)'};border:1px solid var(--verde);cursor:pointer;font-weight:700">${todosSelecionados ? '✓ Desmarcar área' : '+ Selecionar área'}</button>
+    </div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
     eitos.forEach(e => {
       const ult = getUltimaCompleta(e) || getUltima(e);
       const dias = ult ? diasDesde(ult.data) : null;
@@ -866,7 +872,7 @@ function renderPrepLista() {
       const diasTxt = dias !== null ? dias + 'd' : '?';
       const key = area + '||' + e.id;
       const sel = _nadoSelPrep.has(key);
-      h += `<div onclick="togglePrepEito('${area}','${e.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:2px solid ${sel ? 'var(--verde)' : 'var(--border)'};border-radius:8px;cursor:pointer;background:${sel ? 'var(--verde-bg)' : 'var(--surface)'};user-select:none;font-size:12px" data-prep-key="${key}">
+      h += `<div onclick="togglePrepEito('${areaEsc}','${e.id}')" style="display:flex;align-items:center;gap:5px;padding:6px 10px;border:2px solid ${sel ? 'var(--verde)' : 'var(--border)'};border-radius:8px;cursor:pointer;background:${sel ? 'var(--verde-bg)' : 'var(--surface)'};user-select:none;font-size:12px" data-prep-key="${key}">
         <span style="font-family:var(--font-mono);font-weight:700;color:var(--verde)">${e.id}</span>
         <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:var(--${cls}-bg);color:var(--${cls})">${diasTxt}</span>
       </div>`;
@@ -876,6 +882,19 @@ function renderPrepLista() {
     el.appendChild(secHtml);
   });
   atualizarPrepCount();
+}
+
+function toggleAreaPrepNado(area) {
+  const eitos = DB[area] || [];
+  const todosSelecionados = eitos.every(e => _nadoSelPrep.has(area + '||' + e.id)) && eitos.length > 0;
+  if (todosSelecionados) {
+    // Desmarcar todos da área
+    eitos.forEach(e => _nadoSelPrep.delete(area + '||' + e.id));
+  } else {
+    // Marcar todos da área
+    eitos.forEach(e => _nadoSelPrep.add(area + '||' + e.id));
+  }
+  renderPrepLista();
 }
 
 function togglePrepEito(area, eitoId) {
@@ -919,20 +938,22 @@ async function salvarProgramacaoNadoUI() {
   if (_nadoSelPrep.size === 0) { showToast('Selecione ao menos um eito'); return; }
   const data = document.getElementById('nado-prep-data').value;
   if (!data) { showToast('Informe a data'); return; }
-  // Salvar TODOS os eitos (não só selecionados) — Nado precisa de todos sem auth
+  // Salvar APENAS os eitos selecionados, todos com sugerido=true
+  // (O Nado lê os eitos diretamente da tabela 'eitos' — não precisa de todos aqui)
   const eitos = [];
-  Object.keys(DB).forEach(area => {
-    (DB[area] || []).forEach(e => {
-      const key = area + '||' + e.id;
-      const ult = getUltimaCompleta(e) || getUltima(e);
-      const dias = ult ? diasDesde(ult.data) : null;
-      eitos.push({
-        area, eito_id: e.id, plantas: e.plantas || 0,
-        sugerido: _nadoSelPrep.has(key),
-        dias_desde: dias
-      });
+  _nadoSelPrep.forEach(key => {
+    const [area, eitoId] = key.split('||');
+    const eito = (DB[area] || []).find(e => e.id === eitoId);
+    if (!eito) return;
+    const ult = getUltimaCompleta(eito) || getUltima(eito);
+    const dias = ult ? diasDesde(ult.data) : null;
+    eitos.push({
+      area, eito_id: eito.id, plantas: eito.plantas || 0,
+      sugerido: true,
+      dias_desde: dias
     });
   });
+  if (eitos.length === 0) { showToast('Nenhum eito válido para salvar'); return; }
   await salvarProgramacaoNado(data, eitos);
   closeModal('modal-preparar-nado');
   renderNadoCard(); // atualiza o badge de "X programados hoje"
