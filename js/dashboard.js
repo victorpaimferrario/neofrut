@@ -17,6 +17,8 @@ function renderDashboard() {
   const fppArea = {};
   const colhidosAnoArea = {};
   let totalEitos=0, totalVerdes=0, totalAmareloDash=0, totalVermelho=0, totalCritico=0, totalCocos=0;
+  // Estimativa de cocos por status (média histórica de cada eito)
+  let cocosCritico=0, cocosVermelho=0, cocosAmarelo=0, cocosVerde=0;
   let totalPlantas=0, ultimaDataGlobal=null;
   let fppFazendaCocos=0, fppFazendaPlantas=0;
   let colhidosMes=0, colhidosAno=0;
@@ -32,10 +34,14 @@ function renderDashboard() {
       totalEitos++;
       totalPlantas += e.plantas || 0;
       plantasArea  += e.plantas || 0;
-      if (st==='verde') totalVerdes++;
-      else if (st==='amarelo') totalAmareloDash++;
-      else if (st==='vermelho') totalVermelho++;
-      else if (st==='critico') { totalVermelho++; totalCritico++; }
+      // Estimativa: média histórica de cocos por colheita deste eito
+      const mediaEito = (e.historico && e.historico.length > 0)
+        ? Math.round(e.historico.reduce((s,h)=>s+(h.total||0),0) / e.historico.length)
+        : 0;
+      if (st==='verde') { totalVerdes++; cocosVerde += mediaEito; }
+      else if (st==='amarelo') { totalAmareloDash++; cocosAmarelo += mediaEito; }
+      else if (st==='vermelho') { totalVermelho++; cocosVermelho += mediaEito; }
+      else if (st==='critico') { totalVermelho++; totalCritico++; cocosCritico += mediaEito; }
       if (ult && (!ultimaDataGlobal || ult.data > ultimaDataGlobal)) ultimaDataGlobal = ult.data;
       if (ult) totalCocos += ult.total;
       // somar colheitas do ano calendário
@@ -89,11 +95,27 @@ function renderDashboard() {
 
   const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesNome = nomesMes[hoje.getMonth()+1];
+  // Helper para renderizar KPI com eitos + cocos estimados lado a lado
+  function kpiStatus(cls, emoji, label, legenda, eitos, cocos, filtro) {
+    return `<div class="kpi kpi-status ${cls} clicavel" onclick="abrirTodasFiltrado('${filtro}')" title="Ver eitos ${label.toLowerCase()} (${legenda})">
+      <div class="kpi-label">${emoji} ${label} <span class="kpi-legenda">${legenda}</span></div>
+      <div class="kpi-status-body">
+        <div class="kpi-status-cell">
+          <div class="kpi-value">${fmtNum(eitos)}</div>
+          <div class="kpi-status-unit">eitos</div>
+        </div>
+        <div class="kpi-status-cell">
+          <div class="kpi-value">${fmtNum(cocos)}</div>
+          <div class="kpi-status-unit">cocos</div>
+        </div>
+      </div>
+    </div>`;
+  }
   document.getElementById('kpi-grid').innerHTML = `
-    ${totalCritico>0?`<div class="kpi critico clicavel" style="text-align:center" onclick="abrirTodasFiltrado('critico')" title="Ver eitos críticos (+32 dias)"><div class="kpi-label">🟣 Crítico</div><div class="kpi-value">${fmtNum(totalCritico)}</div><div class="kpi-sub">+32 dias</div></div>`:''}
-    <div class="kpi vermelho clicavel" style="text-align:center" onclick="abrirTodasFiltrado('vermelho')" title="Ver eitos vencidos (21-31 dias)"><div class="kpi-label">🔴 Vencidos</div><div class="kpi-value">${fmtNum(totalVermelho - totalCritico)}</div><div class="kpi-sub">21–31 dias</div></div>
-    <div class="kpi amarelo clicavel" style="text-align:center" onclick="abrirTodasFiltrado('amarelo')" title="Ver todos os eitos em atenção"><div class="kpi-label">🟡 Atenção</div><div class="kpi-value">${fmtNum(totalAmareloDash)}</div><div class="kpi-sub">15–20 dias</div></div>
-    <div class="kpi verde clicavel" style="text-align:center" onclick="abrirTodasFiltrado('verde')" title="Ver todos os eitos em dia"><div class="kpi-label">🟢 Em dia</div><div class="kpi-value">${fmtNum(totalVerdes)}</div><div class="kpi-sub">1–14 dias</div></div>
+    ${totalCritico>0 ? kpiStatus('critico','🟣','Crítico','+32 dias',totalCritico,cocosCritico,'critico') : ''}
+    ${kpiStatus('vermelho','🔴','Vencidos','21–31 dias',totalVermelho - totalCritico,cocosVermelho,'vermelho')}
+    ${kpiStatus('amarelo','🟡','Atenção','15–20 dias',totalAmareloDash,cocosAmarelo,'amarelo')}
+    ${kpiStatus('verde','🟢','Em dia','1–14 dias',totalVerdes,cocosVerde,'verde')}
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--teal)" onclick="abrirColhidosMes()" title="Ver colhidos do mês"><div class="kpi-label">🥥 Colhidos ${mesNome}</div><div class="kpi-value" style="color:var(--teal)">${fmtNum(colhidosMes)}</div><div class="kpi-sub">mês atual</div></div>
     <div class="kpi clicavel" style="text-align:center;border-left-color:var(--forest)" onclick="abrirColhidosAno()" title="Ver colhidos por área no ano"><div class="kpi-label">🌴 Colhidos ${anoStr}</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(colhidosAno)}</div><div class="kpi-sub">todas as áreas</div></div>
     <div class="kpi" style="text-align:center"><div class="kpi-label">Plantas Ativas</div><div class="kpi-value" style="color:var(--forest)">${fmtNum(totalPlantas)}</div><div class="kpi-sub">${totalEitos} eitos</div></div>
