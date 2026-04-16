@@ -19,6 +19,17 @@
   --cinza:#6b7280; --borda:#c8cfd8; --bg:#f0f7ec;
   --branco:#fff; --texto:#1a1a1a; --muted:#6b7280;
 }
+/* MODO NOITE — reduz brilho e contraste para uso no escuro (fim de tarde/noite) */
+body.noite{
+  --verde:#2a7a2a; --verde2:#3a9a3a; --verde-bg:#1a2a1a;
+  --amarelo:#c49600; --amarelo-bg:#2a2510;
+  --vermelho:#a62020; --vermelho-bg:#2a1414;
+  --critico:#5a1d97; --critico-bg:#1a0d2a; --critico-border:#7c3aed;
+  --cinza:#8a94a0; --borda:#3a4250; --bg:#0f1410;
+  --branco:#1a1f1a; --texto:#e0e5e0; --muted:#8a94a0;
+}
+body.noite .topo{background:#0c3a0c}
+body.noite img{filter:brightness(0.9)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
@@ -299,7 +310,11 @@ body{
       <div class="topo-data" id="topo-data"></div>
     </div>
   </div>
-  <div class="sync-badge offline" id="sync-badge" onclick="syncManual()" title="Tocar para sincronizar com o escritório">SEM SINAL</div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <button id="btn-som" onclick="toggleSom()" title="Som ligado/desligado" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:4px 8px;border-radius:16px;font-size:14px;cursor:pointer;line-height:1">🔊</button>
+    <button id="btn-noite" onclick="toggleNoite()" title="Modo noite" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:4px 8px;border-radius:16px;font-size:14px;cursor:pointer;line-height:1">☀️</button>
+    <div class="sync-badge offline" id="sync-badge" onclick="syncManual()" title="Tocar para sincronizar com o escritório">SEM SINAL</div>
+  </div>
 </div>
 
 <div class="progress-wrap" id="progress-wrap" style="display:none">
@@ -615,12 +630,99 @@ function safeStorageSet(chave, valor) {
     return false;
   }
 }
-function toast(msg) {
+function toast(msg, tipo) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2000);
+  // Detectar tipo automaticamente se não fornecido
+  if (!tipo) {
+    if (/✓|enviado|confirmado|salvo|atualizado/i.test(msg)) tipo = 'sucesso';
+    else if (/⚠|erro|falha|sem|sessão|cheia/i.test(msg)) tipo = 'erro';
+  }
+  if (tipo === 'sucesso') { beepSucesso(); if (navigator.vibrate) navigator.vibrate(80); }
+  else if (tipo === 'erro') { beepErro(); if (navigator.vibrate) navigator.vibrate([60, 40, 60, 40, 60]); }
 }
+
+// ── ÁUDIO: feedback sonoro para uso em campo (sol forte, tela difícil de ver) ──
+let _audioCtx = null;
+function _getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return null; }
+  }
+  // Safari/iOS exigem resume() após gesto do usuário
+  if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+  return _audioCtx;
+}
+
+function _beep(freq, dur, volume) {
+  if (localStorage.getItem('nado_som') === 'off') return;
+  const ctx = _getAudioCtx();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.value = volume || 0.25;
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start();
+    // Fade out para evitar clique
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+
+function beepSucesso() {
+  _beep(880, 0.08);            // Lá agudo
+  setTimeout(() => _beep(1320, 0.12), 80);   // Mi mais agudo — sobe
+}
+
+function beepErro() {
+  _beep(330, 0.15, 0.3);       // Mi grave
+  setTimeout(() => _beep(220, 0.2, 0.3), 120); // Lá mais grave — desce
+}
+
+function toggleSom() {
+  const atual = localStorage.getItem('nado_som') || 'on';
+  const novo = atual === 'on' ? 'off' : 'on';
+  localStorage.setItem('nado_som', novo);
+  const btn = document.getElementById('btn-som');
+  if (btn) btn.textContent = novo === 'on' ? '🔊' : '🔇';
+  if (novo === 'on') beepSucesso();
+  toast(novo === 'on' ? 'Som ativado' : 'Som desativado', 'info');
+}
+
+// ── MODO NOITE ──
+// 'auto' = aplica entre 18h e 6h. 'on'/'off' = manual.
+function aplicarModoNoite() {
+  const pref = localStorage.getItem('nado_noite') || 'auto';
+  let ativo;
+  if (pref === 'on') ativo = true;
+  else if (pref === 'off') ativo = false;
+  else { // auto por horário
+    const h = new Date().getHours();
+    ativo = h >= 18 || h < 6;
+  }
+  document.body.classList.toggle('noite', ativo);
+  const btn = document.getElementById('btn-noite');
+  if (btn) btn.textContent = ativo ? '🌙' : '☀️';
+}
+
+function toggleNoite() {
+  const atual = localStorage.getItem('nado_noite') || 'auto';
+  // Ciclo: auto → on → off → auto
+  const prox = atual === 'auto' ? 'on' : (atual === 'on' ? 'off' : 'auto');
+  localStorage.setItem('nado_noite', prox);
+  aplicarModoNoite();
+  const labels = { auto: 'Modo automático', on: 'Modo noite ativado', off: 'Modo dia ativado' };
+  toast(labels[prox], 'info');
+}
+
+// Reavaliar modo noite a cada 10 minutos (para auto-transição ao anoitecer)
+setInterval(aplicarModoNoite, 10 * 60 * 1000);
 
 // ── SYNC SUPABASE ──
 async function sincronizarDados() {
@@ -1367,6 +1469,12 @@ window.addEventListener('beforeunload', (e) => {
 
 // ── INIT ──
 document.getElementById('topo-data').textContent = fmtData();
+// Aplicar preferências salvas (som, modo noite)
+aplicarModoNoite();
+(function aplicarSomBtn() {
+  const btn = document.getElementById('btn-som');
+  if (btn) btn.textContent = (localStorage.getItem('nado_som') === 'off') ? '🔇' : '🔊';
+})();
 carregarCache();
 _carroLoad();
 _carroRender();
