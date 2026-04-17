@@ -606,12 +606,23 @@ function renderProjecao() {
       </div>`;
   }
 
-  // ── Card 2 — Colhido Esta Semana ──
+  // ── Card 2 — Colhido Esta Semana (refatorado: janela 2 dias + sinalização) ──
   const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const hojeISO = toISO(hoje);
   const segISO_c2 = toISO(segEsta);
 
-  // 1. Coletar colheitas por data → área → {total, eitos[]}
+  // Helper: soma dias a uma data ISO
+  function addDiasISO(dataISO, dias) {
+    const d = new Date(dataISO + 'T00:00:00');
+    d.setDate(d.getDate() + dias);
+    return toISO(d);
+  }
+  // Mapa inverso: AREA A1 → A1
+  const AREA_LONGO_CURTO = {};
+  Object.entries(AREA_CURTO_LONGO).forEach(([k, v]) => { AREA_LONGO_CURTO[v] = k; });
+
+  // 1. Coletar colheitas da semana agrupadas por dia+área
+  //    Cada grupo guarda: total, eitos, IDs do Supabase, clientes já vinculados (h.cliente)
   const colhPorDia = {};
   let totalColhidoSemana = 0, totalEitosSemana = 0;
   for (const [area, eitos] of Object.entries(DB)) {
@@ -619,9 +630,14 @@ function renderProjecao() {
       for (const h of (e.historico || [])) {
         if (h.data >= segISO_c2 && h.data <= hojeISO) {
           if (!colhPorDia[h.data]) colhPorDia[h.data] = {};
-          if (!colhPorDia[h.data][area]) colhPorDia[h.data][area] = { total: 0, eitos: [] };
-          colhPorDia[h.data][area].total += h.total;
-          colhPorDia[h.data][area].eitos.push({ id: e.id, area, qtd: h.total });
+          if (!colhPorDia[h.data][area]) colhPorDia[h.data][area] = {
+            total: 0, eitos: [], colheitaIds: [], clientes: new Set()
+          };
+          const g = colhPorDia[h.data][area];
+          g.total += h.total;
+          g.eitos.push({ id: e.id, area, qtd: h.total, cliente: h.cliente || null });
+          if (h._id) g.colheitaIds.push(h._id);
+          if (h.cliente) g.clientes.add(h.cliente);
           totalColhidoSemana += h.total;
           totalEitosSemana++;
         }
@@ -629,69 +645,73 @@ function renderProjecao() {
     }
   }
 
-  // 2. Cruzar com vendas da semana
-  const vendasSemana = (_vendasCache || []).filter(v => v.data >= segISO_c2 && v.data <= hojeISO);
+  // 2. Vendas ativas (não EXCLUIDO) da janela ampliada (até hoje+2)
+  const hoje2DiasISO = addDiasISO(hojeISO, 2);
+  const vendasAtivas = (_vendasCache || []).filter(v =>
+    v.status !== 'EXCLUIDO' &&
+    v.data >= segISO_c2 && v.data <= hoje2DiasISO
+  );
   const clientesSemana = new Set();
 
-  // Construir entradas: cada venda com breakdown de áreas + sobra "sem cliente"
+  // 3. Montar lançamentos: 1 por grupo (dia+área) com cenário identificado
   const lancList = [];
   const diasOrdenados = Object.keys(colhPorDia).sort();
 
   for (const dia of diasOrdenados) {
-    const areasNoDia = colhPorDia[dia]; // { "AREA A2": {total, eitos}, "MAMÃO DE BAIXO": {total, eitos} }
-    const vendasDia = vendasSemana.filter(v => v.data === dia);
+    for (const [areaLongo, info] of Object.entries(colhPorDia[dia])) {
+      const areaCurta = AREA_LONGO_CURTO[areaLongo] || areaLongo;
 
-    // Clonar totais para ir descontando
-    const restante = {};
-    for (const [area, info] of Object.entries(areasNoDia)) {
-      restante[area] = { total: info.total, eitos: [...info.eitos] };
-    }
+      // Buscar vendas candidatas: mesmo dia ou até +2 dias, mesma área, qtd > 0
+      const dataMax = addDiasISO(dia, 2);
+      const candidatas = vendasAtivas
+        .filter(v => {
+          if (v.data < dia || v.data > dataMax) return false;
+          if (!v.areas) return false;
+          return v.areas[areaCurta] > 0;
+        })
+        .sort((a, b) => a.data.localeCompare(b.data)); // mais próximas primeiro
 
-    // Para cada venda do dia, alocar áreas + quebra
-    for (const v of vendasDia) {
-      if (!v.areas || Object.keys(v.areas).length === 0) continue;
-      clientesSemana.add(v.cliente);
-      const quebra = v.quebra || 0;
-      const entry = { data: dia, cliente: v.cliente, areas: {}, total: 0, quebra, eitos: [] };
-      for (const [aCurto, qtdVenda] of Object.entries(v.areas)) {
-        const aLongo = AREA_CURTO_LONGO[aCurto] || aCurto;
-        if (!restante[aLongo]) continue;
-        entry.areas[aLongo] = qtdVenda;
-        entry.total += qtdVenda;
-        // Associar eitos dessa área
-        entry.eitos.push(...restante[aLongo].eitos);
-        restante[aLongo].total -= qtdVenda;
-        if (restante[aLongo].total <= 0) delete restante[aLongo];
+      const clientesHCliente = Array.from(info.clientes);
+
+      // Determinar cenário
+      let cenario, clientePrincipal = null, vendaPrincipal = null;
+      if (clientesHCliente.length === 1) {
+        clientePrincipal = clientesHCliente[0];
+        vendaPrincipal = candidatas.find(v => v.cliente === clientePrincipal);
+        if (vendaPrincipal) cenario = 'confirmado';
+        else if (candidatas.length > 0) cenario = 'divergente';
+        else cenario = 'vinculado-sem-venda';
+      } else if (clientesHCliente.length > 1) {
+        cenario = 'multiplos-vinculados';
+      } else {
+        if (candidatas.length === 1) { cenario = 'sugestao-unica'; vendaPrincipal = candidatas[0]; }
+        else if (candidatas.length > 1) cenario = 'sugestao-multipla';
+        else cenario = 'sem-cliente';
       }
-      // Descontar quebra do restante (distribui proporcionalmente na primeira área com saldo)
-      let quebraRestante = quebra;
-      if (quebraRestante > 0) {
-        for (const [area, info] of Object.entries(restante)) {
-          if (quebraRestante <= 0) break;
-          const desc = Math.min(quebraRestante, info.total);
-          info.total -= desc;
-          quebraRestante -= desc;
-          if (info.total <= 0) delete restante[area];
-        }
-        entry.total += quebra;
-      }
-      if (entry.total > 0) lancList.push(entry);
-    }
 
-    // Vendas sem breakdown de áreas
-    for (const v of vendasDia) {
-      if (v.areas && Object.keys(v.areas).length > 0) continue;
-      if (!v.qtde || v.qtde <= 0) continue;
-      clientesSemana.add(v.cliente);
-      lancList.push({ data: dia, cliente: v.cliente, areas: {}, total: v.qtde, eitos: [] });
-    }
+      if (clientePrincipal) clientesSemana.add(clientePrincipal);
+      if (vendaPrincipal) clientesSemana.add(vendaPrincipal.cliente);
 
-    // Sobra = colheita sem venda (quebra ou venda não registrada)
-    for (const [area, info] of Object.entries(restante)) {
-      if (info.total <= 0) continue;
-      lancList.push({ data: dia, cliente: null, areas: { [area]: info.total }, total: info.total, eitos: info.eitos });
+      lancList.push({
+        data: dia,
+        area: areaLongo,
+        areas: { [areaLongo]: info.total },
+        total: info.total,
+        eitos: info.eitos,
+        colheitaIds: info.colheitaIds,
+        cliente: clientePrincipal || (vendaPrincipal ? vendaPrincipal.cliente : null),
+        clientePrincipal,
+        vendaPrincipal,
+        sugestoes: candidatas,
+        cenario
+      });
     }
   }
+
+  // Armazenar para uso do modal de vinculação
+  window._lancListColhidoSemana = lancList;
+  window._segEstaSemanaISO = segISO_c2;
+  window._hoje2DiasISO = hoje2DiasISO;
 
   // Badge: Seg DD/MM – Hoje
   const segFmt = `${String(segEsta.getDate()).padStart(2,'0')}/${String(segEsta.getMonth()+1).padStart(2,'0')}`;
@@ -704,7 +724,7 @@ function renderProjecao() {
 
   // Calcular R$/coco médio por dia (todas as vendas do dia)
   const precoDia = {};
-  for (const v of vendasSemana) {
+  for (const v of vendasAtivas) {
     if (!v.qtde || v.qtde <= 0 || !v.total) continue;
     if (!precoDia[v.data]) precoDia[v.data] = { receita: 0, frete: 0, cocos: 0 };
     precoDia[v.data].receita += v.total;
@@ -722,15 +742,51 @@ function renderProjecao() {
       const diaSem = DIAS_PT[dt.getDay()];
       const dataFmt = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
       const areasNomes = Object.keys(l.areas).map(a => nomes[a] || a);
-      const areasStr = areasNomes.length > 0 ? areasNomes.join(' · ') : '—';
-      const clienteStr = l.cliente || '<span style="color:var(--muted);font-style:italic">sem cliente</span>';
-      const quebraBadge = l.quebra > 0 ? `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:#fef3cd;color:#856404;border:1px solid #ffc107;white-space:nowrap">+${fmtNum(l.quebra)} quebra</span>` : '';
       const safeIdx = 'lanc_' + idx;
+
+      // Texto do cliente e badge de ação baseado no cenário
+      let clienteHtml = '', acaoBtn = '', borderColor = 'var(--border)', bgColor = '';
+      if (l.cenario === 'confirmado') {
+        // ✓ Cliente vinculado + venda casa
+        clienteHtml = `<div style="font-size:13px;font-weight:800;color:var(--forest)">${escapeHtml(l.clientePrincipal)}</div>
+          <div style="font-size:9px;color:var(--verde);margin-top:2px">✓ casa com venda ${l.vendaPrincipal.data.substring(8)}/${l.vendaPrincipal.data.substring(5,7)}</div>`;
+      } else if (l.cenario === 'divergente') {
+        // ⚠ Cliente vinculado mas venda é de outro cliente
+        clienteHtml = `<div style="font-size:13px;font-weight:800;color:var(--forest)">${escapeHtml(l.clientePrincipal)}</div>
+          <div style="font-size:9px;color:#b45309;margin-top:2px">⚠ divergente: venda nos próximos 2 dias é de outro cliente</div>`;
+        acaoBtn = `<button onclick="event.stopPropagation();abrirVincularColheita(${idx})" style="font-size:9px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fef3cd;color:#856404;border:1px solid #ffc107;cursor:pointer;white-space:nowrap">⚠ Verificar</button>`;
+        borderColor = '#ffc107';
+      } else if (l.cenario === 'vinculado-sem-venda') {
+        // ⚠ Cliente vinculado mas sem venda na janela
+        clienteHtml = `<div style="font-size:13px;font-weight:800;color:var(--forest)">${escapeHtml(l.clientePrincipal)}</div>
+          <div style="font-size:9px;color:#b45309;margin-top:2px">⚠ sem venda casada nos próximos 2 dias</div>`;
+        borderColor = '#ffc107';
+      } else if (l.cenario === 'sugestao-unica') {
+        // 💡 Sem vínculo, 1 sugestão óbvia
+        clienteHtml = `<div style="font-size:13px;font-weight:700;color:#856404;font-style:italic">💡 Sugestão: ${escapeHtml(l.vendaPrincipal.cliente)}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">venda ${l.vendaPrincipal.data.substring(8)}/${l.vendaPrincipal.data.substring(5,7)} · clique para vincular</div>`;
+        acaoBtn = `<button onclick="event.stopPropagation();abrirVincularColheita(${idx})" style="font-size:9px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fef3cd;color:#856404;border:1px solid #ffc107;cursor:pointer;white-space:nowrap">💡 Vincular</button>`;
+        borderColor = '#ffc107'; bgColor = '#fffdf5';
+      } else if (l.cenario === 'sugestao-multipla' || l.cenario === 'multiplos-vinculados') {
+        // 💡 Várias sugestões
+        const n = l.sugestoes.length;
+        clienteHtml = `<div style="font-size:13px;font-weight:700;color:#856404;font-style:italic">💡 ${n} venda${n>1?'s':''} possíve${n>1?'is':'l'}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">clique para escolher</div>`;
+        acaoBtn = `<button onclick="event.stopPropagation();abrirVincularColheita(${idx})" style="font-size:9px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fef3cd;color:#856404;border:1px solid #ffc107;cursor:pointer;white-space:nowrap">💡 Escolher</button>`;
+        borderColor = '#ffc107'; bgColor = '#fffdf5';
+      } else {
+        // sem-cliente: nenhuma venda compatível
+        clienteHtml = `<div style="font-size:13px;font-weight:700;color:#c2410c;font-style:italic">⚠ Sem cliente</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px">nenhuma venda compatível em 2 dias</div>`;
+        acaoBtn = `<button onclick="event.stopPropagation();abrirVincularColheita(${idx})" style="font-size:9px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fed7aa;color:#c2410c;border:1px solid #fb923c;cursor:pointer;white-space:nowrap">Ver vendas</button>`;
+        borderColor = '#fb923c'; bgColor = '#fff7ed';
+      }
 
       // R$/coco: se tem cliente, pegar da venda específica; senão, média do dia
       let precoCoco = null;
-      if (l.cliente) {
-        const vendaCli = vendasSemana.find(v => v.data === l.data && v.cliente === l.cliente);
+      const clienteRef = l.clientePrincipal || l.vendaPrincipal?.cliente;
+      if (clienteRef) {
+        const vendaCli = vendasAtivas.find(v => v.cliente === clienteRef);
         if (vendaCli && vendaCli.qtde > 0 && vendaCli.total > 0) {
           precoCoco = ((vendaCli.total - (vendaCli.frete || 0)) / vendaCli.qtde).toFixed(2);
         }
@@ -750,19 +806,19 @@ function renderProjecao() {
         </div>`).join('');
 
       lancHtml += `
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:6px">
-          <div onclick="toggleLanc('${safeIdx}')" style="display:grid;grid-template-columns:52px 1fr auto auto auto auto;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background 0.12s;user-select:none" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+        <div style="border:1px solid ${borderColor};border-radius:10px;overflow:hidden;margin-bottom:6px;background:${bgColor}">
+          <div onclick="toggleLanc('${safeIdx}')" style="display:grid;grid-template-columns:52px 1fr auto auto auto auto;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;transition:background 0.12s;user-select:none" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='${bgColor}'">
             <div>
               <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${diaSem}</div>
               <div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted)">${dataFmt}</div>
             </div>
             <div>
-              <div style="font-size:13px;font-weight:800;color:var(--forest)">${clienteStr}</div>
+              ${clienteHtml}
               <div style="font-size:10px;font-family:var(--font-mono);color:var(--muted);margin-top:2px">${l.eitos.length > 0 ? l.eitos.length + ' eitos' : fmtNum(l.total) + ' cocos'}</div>
             </div>
             ${areasNomes.map(a => `<span style="font-size:9px;font-weight:700;font-family:var(--font-mono);padding:3px 8px;border-radius:20px;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap">${a}</span>`).join('')}
             ${precoBadge}
-            ${quebraBadge}
+            ${acaoBtn}
             <div style="text-align:right">
               <div style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest)">${fmtNum(l.total)}</div>
               <div style="font-size:9px;color:var(--muted);text-align:right;margin-top:1px">cocos</div>
@@ -851,6 +907,135 @@ function toggleLanc(key) {
   const open = detail.style.display !== 'none';
   detail.style.display = open ? 'none' : 'block';
   if (chev) chev.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+// ─────────── VINCULAR COLHEITA A VENDA (modal) ───────────
+function abrirVincularColheita(lancIdx) {
+  const lanc = (window._lancListColhidoSemana || [])[lancIdx];
+  if (!lanc) { showToast('⚠ Lançamento não encontrado'); return; }
+
+  // Buscar TODAS as vendas ativas da janela (para o caso de querer vincular a algo fora das sugestões)
+  const segISO = window._segEstaSemanaISO;
+  const hoje2DiasISO = window._hoje2DiasISO;
+  const todasVendasJanela = (_vendasCache || []).filter(v =>
+    v.status !== 'EXCLUIDO' &&
+    v.data >= segISO && v.data <= hoje2DiasISO
+  ).sort((a, b) => a.data.localeCompare(b.data));
+
+  const areaCurta = Object.entries(AREA_CURTO_LONGO).find(([k, v]) => v === lanc.area)?.[0] || lanc.area;
+  const dt = new Date(lanc.data + 'T00:00:00');
+  const dataFmt = `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+
+  // Marcar candidatas principais (na janela de 2 dias + área compatível) vs outras
+  const idsCandidatas = new Set(lanc.sugestoes.map(v => v.id));
+
+  function renderOpcao(v, isSugestao) {
+    const vdt = new Date(v.data + 'T00:00:00');
+    const vData = `${String(vdt.getDate()).padStart(2,'0')}/${String(vdt.getMonth()+1).padStart(2,'0')}`;
+    const qtdNaArea = v.areas && v.areas[areaCurta] ? v.areas[areaCurta] : 0;
+    const areasTxt = v.areas ? Object.entries(v.areas).map(([a, q]) => `${a}=${fmtNum(q)}`).join(' · ') : '—';
+    const badge = isSugestao
+      ? `<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0">SUGERIDA</span>`
+      : `<span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)">FORA DA JANELA</span>`;
+    return `<label style="padding:10px 12px;border:1.5px solid ${isSugestao ? 'var(--verde-border, #bbf7d0)' : 'var(--border)'};border-radius:8px;cursor:pointer;display:flex;gap:10px;align-items:flex-start;transition:background 0.1s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <input type="radio" name="venda-vinc" value="${escapeHtml(v.cliente)}" style="margin-top:3px">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+          <span style="font-weight:800;font-size:13px;color:var(--forest)">${escapeHtml(v.cliente)}</span>
+          ${badge}
+        </div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-mono)">
+          ${vData} · ${areasTxt} · ${fmtNum(v.qtde)} cocos total${qtdNaArea > 0 ? ` · <strong style="color:var(--forest)">${areaCurta}=${fmtNum(qtdNaArea)}</strong>` : ''}
+        </div>
+      </div>
+    </label>`;
+  }
+
+  const sugestoesHtml = lanc.sugestoes.map(v => renderOpcao(v, true)).join('');
+  const outrasVendas = todasVendasJanela.filter(v => !idsCandidatas.has(v.id));
+  const outrasHtml = outrasVendas.map(v => renderOpcao(v, false)).join('');
+
+  const html = `
+    <div class="modal-overlay open" id="modal-vincular-colheita" style="display:flex;align-items:center;justify-content:center" onclick="if(event.target.id==='modal-vincular-colheita')fecharVincularColheita()">
+      <div class="modal" style="max-width:560px;max-height:85vh;display:flex;flex-direction:column">
+        <div style="padding:20px 20px 10px">
+          <h3 style="margin:0 0 6px 0;font-size:16px;font-weight:800">Vincular colheita a uma venda</h3>
+          <div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">
+            ${dataFmt} · ${escapeHtml(NOMES_CURTOS[lanc.area] || lanc.area)} · <strong style="color:var(--forest)">${fmtNum(lanc.total)} cocos</strong> em ${lanc.eitos.length} eito${lanc.eitos.length > 1 ? 's' : ''}
+          </div>
+          ${lanc.clientePrincipal ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">Cliente atual: <strong style="color:var(--forest)">${escapeHtml(lanc.clientePrincipal)}</strong></div>` : ''}
+        </div>
+        <div style="padding:0 20px;overflow-y:auto;flex:1">
+          ${lanc.sugestoes.length > 0 ? `
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--verde);margin:12px 0 8px">💡 Sugestões (próximos 2 dias, mesma área)</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">${sugestoesHtml}</div>
+          ` : `
+            <div style="padding:14px;background:#fff7ed;border:1px solid #fb923c;border-radius:8px;margin:12px 0;font-size:12px;color:#c2410c">
+              ⚠ Nenhuma venda compatível nos próximos 2 dias com essa área.
+            </div>
+          `}
+          ${outrasHtml ? `
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px">Outras vendas da semana (fora da janela)</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">${outrasHtml}</div>
+          ` : ''}
+          ${lanc.clientePrincipal ? `
+            <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+              <label style="padding:10px 12px;border:1.5px dashed var(--border);border-radius:8px;cursor:pointer;display:flex;gap:10px;align-items:center;background:#fafafa">
+                <input type="radio" name="venda-vinc" value="__DESVINCULAR__">
+                <span style="font-size:12px;color:var(--muted)">Desvincular cliente (deixar em branco)</span>
+              </label>
+            </div>
+          ` : ''}
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;background:var(--surface2)">
+          <button class="btn btn-outline" onclick="fecharVincularColheita()">Cancelar</button>
+          <button class="btn btn-primary" id="btn-vinc-confirmar" onclick="confirmarVincularColheita(${lancIdx})">Vincular</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function fecharVincularColheita() {
+  const m = document.getElementById('modal-vincular-colheita');
+  if (m) m.remove();
+}
+
+async function confirmarVincularColheita(lancIdx) {
+  const lanc = (window._lancListColhidoSemana || [])[lancIdx];
+  if (!lanc) return;
+  const escolhido = document.querySelector('input[name="venda-vinc"]:checked')?.value;
+  if (!escolhido) { showToast('Escolha uma venda ou selecione desvincular'); return; }
+
+  if (!lanc.colheitaIds || lanc.colheitaIds.length === 0) {
+    showToast('⚠ Não foi possível identificar as colheitas para atualizar');
+    return;
+  }
+
+  const btn = document.getElementById('btn-vinc-confirmar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Vinculando...'; }
+
+  try {
+    const novoCliente = escolhido === '__DESVINCULAR__' ? null : escolhido;
+    const { error } = await _SB.from('colheitas')
+      .update({ cliente: novoCliente })
+      .in('id', lanc.colheitaIds);
+    if (error) throw error;
+
+    fecharVincularColheita();
+    showToast(novoCliente ? '✓ Vinculado a ' + novoCliente : '✓ Cliente desvinculado');
+
+    // Recarregar DB do Supabase para refletir a mudança e re-renderizar
+    if (typeof loadDBFromSupabase === 'function') {
+      await loadDBFromSupabase();
+    }
+    if (typeof renderDashboard === 'function') renderDashboard();
+  } catch (err) {
+    console.error('Erro ao vincular colheita:', err);
+    showToast('⚠ Erro ao vincular — tente novamente');
+    if (btn) { btn.disabled = false; btn.textContent = 'Vincular'; }
+  }
 }
 
 // ─────────── COMPARATIVO SEMANAL ───────────
