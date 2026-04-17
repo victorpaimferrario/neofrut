@@ -379,7 +379,10 @@ body{
   <div id="carros-list"></div>
   <button class="btn-add-carro" onclick="_carroAdd()">+ Adicionar carro</button>
   <div class="total-dia">
-    <div class="total-dia-label">Total do dia</div>
+    <div>
+      <div class="total-dia-label">Total do dia</div>
+      <div id="total-dia-aviso" style="display:none;font-size:10px;font-weight:700;color:var(--vermelho);margin-top:2px"></div>
+    </div>
     <div class="total-dia-num" id="total-dia-num">0</div>
   </div>
 </div>
@@ -654,10 +657,31 @@ function _carroAtualizarVisual(c, inputEl) {
   }
 }
 
+// Total do Dia = soma dos eitos CONFIRMADOS (fonte de verdade).
+// Os valores digitados nos carros são independentes (controle logístico
+// da distribuição entre caminhões) — não entram no total do dia para
+// evitar dupla contagem.
 function _carroCalcTotal() {
-  const total = _carros.reduce((s, c) => s + (c.qtde || 0), 0);
+  let totalEitos = 0;
+  try {
+    totalEitos = Object.values(resultados || {}).reduce((s, r) => s + (Number(r.total) || 0), 0);
+  } catch(e) {}
+  const totalCarros = _carros.reduce((s, c) => s + (c.qtde || 0), 0);
   const el = document.getElementById('total-dia-num');
-  if (el) el.textContent = fmtN(total);
+  if (el) el.textContent = fmtN(totalEitos);
+  // Sinalização quando carros divergem dos eitos confirmados
+  const aviso = document.getElementById('total-dia-aviso');
+  if (aviso) {
+    if (totalEitos > 0 && totalCarros > 0 && totalCarros !== totalEitos) {
+      const diff = totalCarros - totalEitos;
+      aviso.style.display = '';
+      aviso.textContent = diff > 0
+        ? '⚠️ Carros com ' + fmtN(diff) + ' a mais que eitos'
+        : '⚠️ Carros com ' + fmtN(-diff) + ' a menos que eitos';
+    } else {
+      aviso.style.display = 'none';
+    }
+  }
 }
 
 function _carroAdd() {
@@ -1525,6 +1549,8 @@ function voltarInicio() {
   document.querySelector('.topo').style.display = '';
   document.getElementById('contagem-dia-wrap').style.display = '';
   renderLista();
+  // Atualizar Total do Dia (pode ter mudado após confirmar/limpar eito)
+  try { _carroCalcTotal(); } catch(e) {}
   window.scrollTo(0, 0);
 }
 
