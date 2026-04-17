@@ -501,9 +501,10 @@ let eitoAtual = null;     // {area, id, plantas}
 let wakeLock = null;
 let areasAbertas = {};    // controle de collapse
 
-// ── CONTAGEM POR CARRO (input manual + barra de progresso) ──
-// Nado digita a qtde do carro manualmente; a barra mostra o % em relação
-// à capacidade (editável). Nenhum preenchimento automático.
+// ── CONTAGEM POR CARRO (auto-fill dos eitos + override manual) ──
+// Conforme Nado confirma eitos, o total flui automaticamente para o carro
+// ATIVO (primeiro não-fechado). Quando enche, Nado toca "Fechar carro" e
+// o próximo assume. Cada carro pode ter override manual (se Nado editar).
 const SK_CARROS = 'nado_carros_dia';
 const CAP_PADRAO = 10000;
 let _carros = [];
@@ -516,7 +517,9 @@ function _carroLoad() {
       _carros = (raw.carros || []).map(c => ({
         id: c.id,
         capacidade: c.capacidade || CAP_PADRAO,
-        qtde: Number(c.qtde) || 0
+        fechado: !!c.fechado,
+        qtdeFechada: (typeof c.qtdeFechada === 'number') ? c.qtdeFechada : null,
+        qtdeManual: (typeof c.qtdeManual === 'number') ? c.qtdeManual : null
       }));
       _carroNextId = raw.nextId || (_carros.length + 1);
     } else {
@@ -526,7 +529,7 @@ function _carroLoad() {
     }
   } catch(e) { _carros = []; _carroNextId = 1; }
   if (_carros.length === 0) {
-    _carros = [{ id: 1, capacidade: CAP_PADRAO, qtde: 0 }];
+    _carros = [{ id: 1, capacidade: CAP_PADRAO, fechado: false, qtdeFechada: null, qtdeManual: null }];
     _carroNextId = 2;
   }
 }
@@ -539,6 +542,33 @@ function _carroSave() {
   } catch(e) {}
 }
 
+// Soma dos eitos confirmados hoje.
+function _carroTotalEitos() {
+  try {
+    return Object.values(resultados || {}).reduce((s, r) => s + (Number(r.total) || 0), 0);
+  } catch(e) { return 0; }
+}
+
+// Distribui o total dos eitos pelos carros:
+// - fechados consomem qtdeFechada
+// - manuais consomem qtdeManual (override do Nado)
+// - o PRIMEIRO carro aberto sem manual recebe todo o "resto"
+// - os demais abertos ficam em 0 (aguardando)
+function _carroDistribuir() {
+  const totalEitos = _carroTotalEitos();
+  const fechadosSum = _carros.filter(c => c.fechado).reduce((s, c) => s + (c.qtdeFechada || 0), 0);
+  const manuaisSum = _carros.filter(c => !c.fechado && c.qtdeManual !== null).reduce((s, c) => s + (c.qtdeManual || 0), 0);
+  let resto = Math.max(0, totalEitos - fechadosSum - manuaisSum);
+  let ativoAtribuido = false;
+
+  return _carros.map(c => {
+    if (c.fechado) return { ...c, qtde: c.qtdeFechada || 0, ativo: false, modo: 'fechado' };
+    if (c.qtdeManual !== null) return { ...c, qtde: c.qtdeManual, ativo: false, modo: 'manual' };
+    if (!ativoAtribuido) { ativoAtribuido = true; return { ...c, qtde: resto, ativo: true, modo: 'auto' }; }
+    return { ...c, qtde: 0, ativo: false, modo: 'aguardando' };
+  });
+}
+
 function _carroRender() {
   const wrap = document.getElementById('contagem-dia-wrap');
   const list = document.getElementById('carros-list');
@@ -546,7 +576,8 @@ function _carroRender() {
   wrap.style.display = '';
   list.innerHTML = '';
 
-  _carros.forEach((c, i) => {
+  const dist = _carroDistribuir();
+  dist.forEach((c, i) => {
     const cap = c.capacidade || CAP_PADRAO;
     const qtde = c.qtde || 0;
     const pct = cap > 0 ? (qtde / cap) * 100 : 0;
@@ -556,23 +587,49 @@ function _carroRender() {
 
     let classe = 'carro-card';
     let tag = '';
-    if (excedido) { classe += ' excedido'; tag = 'EXCEDEU'; }
+    if (c.modo === 'fechado') { classe += ' fechado'; tag = 'FECHADO'; }
+    else if (excedido) { classe += ' excedido'; tag = 'EXCEDEU'; }
     else if (cheio) { classe += ' cheio'; tag = 'CHEIO'; }
+    else if (c.modo === 'manual') { tag = 'MANUAL'; }
+    else if (c.ativo && qtde > 0) { tag = 'ATIVO'; }
 
     let falta = '';
-    if (excedido) {
+    if (c.modo === 'fechado') {
+      falta = 'Fechado com <strong>' + fmtN(qtde) + '</strong> cocos';
+    } else if (excedido) {
       falta = '⚠️ Excedeu em <strong>' + fmtN(qtde - cap) + '</strong> cocos';
     } else if (cheio) {
-      falta = '✅ Carro cheio';
+      falta = '✅ Carro cheio — feche para o próximo';
     } else if (qtde > 0) {
       falta = 'Falta <strong>' + fmtN(cap - qtde) + '</strong> cocos';
+    } else if (c.modo === 'aguardando') {
+      falta = 'Aguardando carro anterior fechar';
     } else {
-      falta = 'Digite quantos cocos entraram no carro';
+      falta = 'Confirme um eito para começar a encher';
     }
 
-    const rmBtn = _carros.length > 1
+    // Ações
+    let acoes = '';
+    if (c.modo === 'fechado') {
+      acoes = '<div class="carro-acoes">' +
+        '<button class="btn-reabrir-carro" onclick="_carroReabrir(' + c.id + ')">Reabrir</button>' +
+        '</div>';
+    } else if (qtde > 0 || c.ativo) {
+      const btnFechar = '<button class="btn-fechar-carro" onclick="_carroFechar(' + c.id + ')">' +
+        ((cheio || excedido) ? '✅ Fechar e ir pro próximo' : 'Fechar carro agora') +
+        '</button>';
+      const btnAuto = (c.modo === 'manual')
+        ? '<button class="btn-reabrir-carro" onclick="_carroResetManual(' + c.id + ')" title="Voltar para automático">↻ Auto</button>'
+        : '';
+      acoes = '<div class="carro-acoes">' + btnFechar + btnAuto + '</div>';
+    }
+
+    // Remover só se não fechado e qtde=0 (não perdemos dados)
+    const rmBtn = (_carros.length > 1 && qtde === 0 && !c.fechado)
       ? '<button class="carro-btn-rm" onclick="_carroRemove(' + c.id + ')">✕</button>'
       : '';
+
+    const readonlyAttr = (c.modo === 'fechado' || c.modo === 'aguardando') ? 'readonly' : '';
 
     const card = document.createElement('div');
     card.className = classe;
@@ -585,7 +642,7 @@ function _carroRender() {
         '</div>' +
       '</div>' +
       '<div class="carro-input-wrap">' +
-        '<input class="carro-input" type="text" inputmode="numeric" placeholder="0"' +
+        '<input class="carro-input" type="text" inputmode="numeric" placeholder="0" ' + readonlyAttr +
         ' value="' + (qtde ? fmtN(qtde) : '') + '"' +
         ' oninput="_carroOnInput(' + c.id + ',this)"' +
         ' onfocus="this.select()">' +
@@ -595,84 +652,67 @@ function _carroRender() {
         '<div class="carro-pct">' + Math.round(pct) + '%</div>' +
       '</div>' +
       '<div class="carro-barra"><div class="carro-barra-fill" style="width:' + pctClamp + '%"></div></div>' +
-      '<div class="carro-falta">' + falta + '</div>';
+      '<div class="carro-falta">' + falta + '</div>' +
+      acoes;
     list.appendChild(card);
   });
   _carroCalcTotal();
 }
 
+// Input manual: quando Nado digita, vira override. Se limpar, volta ao auto.
 function _carroOnInput(id, el) {
   const raw = el.value.replace(/\D/g, '');
-  const num = parseInt(raw, 10) || 0;
   const c = _carros.find(x => x.id === id);
   if (!c) return;
-  c.qtde = num;
-  // Reformata input preservando caret
-  if (num > 0) {
+  if (raw === '') {
+    // Campo vazio → volta ao auto
+    c.qtdeManual = null;
+  } else {
+    c.qtdeManual = parseInt(raw, 10) || 0;
+    // Reformata preservando caret
     const pos = el.selectionStart;
     const oldLen = el.value.length;
-    el.value = fmtN(num);
+    el.value = fmtN(c.qtdeManual);
     const diff = el.value.length - oldLen;
     try { el.setSelectionRange(pos + diff, pos + diff); } catch(e) {}
   }
   _carroSave();
-  // Atualiza só a barra/pct/falta do próprio card (sem re-renderizar tudo
-  // para não matar o foco do input)
-  _carroAtualizarVisual(c, el);
-  _carroCalcTotal();
+  // Re-render completo porque mudanças em um manual afetam o auto dos outros
+  _carroRenderPreservandoFoco(id);
 }
 
-function _carroAtualizarVisual(c, inputEl) {
-  const card = inputEl.closest('.carro-card');
-  if (!card) return;
-  const cap = c.capacidade || CAP_PADRAO;
-  const qtde = c.qtde || 0;
-  const pct = cap > 0 ? (qtde / cap) * 100 : 0;
-  const pctClamp = Math.min(100, pct);
-  const excedido = qtde > cap;
-  const cheio = !excedido && qtde >= cap && qtde > 0;
-
-  card.classList.remove('cheio', 'excedido');
-  if (excedido) card.classList.add('excedido');
-  else if (cheio) card.classList.add('cheio');
-
-  const tagEl = card.querySelector('.carro-nome .tag');
-  if (tagEl) tagEl.remove();
-  if (excedido || cheio) {
-    const nome = card.querySelector('.carro-nome');
-    if (nome) nome.insertAdjacentHTML('beforeend',
-      ' <span class="tag">' + (excedido ? 'EXCEDEU' : 'CHEIO') + '</span>');
-  }
-
-  const fill = card.querySelector('.carro-barra-fill');
-  if (fill) fill.style.width = pctClamp + '%';
-  const pctEl = card.querySelector('.carro-pct');
-  if (pctEl) pctEl.textContent = Math.round(pct) + '%';
-  const falta = card.querySelector('.carro-falta');
-  if (falta) {
-    if (excedido) falta.innerHTML = '⚠️ Excedeu em <strong>' + fmtN(qtde - cap) + '</strong> cocos';
-    else if (cheio) falta.innerHTML = '✅ Carro cheio';
-    else if (qtde > 0) falta.innerHTML = 'Falta <strong>' + fmtN(cap - qtde) + '</strong> cocos';
-    else falta.innerHTML = 'Digite quantos cocos entraram no carro';
+// Re-render mas tenta devolver o foco ao input do carro informado
+function _carroRenderPreservandoFoco(idFoco) {
+  const ativo = document.activeElement;
+  const eraInput = ativo && ativo.classList && ativo.classList.contains('carro-input');
+  const posCaret = eraInput ? ativo.selectionStart : null;
+  _carroRender();
+  if (eraInput && idFoco != null) {
+    const novos = document.querySelectorAll('.carro-card');
+    const idx = _carros.findIndex(x => x.id === idFoco);
+    if (idx >= 0 && novos[idx]) {
+      const inp = novos[idx].querySelector('.carro-input');
+      if (inp) {
+        inp.focus();
+        if (posCaret != null) {
+          try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e) {}
+        }
+      }
+    }
   }
 }
 
 // Total do Dia = soma dos eitos CONFIRMADOS (fonte de verdade).
-// Os valores digitados nos carros são independentes (controle logístico
-// da distribuição entre caminhões) — não entram no total do dia para
-// evitar dupla contagem.
 function _carroCalcTotal() {
-  let totalEitos = 0;
-  try {
-    totalEitos = Object.values(resultados || {}).reduce((s, r) => s + (Number(r.total) || 0), 0);
-  } catch(e) {}
-  const totalCarros = _carros.reduce((s, c) => s + (c.qtde || 0), 0);
+  const totalEitos = _carroTotalEitos();
+  const dist = _carroDistribuir();
+  const totalCarros = dist.reduce((s, c) => s + (c.qtde || 0), 0);
   const el = document.getElementById('total-dia-num');
   if (el) el.textContent = fmtN(totalEitos);
-  // Sinalização quando carros divergem dos eitos confirmados
+  // Aviso só quando override manual causa divergência
   const aviso = document.getElementById('total-dia-aviso');
   if (aviso) {
-    if (totalEitos > 0 && totalCarros > 0 && totalCarros !== totalEitos) {
+    if (totalEitos > 0 && totalCarros !== totalEitos) {
       const diff = totalCarros - totalEitos;
       aviso.style.display = '';
       aviso.textContent = diff > 0
@@ -685,20 +725,55 @@ function _carroCalcTotal() {
 }
 
 function _carroAdd() {
-  _carros.push({ id: _carroNextId++, capacidade: CAP_PADRAO, qtde: 0 });
+  _carros.push({ id: _carroNextId++, capacidade: CAP_PADRAO, fechado: false, qtdeFechada: null, qtdeManual: null });
   _carroSave();
   _carroRender();
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('.carro-input');
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  }, 50);
+}
+
+function _carroFechar(id) {
+  const dist = _carroDistribuir();
+  const cDist = dist.find(x => x.id === id);
+  const c = _carros.find(x => x.id === id);
+  if (!c || !cDist) return;
+  const qtde = cDist.qtde || 0;
+  if (qtde === 0) {
+    if (!confirm('Fechar carro vazio?')) return;
+  }
+  c.fechado = true;
+  c.qtdeFechada = qtde;
+  c.qtdeManual = null; // limpa override ao fechar
+  // Se não há próximo aberto, cria um
+  const temProximoAberto = _carros.some(x => !x.fechado);
+  if (!temProximoAberto) {
+    _carros.push({ id: _carroNextId++, capacidade: c.capacidade || CAP_PADRAO, fechado: false, qtdeFechada: null, qtdeManual: null });
+  }
+  _carroSave();
+  _carroRender();
+  if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+  toast('Carro fechado com ' + fmtN(qtde) + ' cocos');
+}
+
+function _carroReabrir(id) {
+  const c = _carros.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm('Reabrir este carro? Volta a receber a contagem automática.')) return;
+  c.fechado = false;
+  c.qtdeFechada = null;
+  _carroSave();
+  _carroRender();
+}
+
+function _carroResetManual(id) {
+  const c = _carros.find(x => x.id === id);
+  if (!c) return;
+  c.qtdeManual = null;
+  _carroSave();
+  _carroRender();
 }
 
 function _carroRemove(id) {
-  const c = _carros.find(x => x.id === id);
-  if (c && c.qtde > 0 && !confirm('Remover carro com ' + fmtN(c.qtde) + ' cocos?')) return;
   _carros = _carros.filter(x => x.id !== id);
-  if (_carros.length === 0) _carros = [{ id: _carroNextId++, capacidade: CAP_PADRAO, qtde: 0 }];
+  if (_carros.length === 0) _carros = [{ id: _carroNextId++, capacidade: CAP_PADRAO, fechado: false, qtdeFechada: null, qtdeManual: null }];
   _carroSave();
   _carroRender();
 }
@@ -1502,6 +1577,7 @@ function confirmarEitoDefinitivo() {
   };
   resultados[k] = resultado;
   salvarResultados();
+  try { _carroRender(); } catch(e) {}
 
   // Adicionar a fila de envio
   filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
@@ -1530,6 +1606,7 @@ function limparEito() {
   const k = chaveEito(eitoAtual.area, eitoAtual.id);
   delete resultados[k];
   salvarResultados();
+  try { _carroRender(); } catch(e) {}
   // Remover da fila de envio
   filaEnvio = filaEnvio.filter(r => chaveEito(r.area, r.id) !== k);
   safeStorageSet(SK_FILA, JSON.stringify(filaEnvio));
@@ -1549,8 +1626,8 @@ function voltarInicio() {
   document.querySelector('.topo').style.display = '';
   document.getElementById('contagem-dia-wrap').style.display = '';
   renderLista();
-  // Atualizar Total do Dia (pode ter mudado após confirmar/limpar eito)
-  try { _carroCalcTotal(); } catch(e) {}
+  // Atualizar cards dos carros e Total do Dia (auto-preenche com eitos confirmados)
+  try { _carroRender(); } catch(e) {}
   window.scrollTo(0, 0);
 }
 
