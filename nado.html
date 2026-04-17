@@ -70,27 +70,75 @@ body{
 .progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
 .progress-fill{height:100%;background:var(--verde);border-radius:3px;transition:width .3s}
 
-/* ════════ CONTAGEM POR CARRO ════════ */
+/* ════════ CONTAGEM POR CARRO (barra de progresso) ════════ */
 .contagem-dia{background:var(--branco);padding:10px 16px 14px;border-bottom:2px solid var(--verde);overflow:hidden}
 .contagem-dia-titulo{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--verde);margin-bottom:8px}
-.carro-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;width:100%;box-sizing:border-box}
-.carro-label{font-size:13px;font-weight:900;color:var(--texto);white-space:nowrap;min-width:50px;flex-shrink:0}
-.carro-input{
-  flex:1;min-width:0;width:0;font-size:20px;font-weight:900;color:var(--verde);
-  border:2px solid var(--borda);border-radius:10px;padding:10px 12px;
-  text-align:right;font-variant-numeric:tabular-nums;
-  background:var(--branco);outline:none;-webkit-appearance:none;
-  min-height:44px;box-sizing:border-box;
+
+.carro-card{
+  /* A completar (em andamento) — amarelo */
+  background:#fff4dc;border:2px solid var(--amarelo);border-radius:12px;
+  padding:10px 12px;margin-bottom:8px;transition:all .2s;
 }
-.carro-input:focus{border-color:var(--verde);background:var(--verde-bg)}
-.carro-input::placeholder{color:#c4d3c0;font-weight:400;font-style:italic}
+.carro-card.cheio{background:var(--verde-bg);border-color:var(--verde)}
+.carro-card.excedido{background:var(--vermelho-bg);border-color:var(--vermelho)}
+
+.carro-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.carro-nome{font-size:14px;font-weight:900;color:var(--texto)}
+.carro-nome .tag{
+  display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;
+  padding:1px 6px;border-radius:6px;margin-left:4px;letter-spacing:.05em;vertical-align:middle;
+  background:var(--amarelo);color:#fff;
+}
+.carro-card.cheio .tag{background:var(--verde);color:#fff}
+.carro-card.excedido .tag{background:var(--vermelho);color:#fff}
+
+.carro-cap-btn{
+  background:none;border:1px dashed var(--borda);border-radius:8px;
+  padding:4px 8px;font-size:12px;font-weight:800;color:var(--muted);
+  cursor:pointer;min-height:28px;
+}
+.carro-cap-btn:active{background:var(--verde-bg)}
+
 .carro-btn-rm{
-  width:44px;height:44px;border:none;border-radius:10px;
+  width:28px;height:28px;border:none;border-radius:8px;
   background:rgba(198,40,40,.08);color:#c62828;
-  font-size:18px;font-weight:900;cursor:pointer;
+  font-size:14px;font-weight:900;cursor:pointer;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .carro-btn-rm:active{transform:scale(.9);background:rgba(198,40,40,.15)}
+
+.carro-input-wrap{margin-bottom:6px}
+.carro-input{
+  width:100%;font-size:26px;font-weight:900;color:#a87617;
+  border:2px solid var(--borda);border-radius:10px;padding:10px 14px;
+  text-align:center;font-variant-numeric:tabular-nums;
+  background:var(--branco);outline:none;-webkit-appearance:none;
+  min-height:52px;box-sizing:border-box;
+}
+.carro-input:focus{border-color:var(--amarelo);background:#fff}
+.carro-input::placeholder{color:#d6c89a;font-weight:400;font-style:italic}
+.carro-card.cheio .carro-input{color:var(--verde)}
+.carro-card.excedido .carro-input{color:var(--vermelho)}
+
+.carro-nums{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:6px;font-variant-numeric:tabular-nums;
+}
+.carro-cap{font-size:13px;color:var(--muted);font-weight:700}
+.carro-pct{font-size:16px;font-weight:900;color:#a87617}
+.carro-card.cheio .carro-pct{color:var(--verde)}
+.carro-card.excedido .carro-pct{color:var(--vermelho)}
+
+.carro-barra{height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-bottom:6px}
+.carro-barra-fill{height:100%;background:var(--amarelo);border-radius:5px;transition:width .3s}
+.carro-card.cheio .carro-barra-fill{background:var(--verde)}
+.carro-card.excedido .carro-barra-fill{background:var(--vermelho)}
+
+.carro-falta{font-size:12px;font-weight:700;color:#8a6d15;text-align:center}
+.carro-falta strong{color:var(--texto);font-weight:900}
+.carro-card.cheio .carro-falta{color:var(--verde)}
+.carro-card.excedido .carro-falta{color:var(--vermelho)}
+
 .btn-add-carro{
   width:100%;padding:12px;border:2px dashed var(--borda);border-radius:10px;
   background:none;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer;
@@ -450,8 +498,11 @@ let eitoAtual = null;     // {area, id, plantas}
 let wakeLock = null;
 let areasAbertas = {};    // controle de collapse
 
-// ── CONTAGEM POR CARRO ──
+// ── CONTAGEM POR CARRO (input manual + barra de progresso) ──
+// Nado digita a qtde do carro manualmente; a barra mostra o % em relação
+// à capacidade (editável). Nenhum preenchimento automático.
 const SK_CARROS = 'nado_carros_dia';
+const CAP_PADRAO = 10000;
 let _carros = [];
 let _carroNextId = 1;
 
@@ -459,7 +510,11 @@ function _carroLoad() {
   try {
     const raw = JSON.parse(localStorage.getItem(SK_CARROS));
     if (raw && raw.data === hoje()) {
-      _carros = raw.carros || [];
+      _carros = (raw.carros || []).map(c => ({
+        id: c.id,
+        capacidade: c.capacidade || CAP_PADRAO,
+        qtde: Number(c.qtde) || 0
+      }));
       _carroNextId = raw.nextId || (_carros.length + 1);
     } else {
       _carros = [];
@@ -468,15 +523,17 @@ function _carroLoad() {
     }
   } catch(e) { _carros = []; _carroNextId = 1; }
   if (_carros.length === 0) {
-    _carros = [{ id: 1, qtde: 0 }];
+    _carros = [{ id: 1, capacidade: CAP_PADRAO, qtde: 0 }];
     _carroNextId = 2;
   }
 }
 
 function _carroSave() {
-  localStorage.setItem(SK_CARROS, JSON.stringify({
-    data: hoje(), carros: _carros, nextId: _carroNextId
-  }));
+  try {
+    localStorage.setItem(SK_CARROS, JSON.stringify({
+      data: hoje(), carros: _carros, nextId: _carroNextId
+    }));
+  } catch(e) {}
 }
 
 function _carroRender() {
@@ -485,39 +542,116 @@ function _carroRender() {
   if (!wrap || !list) return;
   wrap.style.display = '';
   list.innerHTML = '';
+
   _carros.forEach((c, i) => {
-    const div = document.createElement('div');
-    div.className = 'carro-row';
+    const cap = c.capacidade || CAP_PADRAO;
+    const qtde = c.qtde || 0;
+    const pct = cap > 0 ? (qtde / cap) * 100 : 0;
+    const pctClamp = Math.min(100, pct);
+    const excedido = qtde > cap;
+    const cheio = !excedido && qtde >= cap && qtde > 0;
+
+    let classe = 'carro-card';
+    let tag = '';
+    if (excedido) { classe += ' excedido'; tag = 'EXCEDEU'; }
+    else if (cheio) { classe += ' cheio'; tag = 'CHEIO'; }
+
+    let falta = '';
+    if (excedido) {
+      falta = '⚠️ Excedeu em <strong>' + fmtN(qtde - cap) + '</strong> cocos';
+    } else if (cheio) {
+      falta = '✅ Carro cheio';
+    } else if (qtde > 0) {
+      falta = 'Falta <strong>' + fmtN(cap - qtde) + '</strong> cocos';
+    } else {
+      falta = 'Digite quantos cocos entraram no carro';
+    }
+
     const rmBtn = _carros.length > 1
       ? '<button class="carro-btn-rm" onclick="_carroRemove(' + c.id + ')">✕</button>'
-      : '<div style="width:44px;flex-shrink:0"></div>';
-    div.innerHTML =
-      '<div class="carro-label">Carro ' + (i + 1) + '</div>' +
-      '<input class="carro-input" type="text" inputmode="numeric" placeholder="0"' +
-      ' value="' + (c.qtde ? fmtN(c.qtde) : '') + '"' +
-      ' data-cid="' + c.id + '"' +
-      ' oninput="_carroOnInput(' + c.id + ',this)"' +
-      ' onfocus="this.select()">' +
-      rmBtn;
-    list.appendChild(div);
+      : '';
+
+    const card = document.createElement('div');
+    card.className = classe;
+    card.innerHTML =
+      '<div class="carro-head">' +
+        '<div class="carro-nome">Carro ' + (i + 1) + (tag ? ' <span class="tag">' + tag + '</span>' : '') + '</div>' +
+        '<div style="display:flex;gap:6px;align-items:center">' +
+          '<button class="carro-cap-btn" onclick="_carroEditarCap(' + c.id + ')">🎯 ' + fmtN(cap) + '</button>' +
+          rmBtn +
+        '</div>' +
+      '</div>' +
+      '<div class="carro-input-wrap">' +
+        '<input class="carro-input" type="text" inputmode="numeric" placeholder="0"' +
+        ' value="' + (qtde ? fmtN(qtde) : '') + '"' +
+        ' oninput="_carroOnInput(' + c.id + ',this)"' +
+        ' onfocus="this.select()">' +
+      '</div>' +
+      '<div class="carro-nums">' +
+        '<div class="carro-cap">de ' + fmtN(cap) + '</div>' +
+        '<div class="carro-pct">' + Math.round(pct) + '%</div>' +
+      '</div>' +
+      '<div class="carro-barra"><div class="carro-barra-fill" style="width:' + pctClamp + '%"></div></div>' +
+      '<div class="carro-falta">' + falta + '</div>';
+    list.appendChild(card);
   });
   _carroCalcTotal();
 }
 
 function _carroOnInput(id, el) {
   const raw = el.value.replace(/\D/g, '');
-  const num = parseInt(raw) || 0;
+  const num = parseInt(raw, 10) || 0;
   const c = _carros.find(x => x.id === id);
-  if (c) c.qtde = num;
+  if (!c) return;
+  c.qtde = num;
+  // Reformata input preservando caret
   if (num > 0) {
     const pos = el.selectionStart;
     const oldLen = el.value.length;
     el.value = fmtN(num);
     const diff = el.value.length - oldLen;
-    el.setSelectionRange(pos + diff, pos + diff);
+    try { el.setSelectionRange(pos + diff, pos + diff); } catch(e) {}
   }
-  _carroCalcTotal();
   _carroSave();
+  // Atualiza só a barra/pct/falta do próprio card (sem re-renderizar tudo
+  // para não matar o foco do input)
+  _carroAtualizarVisual(c, el);
+  _carroCalcTotal();
+}
+
+function _carroAtualizarVisual(c, inputEl) {
+  const card = inputEl.closest('.carro-card');
+  if (!card) return;
+  const cap = c.capacidade || CAP_PADRAO;
+  const qtde = c.qtde || 0;
+  const pct = cap > 0 ? (qtde / cap) * 100 : 0;
+  const pctClamp = Math.min(100, pct);
+  const excedido = qtde > cap;
+  const cheio = !excedido && qtde >= cap && qtde > 0;
+
+  card.classList.remove('cheio', 'excedido');
+  if (excedido) card.classList.add('excedido');
+  else if (cheio) card.classList.add('cheio');
+
+  const tagEl = card.querySelector('.carro-nome .tag');
+  if (tagEl) tagEl.remove();
+  if (excedido || cheio) {
+    const nome = card.querySelector('.carro-nome');
+    if (nome) nome.insertAdjacentHTML('beforeend',
+      ' <span class="tag">' + (excedido ? 'EXCEDEU' : 'CHEIO') + '</span>');
+  }
+
+  const fill = card.querySelector('.carro-barra-fill');
+  if (fill) fill.style.width = pctClamp + '%';
+  const pctEl = card.querySelector('.carro-pct');
+  if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+  const falta = card.querySelector('.carro-falta');
+  if (falta) {
+    if (excedido) falta.innerHTML = '⚠️ Excedeu em <strong>' + fmtN(qtde - cap) + '</strong> cocos';
+    else if (cheio) falta.innerHTML = '✅ Carro cheio';
+    else if (qtde > 0) falta.innerHTML = 'Falta <strong>' + fmtN(cap - qtde) + '</strong> cocos';
+    else falta.innerHTML = 'Digite quantos cocos entraram no carro';
+  }
 }
 
 function _carroCalcTotal() {
@@ -527,7 +661,7 @@ function _carroCalcTotal() {
 }
 
 function _carroAdd() {
-  _carros.push({ id: _carroNextId++, qtde: 0 });
+  _carros.push({ id: _carroNextId++, capacidade: CAP_PADRAO, qtde: 0 });
   _carroSave();
   _carroRender();
   setTimeout(() => {
@@ -537,8 +671,23 @@ function _carroAdd() {
 }
 
 function _carroRemove(id) {
-  _carros = _carros.filter(c => c.id !== id);
-  if (_carros.length === 0) { _carros = [{ id: _carroNextId++, qtde: 0 }]; }
+  const c = _carros.find(x => x.id === id);
+  if (c && c.qtde > 0 && !confirm('Remover carro com ' + fmtN(c.qtde) + ' cocos?')) return;
+  _carros = _carros.filter(x => x.id !== id);
+  if (_carros.length === 0) _carros = [{ id: _carroNextId++, capacidade: CAP_PADRAO, qtde: 0 }];
+  _carroSave();
+  _carroRender();
+}
+
+function _carroEditarCap(id) {
+  const c = _carros.find(x => x.id === id);
+  if (!c) return;
+  const atual = c.capacidade || CAP_PADRAO;
+  const resp = prompt('Capacidade do carro (cocos):', String(atual));
+  if (resp === null) return;
+  const num = parseInt(String(resp).replace(/\D/g, ''), 10);
+  if (!num || num < 100) { toast('Capacidade inválida'); return; }
+  c.capacidade = num;
   _carroSave();
   _carroRender();
 }
