@@ -145,14 +145,14 @@ function _progGetValor() {
   const bruto = _progParseValor(el.dataset.brutoDigits || el.dataset.digits || el.value);
   if (!bruto) return 0;
   const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
-  const freteEl = document.getElementById('prog-inp-frete');
-  const freteVal = freteEl ? _progParseValor(freteEl.dataset.digits || '') : 0;
+  // Usa _progGetFreteInput que conhece ambos os modos (total/percoco tradicional)
+  const freteVal = _progGetFreteInput();
   let fretePorCoco = 0;
   if (freteVal) {
     if (_progFreteMode === 'percoco') {
-      fretePorCoco = freteVal;
+      fretePorCoco = freteVal; // já é por coco
     } else {
-      fretePorCoco = qtde > 0 ? freteVal / qtde : 0;
+      fretePorCoco = qtde > 0 ? freteVal / qtde : 0; // total dividido por qtde
     }
   }
   // Custos extras (ICMS + seguro) divididos por qtde
@@ -167,38 +167,57 @@ function _progGetValorBruto() {
 }
 
 // ── FRETE HELPERS ──
-// Em modo percoco, sempre trata com 2 casas decimais (centavos tipo calculadora)
-// Ex: digitar "75" → R$ 0,75 (não R$ 75). Padding de zeros à esquerda.
-// IMPORTANTE: limpa zeros à esquerda ANTES do padding para evitar efeito
-// "bola de neve" (ex: "0,01" + digitar "5" não virar "00,15").
-function _progNormalizarDigitsPorCoco(digits) {
-  if (!digits) return '';
-  // Remove zeros à esquerda (preserva pelo menos um dígito)
-  const limpo = digits.replace(/^0+/, '') || '0';
-  // Se < 3 dígitos, pad para virar "0,XX"
-  return limpo.length < 3 ? limpo.padStart(3, '0') : limpo;
+// DOIS MODOS de entrada:
+// - total: formato "calculadora bancária" (dígitos → centavos automático)
+// - percoco: formato TRADICIONAL (aceita vírgula/ponto como separador decimal)
+//   Ex: digitar "1,5" → R$ 1,50 · "0,75" → R$ 0,75 · "1.50" → R$ 1,50
+
+// Parse livre: aceita "1,5", "1.50", "0,75", "75" (inteiro)
+function _progParseFretePorCoco(str) {
+  if (!str) return 0;
+  const s = String(str).trim().replace(/\./g, ',');
+  if (!s || s === ',') return 0;
+  const parts = s.split(',');
+  const inteiro = parts[0].replace(/\D/g, '') || '0';
+  const centavos = parts[1] ? parts[1].replace(/\D/g, '').slice(0, 2).padEnd(2, '0') : '00';
+  return parseInt(inteiro) + parseInt(centavos) / 100;
 }
+
 function _progOnFreteInput(el) {
-  let digits = el.value.replace(/\D/g, '');
-  // Em modo percoco, garantir formato R$ X,YZ (mínimo 3 dígitos)
   if (_progFreteMode === 'percoco') {
-    digits = _progNormalizarDigitsPorCoco(digits);
+    // Modo TRADICIONAL: aceita vírgula/ponto. Deixa o usuário digitar livremente.
+    // Limita a caracteres válidos (dígitos + 1 vírgula/ponto).
+    let raw = el.value.replace(/\./g, ',');
+    raw = raw.replace(/[^\d,]/g, '');
+    const parts = raw.split(',');
+    if (parts.length > 1) {
+      // Só 1 vírgula permitida; limita decimais a 2 dígitos
+      raw = parts[0] + ',' + parts.slice(1).join('').slice(0, 2);
+    }
+    if (el.value !== raw) el.value = raw;
+    el.dataset.valor = raw; // guarda o texto digitado
+    el.dataset.digits = ''; // modo tradicional não usa digits
+  } else {
+    // Modo TOTAL (calculadora): dígitos automáticos
+    const digits = el.value.replace(/\D/g, '');
+    el.value = _progFormatValor(digits);
+    el.dataset.digits = digits;
+    el.dataset.valor = '';
   }
-  el.value = _progFormatValor(digits);
-  el.dataset.digits = digits;
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
+
 function _progGetFreteInput() {
   const el = document.getElementById('prog-inp-frete');
   if (!el) return 0;
-  let digits = el.dataset.digits || '';
-  // Em modo percoco, ler sempre com formato centavos para consistência
-  if (_progFreteMode === 'percoco' && digits) {
-    digits = _progNormalizarDigitsPorCoco(digits);
+  if (_progFreteMode === 'percoco') {
+    // Lê do dataset.valor (texto digitado) ou do value
+    return _progParseFretePorCoco(el.dataset.valor || el.value);
   }
-  return _progParseValor(digits || el.value);
+  return _progParseValor(el.dataset.digits || el.value);
 }
+
 function _progCalcFreteTotal() {
   const val = _progGetFreteInput();
   if (!val) return 0;
@@ -208,6 +227,7 @@ function _progCalcFreteTotal() {
   }
   return val;
 }
+
 function _progSetFreteMode(mode) {
   if (mode !== 'total' && mode !== 'percoco') return;
   const modoAnterior = _progFreteMode;
@@ -219,18 +239,34 @@ function _progSetFreteMode(mode) {
   if (btnPc) btnPc.classList.toggle('ativo', mode === 'percoco');
   if (btnTot) btnTot.classList.toggle('ativo', mode === 'total');
 
-  // Ao ALTERNAR modo, re-normalizar o input para a nova convenção:
-  // - para percoco: garantir padding (ex: "75" vira "075" → "0,75")
-  // - para total: manter digits como estão
-  if (modoAnterior !== mode) {
-    const freteEl = document.getElementById('prog-inp-frete');
-    if (freteEl && freteEl.dataset.digits) {
-      let digits = freteEl.dataset.digits;
-      if (mode === 'percoco') {
-        digits = _progNormalizarDigitsPorCoco(digits);
+  // Atualizar inputmode para o teclado mobile apropriado
+  const freteEl = document.getElementById('prog-inp-frete');
+  if (freteEl) {
+    freteEl.setAttribute('inputmode', mode === 'percoco' ? 'decimal' : 'numeric');
+    freteEl.setAttribute('placeholder', mode === 'percoco' ? 'Ex: 0,75' : '0,00');
+  }
+
+  // Ao ALTERNAR modo, converter o valor para o novo formato
+  if (modoAnterior !== mode && freteEl) {
+    if (mode === 'percoco') {
+      // total → percoco: converter digits para formato tradicional
+      const digits = freteEl.dataset.digits || '';
+      const valor = digits ? _progParseValor(digits) : 0;
+      if (valor > 0) {
+        const txt = valor.toFixed(2).replace('.', ',');
+        freteEl.value = txt;
+        freteEl.dataset.valor = txt;
       }
-      freteEl.dataset.digits = digits;
-      freteEl.value = _progFormatValor(digits);
+      freteEl.dataset.digits = '';
+    } else {
+      // percoco → total: converter valor tradicional para digits
+      const valor = freteEl.dataset.valor ? _progParseFretePorCoco(freteEl.dataset.valor) : 0;
+      if (valor > 0) {
+        const digits = _progValorToDigits(valor);
+        freteEl.dataset.digits = digits;
+        freteEl.value = _progFormatValor(digits);
+      }
+      freteEl.dataset.valor = '';
     }
   }
 
@@ -324,7 +360,7 @@ function _progAplicarDeducaoFrete() {
   if (!valorEl || !freteEl || !notaEl) return;
 
   const bruto = _progParseValor(valorEl.dataset.brutoDigits || valorEl.dataset.digits || '');
-  const freteVal = _progParseValor(freteEl.dataset.digits || '');
+  const freteVal = _progGetFreteInput(); // conhece ambos modos (total/percoco tradicional)
 
   // Sem bruto ou sem frete: oculta nota
   if (bruto <= 0 || freteVal <= 0) {
@@ -638,7 +674,7 @@ function abrirModalProg() {
   document.getElementById('prog-receita-preview').style.display = 'none';
   // Reset frete, ICMS, seguro
   const freteEl = document.getElementById('prog-inp-frete');
-  if (freteEl) { freteEl.value = ''; freteEl.dataset.digits = ''; }
+  if (freteEl) { freteEl.value = ''; freteEl.dataset.digits = ''; freteEl.dataset.valor = ''; }
   const campoFrete = document.getElementById('prog-campo-frete');
   if (campoFrete) campoFrete.style.display = 'none';
   _progSetFreteMode('total');
@@ -718,14 +754,24 @@ function abrirModalProgEditar(id) {
     const valorExibir = freteModoSalvo === 'percoco'
       ? Number(c.frete_total) / qtdeCocos
       : Number(c.frete_total);
-    const fd = _progValorToDigits(valorExibir);
-    freteEl.dataset.digits = fd;
-    freteEl.value = _progFormatValor(fd);
+    if (freteModoSalvo === 'percoco') {
+      // Modo tradicional: mostra texto com vírgula
+      const txt = valorExibir.toFixed(2).replace('.', ',');
+      freteEl.value = txt;
+      freteEl.dataset.valor = txt;
+      freteEl.dataset.digits = '';
+    } else {
+      // Modo total (calculadora): usa digits
+      const fd = _progValorToDigits(valorExibir);
+      freteEl.dataset.digits = fd;
+      freteEl.dataset.valor = '';
+      freteEl.value = _progFormatValor(fd);
+    }
     if (campoFrete) campoFrete.style.display = '';
     // Aplica dedução para mostrar a nota explicativa imediatamente
     _progAplicarDeducaoFrete();
   } else if (freteEl) {
-    freteEl.value = ''; freteEl.dataset.digits = '';
+    freteEl.value = ''; freteEl.dataset.digits = ''; freteEl.dataset.valor = '';
     if (campoFrete) campoFrete.style.display = c.valor_por_coco ? '' : 'none';
   }
 
