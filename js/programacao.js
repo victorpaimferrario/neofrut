@@ -167,8 +167,18 @@ function _progGetValorBruto() {
 }
 
 // ── FRETE HELPERS ──
+// Em modo percoco, sempre trata com 2 casas decimais (centavos tipo calculadora)
+// Ex: digitar "75" → R$ 0,75 (não R$ 75). Padding de zeros à esquerda.
+function _progNormalizarDigitsPorCoco(digits) {
+  if (!digits) return '';
+  return digits.length < 3 ? digits.padStart(3, '0') : digits;
+}
 function _progOnFreteInput(el) {
-  const digits = el.value.replace(/\D/g, '');
+  let digits = el.value.replace(/\D/g, '');
+  // Em modo percoco, garantir formato R$ X,YZ (mínimo 3 dígitos)
+  if (_progFreteMode === 'percoco') {
+    digits = _progNormalizarDigitsPorCoco(digits);
+  }
   el.value = _progFormatValor(digits);
   el.dataset.digits = digits;
   _progAplicarDeducaoFrete();
@@ -177,7 +187,12 @@ function _progOnFreteInput(el) {
 function _progGetFreteInput() {
   const el = document.getElementById('prog-inp-frete');
   if (!el) return 0;
-  return _progParseValor(el.dataset.digits || el.value);
+  let digits = el.dataset.digits || '';
+  // Em modo percoco, ler sempre com formato centavos para consistência
+  if (_progFreteMode === 'percoco' && digits) {
+    digits = _progNormalizarDigitsPorCoco(digits);
+  }
+  return _progParseValor(digits || el.value);
 }
 function _progCalcFreteTotal() {
   const val = _progGetFreteInput();
@@ -190,6 +205,7 @@ function _progCalcFreteTotal() {
 }
 function _progSetFreteMode(mode) {
   if (mode !== 'total' && mode !== 'percoco') return;
+  const modoAnterior = _progFreteMode;
   _progFreteMode = mode;
   const unit = document.getElementById('prog-frete-unit');
   if (unit) unit.textContent = mode === 'total' ? 'R$ total' : 'R$/coco';
@@ -197,6 +213,22 @@ function _progSetFreteMode(mode) {
   const btnTot = document.getElementById('prog-ft-total');
   if (btnPc) btnPc.classList.toggle('ativo', mode === 'percoco');
   if (btnTot) btnTot.classList.toggle('ativo', mode === 'total');
+
+  // Ao ALTERNAR modo, re-normalizar o input para a nova convenção:
+  // - para percoco: garantir padding (ex: "75" vira "075" → "0,75")
+  // - para total: manter digits como estão
+  if (modoAnterior !== mode) {
+    const freteEl = document.getElementById('prog-inp-frete');
+    if (freteEl && freteEl.dataset.digits) {
+      let digits = freteEl.dataset.digits;
+      if (mode === 'percoco') {
+        digits = _progNormalizarDigitsPorCoco(digits);
+      }
+      freteEl.dataset.digits = digits;
+      freteEl.value = _progFormatValor(digits);
+    }
+  }
+
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
