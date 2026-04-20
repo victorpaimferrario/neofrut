@@ -169,9 +169,14 @@ function _progGetValorBruto() {
 // ── FRETE HELPERS ──
 // Em modo percoco, sempre trata com 2 casas decimais (centavos tipo calculadora)
 // Ex: digitar "75" → R$ 0,75 (não R$ 75). Padding de zeros à esquerda.
+// IMPORTANTE: limpa zeros à esquerda ANTES do padding para evitar efeito
+// "bola de neve" (ex: "0,01" + digitar "5" não virar "00,15").
 function _progNormalizarDigitsPorCoco(digits) {
   if (!digits) return '';
-  return digits.length < 3 ? digits.padStart(3, '0') : digits;
+  // Remove zeros à esquerda (preserva pelo menos um dígito)
+  const limpo = digits.replace(/^0+/, '') || '0';
+  // Se < 3 dígitos, pad para virar "0,XX"
+  return limpo.length < 3 ? limpo.padStart(3, '0') : limpo;
 }
 function _progOnFreteInput(el) {
   let digits = el.value.replace(/\D/g, '');
