@@ -220,16 +220,22 @@ function _progOnSeguroInput(el) {
   _progAplicarDeducaoFrete();
   _progAtualizarPreview();
 }
+// Helper: detecta se há frete informado (valor digitado > 0), independente de qtde.
+// Usado para decidir se ICMS/Seguro devem existir — evita bug no modo percoco
+// quando qtde=0 faz _progCalcFreteTotal() retornar 0 erroneamente.
+function _progTemFrete() {
+  return _progGetFreteInput() > 0;
+}
 function _progGetIcms() {
-  // ICMS só existe quando há frete
-  if (_progCalcFreteTotal() <= 0) return 0;
+  // ICMS só existe quando há frete informado
+  if (!_progTemFrete()) return 0;
   const el = document.getElementById('prog-inp-icms');
   if (!el) return 0;
   return _progParseValor(el.dataset.digits || el.value);
 }
 function _progGetSeguro() {
-  // Seguro só existe quando há frete
-  if (_progCalcFreteTotal() <= 0) return 0;
+  // Seguro só existe quando há frete informado
+  if (!_progTemFrete()) return 0;
   const el = document.getElementById('prog-inp-seguro');
   if (!el) return 0;
   return _progParseValor(el.dataset.digits || el.value);
@@ -238,11 +244,17 @@ function _progAutoSeguro() {
   const el = document.getElementById('prog-inp-seguro');
   if (!el || el.dataset.manual === '1') return;
   const freteTotal = _progCalcFreteTotal();
-  // Sem frete → sem seguro
-  if (freteTotal <= 0) {
+  // Sem frete digitado → sem seguro (limpa valor)
+  if (!_progTemFrete()) {
     el.value = ''; el.dataset.digits = '';
     const nota = document.getElementById('prog-seguro-nota');
     if (nota) nota.textContent = '';
+    return;
+  }
+  // Com frete mas sem qtde ainda: mantém valor (não auto-calcula, aguarda qtde)
+  if (freteTotal <= 0) {
+    const nota = document.getElementById('prog-seguro-nota');
+    if (nota) nota.textContent = 'Preencha a quantidade para calcular o seguro';
     return;
   }
   const qtde = parseFloat(document.getElementById('prog-inp-qtde').value) || 0;
@@ -1006,13 +1018,17 @@ function _progAtualizarPreview() {
     document.getElementById('prog-prev-liquida').textContent = 'R$ ' + fmtNum(Math.round(totalNFComCustos));
   }
   // Mostrar campos frete/icms/seguro quando valor BRUTO preenchido
+  // ICMS/Seguro aparecem quando há valor de frete DIGITADO (não depende de qtde).
+  // Isso resolve o bug no modo percoco: se qtde=0, _progCalcFreteTotal retornaria 0
+  // e os campos sumiriam erroneamente mesmo com frete/coco preenchido.
   const temBruto = _progGetValorBruto() > 0;
+  const temFreteDigitado = _progTemFrete();
   const campoFrete = document.getElementById('prog-campo-frete');
   if (campoFrete) campoFrete.style.display = temBruto ? '' : 'none';
   const campoIcms = document.getElementById('prog-campo-icms');
-  if (campoIcms) campoIcms.style.display = (temBruto && freteTotal > 0) ? '' : 'none';
+  if (campoIcms) campoIcms.style.display = (temBruto && temFreteDigitado) ? '' : 'none';
   const campoSeguro = document.getElementById('prog-campo-seguro');
-  if (campoSeguro) campoSeguro.style.display = (temBruto && freteTotal > 0) ? '' : 'none';
+  if (campoSeguro) campoSeguro.style.display = (temBruto && temFreteDigitado) ? '' : 'none';
 }
 
 function progToggleObs() {
