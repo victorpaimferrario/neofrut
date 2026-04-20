@@ -644,7 +644,9 @@ function abrirModalProgEditar(id) {
   // Valor: o DB armazena o LÍQUIDO. Para mostrar o BRUTO no input em edição,
   // somamos de volta o frete por coco (se houver). Assim, ao mexer no frete,
   // a dedução é recalculada corretamente a partir do bruto original.
-  _progSetFreteMode('total');
+  // Respeitar o modo de frete original (percoco ou total) — default: total para cargas antigas
+  const freteModoSalvo = c.frete_modo === 'percoco' ? 'percoco' : 'total';
+  _progSetFreteMode(freteModoSalvo);
   const valorEl = document.getElementById('prog-inp-valor');
   let valorBruto = Number(c.valor_por_coco || 0);
   if (valorBruto > 0 && c.volume_cocos) {
@@ -659,11 +661,15 @@ function abrirModalProgEditar(id) {
   const notaEl = document.getElementById('prog-valor-nota');
   if (notaEl) { notaEl.style.display = 'none'; notaEl.textContent = ''; }
 
-  // Frete
+  // Frete — se modo percoco, converter frete_total de volta para valor por coco
   const freteEl = document.getElementById('prog-inp-frete');
   const campoFrete = document.getElementById('prog-campo-frete');
   if (freteEl && c.frete_total) {
-    const fd = _progValorToDigits(c.frete_total);
+    const qtdeCocos = Number(c.volume_cocos) || 1;
+    const valorExibir = freteModoSalvo === 'percoco'
+      ? Number(c.frete_total) / qtdeCocos
+      : Number(c.frete_total);
+    const fd = _progValorToDigits(valorExibir);
     freteEl.dataset.digits = fd;
     freteEl.value = _progFormatValor(fd);
     if (campoFrete) campoFrete.style.display = '';
@@ -1056,6 +1062,7 @@ async function salvarProgCarga() {
     volume_cocos: qtde,
     valor_por_coco: valor,
     frete_total: _progCalcFreteTotal() || null,
+    frete_modo: _progCalcFreteTotal() > 0 ? _progFreteMode : null,
     icms_valor: _progGetIcms() || null,
     seguro_valor: _progGetSeguro() || null,
     tipo_veiculo: _progVeiculoSel,
