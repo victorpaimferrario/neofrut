@@ -980,9 +980,8 @@ function _progSelecionarCliente(c) {
     document.querySelectorAll('.prog-veiculo-btn').forEach(b => {
       if (b.dataset.veiculo === c.veiculo_padrao) b.classList.add('sel');
     });
-    const sugestao = { truck: 8500, bitruck: 10500, carreta: 16000 };
     if (!document.getElementById('prog-inp-qtde').value) {
-      document.getElementById('prog-inp-qtde').value = sugestao[c.veiculo_padrao] || '';
+      document.getElementById('prog-inp-qtde').value = _PROG_CAPACIDADE_VEICULO[c.veiculo_padrao] || '';
     }
   }
   if (c.rpc_historico) {
@@ -1038,13 +1037,19 @@ function _progPreencherValor(valor) {
 function _progResetVeiculoBtns() {
   document.querySelectorAll('.prog-veiculo-btn').forEach(b => b.classList.remove('sel'));
 }
+// Capacidades padrão por veículo (cocos)
+const _PROG_CAPACIDADE_VEICULO = { truck: 9000, bitruck: 10000, carreta: 16000 };
+
 function progSelVeiculo(key, el) {
   _progVeiculoSel = key;
   _progResetVeiculoBtns();
   el.classList.add('sel');
-  const sugestao = { truck: 8500, bitruck: 10500, carreta: 16000 };
-  if (!document.getElementById('prog-inp-qtde').value) {
-    document.getElementById('prog-inp-qtde').value = sugestao[key] || '';
+  const qtdeEl = document.getElementById('prog-inp-qtde');
+  const valorAtual = parseInt(qtdeEl.value) || 0;
+  // Atualiza se: campo vazio OU valor atual é uma das sugestões (não foi editado manualmente)
+  const ehSugestao = Object.values(_PROG_CAPACIDADE_VEICULO).includes(valorAtual);
+  if (!valorAtual || ehSugestao) {
+    qtdeEl.value = _PROG_CAPACIDADE_VEICULO[key] || '';
   }
   _progAtualizarPreview();
 }
