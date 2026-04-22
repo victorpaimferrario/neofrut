@@ -52,14 +52,16 @@
   .nav-brand { font-size: 15px; font-weight: 800; color: var(--accent); letter-spacing: 0.05em; padding: 12px 0; margin-right: 32px; white-space: nowrap; }
   .nav-brand span { color: var(--muted); font-weight: 400; }
   .nav-tabs { display: flex; gap: 0; flex: 1; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .nav-tab { padding: 18px 18px; font-size: 13px; font-weight: 600; font-family: var(--font-main); color: rgba(255,255,255,0.55); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.15s; letter-spacing: 0.03em; background: none; border-top: none; border-left: none; border-right: none; }
+  .nav-tab { padding: 18px 18px; font-size: 13px; font-weight: 600; font-family: var(--font-main); color: rgba(255,255,255,0.55); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: all 0.15s; letter-spacing: 0.03em; background: none; border-top: none; border-left: none; border-right: none; text-decoration: none; display: inline-block; user-select: none; }
+  a.nav-tab:hover, a.nav-tab:visited { color: rgba(255,255,255,0.85); text-decoration: none; }
   .nav-tab:hover { color: rgba(255,255,255,0.9); }
   .nav-tab.active { color: #ffffff; border-bottom-color: #6edcb8; text-shadow: 0 0 12px rgba(110,220,184,0.5); }
   .nav-actions { margin-left: auto; display: flex; gap: 8px; padding: 12px 0; align-items: center; }
 
   /* ── Mobile Bottom Tab Bar ── */
   .mobile-bottom-bar { display:none; position:fixed; bottom:0; left:0; right:0; z-index:100; background:linear-gradient(135deg, #1a3a1a 0%, #1e4a20 50%, #163020 100%); border-top:1px solid #2a5020; padding:4px 0 env(safe-area-inset-bottom, 4px); box-shadow:0 -2px 16px rgba(0,0,0,.2); }
-  .mob-tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px 2px; background:none; border:none; cursor:pointer; color:rgba(255,255,255,.45); transition:color .15s; min-height:52px; }
+  .mob-tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:6px 2px; background:none; border:none; cursor:pointer; color:rgba(255,255,255,.45); transition:color .15s; min-height:52px; text-decoration:none; }
+  a.mob-tab:hover, a.mob-tab:visited { text-decoration: none; color: rgba(255,255,255,.45); }
   .mob-tab.active { color:#6edcb8; }
   .mob-tab-icon { font-size:20px; line-height:1; }
   .mob-tab-label { font-size:9px; font-weight:700; font-family:var(--font-main); letter-spacing:.03em; white-space:nowrap; }

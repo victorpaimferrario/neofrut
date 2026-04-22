@@ -1,4 +1,50 @@
 // ─────────── ROUTER ───────────
+// navClick: intercepta cliques nas abas <a>.
+// - Clique normal: SPA (preventDefault + showPage)
+// - Ctrl/Cmd/Shift + clique ou clique do meio: deixa o browser abrir nova aba
+// - Botão do meio: tratado via evento auxclick (registrado abaixo)
+function navClick(event, id) {
+  // Se for clique com modificador (Ctrl/Cmd/Shift/Alt) ou não for botão esquerdo:
+  // deixa o comportamento nativo do link (abrir nova aba/janela)
+  if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return true;
+  if (event.button && event.button !== 0) return true;
+  // Clique normal: SPA
+  event.preventDefault();
+  showPage(id);
+  // Atualizar URL sem recarregar (para suportar back/forward e refresh)
+  try { history.replaceState(null, '', '?page=' + id); } catch(e) {}
+  return false;
+}
+
+// Middle click (auxclick com button=1) abre nova aba — comportamento nativo do <a>.
+// Chrome/Firefox já fazem isso por padrão. Mas o 'onclick' pode ter sido disparado
+// em alguns casos. Garantimos que em middle click não chamamos showPage.
+document.addEventListener('auxclick', function(e) {
+  const tab = e.target.closest('.nav-tab,.mob-tab');
+  if (tab && e.button === 1) {
+    // Browser abre nova aba automaticamente via href. Não interferir.
+    // Só impede handlers SPA se tiverem sido registrados.
+    // (nenhuma ação necessária — o href cuida disso)
+  }
+});
+
+// Ler ?page= da URL ao carregar (ou ao navegar com back/forward)
+function _aplicarPaginaDaUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const pag = params.get('page');
+  if (pag) {
+    localStorage.setItem('neofrut_aba_ativa', pag);
+  }
+}
+_aplicarPaginaDaUrl();
+
+// Back/forward do navegador
+window.addEventListener('popstate', function() {
+  const params = new URLSearchParams(window.location.search);
+  const pag = params.get('page') || localStorage.getItem('neofrut_aba_ativa') || 'dashboard';
+  showPage(pag);
+});
+
 function showPage(id) {
   // Verificar permissão de visualização
   if (typeof podeVer === 'function' && !podeVer(id)) {

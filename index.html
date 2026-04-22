@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1776825040">
+<link rel="stylesheet" href="styles.css?v=1776825215">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -32,13 +32,13 @@
 <nav>
   <div class="nav-brand"><img src="logo.png" style="height:36px;width:auto;vertical-align:middle"></div>
   <div class="nav-tabs">
-    <button class="nav-tab active" data-page="dashboard" onclick="showPage('dashboard')">PAINEL GERAL</button>
-    <button class="nav-tab" data-page="programacao" onclick="showPage('programacao')">📦 PROGRAMAÇÃO</button>
-    <button class="nav-tab" data-page="analise" onclick="showPage('analise')">ANÁLISE</button>
-    <button class="nav-tab" data-page="lancamento" onclick="showPage('lancamento')">+ LANÇAMENTO</button>
-    <button class="nav-tab" data-page="vendas" onclick="showPage('vendas')">💰 VENDAS</button>
-    <button class="nav-tab" data-page="mercados" onclick="showPage('mercados')">📊 ESTRATÉGIA DE VENDAS</button>
-    <button class="nav-tab" data-page="gestao" id="nav-gestao" onclick="showPage('gestao')" style="display:none">⚙️ GESTÃO</button>
+    <a class="nav-tab active" data-page="dashboard" href="?page=dashboard" onclick="return navClick(event,'dashboard')">PAINEL GERAL</a>
+    <a class="nav-tab" data-page="programacao" href="?page=programacao" onclick="return navClick(event,'programacao')">📦 PROGRAMAÇÃO</a>
+    <a class="nav-tab" data-page="analise" href="?page=analise" onclick="return navClick(event,'analise')">ANÁLISE</a>
+    <a class="nav-tab" data-page="lancamento" href="?page=lancamento" onclick="return navClick(event,'lancamento')">+ LANÇAMENTO</a>
+    <a class="nav-tab" data-page="vendas" href="?page=vendas" onclick="return navClick(event,'vendas')">💰 VENDAS</a>
+    <a class="nav-tab" data-page="mercados" href="?page=mercados" onclick="return navClick(event,'mercados')">📊 ESTRATÉGIA DE VENDAS</a>
+    <a class="nav-tab" data-page="gestao" id="nav-gestao" href="?page=gestao" onclick="return navClick(event,'gestao')" style="display:none">⚙️ GESTÃO</a>
   </div>
   <div class="nav-actions">
     <button onclick="openModal('modal-ajuda')" style="background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:800;color:var(--accent);font-family:var(--font-main);display:flex;align-items:center;justify-content:center" title="Ajuda do sistema">?</button>
@@ -49,24 +49,24 @@
 
 <!-- Bottom Tab Bar (mobile only) -->
 <div class="mobile-bottom-bar" id="mobile-bottom-bar">
-  <button class="mob-tab active" onclick="showPage('dashboard')" data-page="dashboard">
+  <a class="mob-tab active" href="?page=dashboard" onclick="return navClick(event,'dashboard')" data-page="dashboard">
     <span class="mob-tab-icon">📊</span><span class="mob-tab-label">Painel</span>
-  </button>
-  <button class="mob-tab" onclick="showPage('programacao')" data-page="programacao">
+  </a>
+  <a class="mob-tab" href="?page=programacao" onclick="return navClick(event,'programacao')" data-page="programacao">
     <span class="mob-tab-icon">📦</span><span class="mob-tab-label">Programação</span>
-  </button>
-  <button class="mob-tab" onclick="showPage('analise')" data-page="analise">
+  </a>
+  <a class="mob-tab" href="?page=analise" onclick="return navClick(event,'analise')" data-page="analise">
     <span class="mob-tab-icon">📈</span><span class="mob-tab-label">Análise</span>
-  </button>
-  <button class="mob-tab" onclick="showPage('lancamento')" data-page="lancamento">
+  </a>
+  <a class="mob-tab" href="?page=lancamento" onclick="return navClick(event,'lancamento')" data-page="lancamento">
     <span class="mob-tab-icon">✏️</span><span class="mob-tab-label">Lançar</span>
-  </button>
-  <button class="mob-tab" onclick="showPage('vendas')" data-page="vendas">
+  </a>
+  <a class="mob-tab" href="?page=vendas" onclick="return navClick(event,'vendas')" data-page="vendas">
     <span class="mob-tab-icon">💰</span><span class="mob-tab-label">Vendas</span>
-  </button>
-  <button class="mob-tab" onclick="showPage('mercados')" data-page="mercados">
+  </a>
+  <a class="mob-tab" href="?page=mercados" onclick="return navClick(event,'mercados')" data-page="mercados">
     <span class="mob-tab-icon">🎯</span><span class="mob-tab-label">Estratégia</span>
-  </button>
+  </a>
 </div>
 
 <!-- DASHBOARD -->
@@ -1336,21 +1336,21 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1776825040"></script>
-<script src="js/cidades_br.js?v=1776825040"></script>
-<script src="js/utils.js?v=1776825040"></script>
-<script src="js/storage.js?v=1776825040"></script>
-<script src="js/components.js?v=1776825040"></script>
-<script src="js/dashboard.js?v=1776825040"></script>
-<script src="js/lancamento.js?v=1776825040"></script>
-<script src="js/analise.js?v=1776825040"></script>
-<script src="js/vendas.js?v=1776825040"></script>
-<script src="js/gestao.js?v=1776825040"></script>
-<script src="js/mercados.js?v=1776825040"></script>
-<script src="js/programacao.js?v=1776825040"></script>
-<script src="js/router.js?v=1776825040"></script>
-<script src="js/app.js?v=1776825040"></script>
-<script src="js/auth.js?v=1776825040"></script>
+<script src="js/config.js?v=1776825215"></script>
+<script src="js/cidades_br.js?v=1776825215"></script>
+<script src="js/utils.js?v=1776825215"></script>
+<script src="js/storage.js?v=1776825215"></script>
+<script src="js/components.js?v=1776825215"></script>
+<script src="js/dashboard.js?v=1776825215"></script>
+<script src="js/lancamento.js?v=1776825215"></script>
+<script src="js/analise.js?v=1776825215"></script>
+<script src="js/vendas.js?v=1776825215"></script>
+<script src="js/gestao.js?v=1776825215"></script>
+<script src="js/mercados.js?v=1776825215"></script>
+<script src="js/programacao.js?v=1776825215"></script>
+<script src="js/router.js?v=1776825215"></script>
+<script src="js/app.js?v=1776825215"></script>
+<script src="js/auth.js?v=1776825215"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
