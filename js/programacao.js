@@ -828,18 +828,33 @@ function abrirModalProgEditar(id) {
   const acoes = document.getElementById('prog-acoes-editar');
   acoes.style.display = 'flex';
   const btnStatus = document.getElementById('prog-btn-status');
+  const btnReverter = document.getElementById('prog-btn-reverter-status');
+
   if (c.status === 'pendente') {
+    // Pendente: pode confirmar. Nada para desfazer.
     btnStatus.textContent = '✓ Confirmar carga';
-    btnStatus.style.cssText = '';
+    btnStatus.style.cssText = 'flex:1;font-size:11px;padding:8px';
     btnStatus.onclick = () => _progAtualizarStatus(id, 'confirmado');
+    if (btnReverter) btnReverter.style.display = 'none';
   } else if (c.status === 'confirmado') {
+    // Confirmado: avança para entregue OU volta para pendente
     btnStatus.textContent = '✓✓ Marcar como Entregue';
-    btnStatus.style.cssText = 'background:var(--forest);color:#fff;border-color:var(--forest)';
+    btnStatus.style.cssText = 'flex:1;font-size:11px;padding:8px;background:var(--forest);color:#fff;border-color:var(--forest)';
     btnStatus.onclick = () => _progAtualizarStatus(id, 'entregue');
+    if (btnReverter) {
+      btnReverter.style.display = '';
+      btnReverter.textContent = '↩ Voltar p/ pendente';
+      btnReverter.onclick = () => {
+        if (!confirm('Voltar esta carga de CONFIRMADA para PENDENTE?')) return;
+        _progAtualizarStatus(id, 'pendente');
+      };
+    }
   } else if (c.status === 'entregue') {
+    // Entregue: volta para confirmado (botão principal)
     btnStatus.textContent = '↩ Voltar para confirmado';
-    btnStatus.style.cssText = '';
+    btnStatus.style.cssText = 'flex:1;font-size:11px;padding:8px';
     btnStatus.onclick = () => _progAtualizarStatus(id, 'confirmado');
+    if (btnReverter) btnReverter.style.display = 'none';
   }
 
   // Botão Registrar Venda (visível para confirmado/entregue)
