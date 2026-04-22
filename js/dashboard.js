@@ -5,6 +5,26 @@ let currentFilter = 'todos';
 let currentEitoId = null;
 let _mapaFiltro = 'todos';
 
+// Busca contagens pendentes do Nado e mostra alerta laranja no topo do Painel
+async function renderAlertaNadoPendentes() {
+  const alertEl = document.getElementById('alerta-nado-pendentes');
+  const txtEl = document.getElementById('alerta-nado-pendentes-txt');
+  if (!alertEl || !txtEl) return;
+  try {
+    const pendentes = await loadContagemsNado('pendente').catch(() => []);
+    const n = pendentes.length;
+    if (n > 0) {
+      alertEl.style.display = 'flex';
+      txtEl.textContent = `${n} contagem${n > 1 ? 's' : ''} do campo pendente${n > 1 ? 's' : ''} de validação`;
+    } else {
+      alertEl.style.display = 'none';
+    }
+  } catch(e) {
+    // Em caso de falha, não mostrar alerta (evita ruído)
+    alertEl.style.display = 'none';
+  }
+}
+
 function renderDashboard() {
   const hoje = new Date();
   document.getElementById('hoje-badge').textContent =
@@ -92,6 +112,9 @@ function renderDashboard() {
       alertEl.style.display = 'none';
     }
   }
+
+  // Alerta de contagens do Nado pendentes de validação
+  renderAlertaNadoPendentes();
 
   const nomesMes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const mesNome = nomesMes[hoje.getMonth()+1];

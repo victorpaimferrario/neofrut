@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1776825487">
+<link rel="stylesheet" href="styles.css?v=1776825795">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -86,6 +86,16 @@
     </div>
     <button class="btn btn-primary" style="background:var(--vermelho);border-color:var(--vermelho);white-space:nowrap;font-size:12px" onclick="showPage('lancamento')">⚡ Lançar Agora</button>
   </div>
+  <a id="alerta-nado-pendentes" href="?page=lancamento" onclick="return navClick(event,'lancamento')" style="display:none;background:#fffbeb;border:1.5px solid #d97706;border-radius:10px;padding:12px 18px;margin-bottom:16px;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;cursor:pointer">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:20px">📋</span>
+      <div>
+        <div id="alerta-nado-pendentes-txt" style="font-size:13px;font-weight:800;color:#d97706"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Clique para validar as contagens do Nado</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="background:#d97706;border-color:#d97706;white-space:nowrap;font-size:12px" onclick="event.preventDefault();navClick(event,'lancamento')">📋 Validar</button>
+  </a>
   <div class="kpi-grid" id="kpi-grid"><div style="padding:20px;color:var(--muted);font-size:13px">⏳ Carregando dados...</div></div>
   <div id="dash-contratos-alertas" style="margin-bottom:16px"></div>
   <div class="areas-grid" id="areas-grid"></div>
@@ -1336,21 +1346,21 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1776825487"></script>
-<script src="js/cidades_br.js?v=1776825487"></script>
-<script src="js/utils.js?v=1776825487"></script>
-<script src="js/storage.js?v=1776825487"></script>
-<script src="js/components.js?v=1776825487"></script>
-<script src="js/dashboard.js?v=1776825487"></script>
-<script src="js/lancamento.js?v=1776825487"></script>
-<script src="js/analise.js?v=1776825487"></script>
-<script src="js/vendas.js?v=1776825487"></script>
-<script src="js/gestao.js?v=1776825487"></script>
-<script src="js/mercados.js?v=1776825487"></script>
-<script src="js/programacao.js?v=1776825487"></script>
-<script src="js/router.js?v=1776825487"></script>
-<script src="js/app.js?v=1776825487"></script>
-<script src="js/auth.js?v=1776825487"></script>
+<script src="js/config.js?v=1776825795"></script>
+<script src="js/cidades_br.js?v=1776825795"></script>
+<script src="js/utils.js?v=1776825795"></script>
+<script src="js/storage.js?v=1776825795"></script>
+<script src="js/components.js?v=1776825795"></script>
+<script src="js/dashboard.js?v=1776825795"></script>
+<script src="js/lancamento.js?v=1776825795"></script>
+<script src="js/analise.js?v=1776825795"></script>
+<script src="js/vendas.js?v=1776825795"></script>
+<script src="js/gestao.js?v=1776825795"></script>
+<script src="js/mercados.js?v=1776825795"></script>
+<script src="js/programacao.js?v=1776825795"></script>
+<script src="js/router.js?v=1776825795"></script>
+<script src="js/app.js?v=1776825795"></script>
+<script src="js/auth.js?v=1776825795"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
