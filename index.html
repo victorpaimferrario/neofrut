@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1776825795">
+<link rel="stylesheet" href="styles.css?v=1777130760">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -37,6 +37,7 @@
     <a class="nav-tab" data-page="analise" href="?page=analise" onclick="return navClick(event,'analise')">ANÁLISE</a>
     <a class="nav-tab" data-page="lancamento" href="?page=lancamento" onclick="return navClick(event,'lancamento')">+ LANÇAMENTO</a>
     <a class="nav-tab" data-page="vendas" href="?page=vendas" onclick="return navClick(event,'vendas')">💰 VENDAS</a>
+    <a class="nav-tab" data-page="financeiro" href="?page=financeiro" onclick="return navClick(event,'financeiro')">💳 FINANCEIRO</a>
     <a class="nav-tab" data-page="mercados" href="?page=mercados" onclick="return navClick(event,'mercados')">📊 ESTRATÉGIA DE VENDAS</a>
     <a class="nav-tab" data-page="gestao" id="nav-gestao" href="?page=gestao" onclick="return navClick(event,'gestao')" style="display:none">⚙️ GESTÃO</a>
   </div>
@@ -1346,21 +1347,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1776825795"></script>
-<script src="js/cidades_br.js?v=1776825795"></script>
-<script src="js/utils.js?v=1776825795"></script>
-<script src="js/storage.js?v=1776825795"></script>
-<script src="js/components.js?v=1776825795"></script>
-<script src="js/dashboard.js?v=1776825795"></script>
-<script src="js/lancamento.js?v=1776825795"></script>
-<script src="js/analise.js?v=1776825795"></script>
-<script src="js/vendas.js?v=1776825795"></script>
-<script src="js/gestao.js?v=1776825795"></script>
-<script src="js/mercados.js?v=1776825795"></script>
-<script src="js/programacao.js?v=1776825795"></script>
-<script src="js/router.js?v=1776825795"></script>
-<script src="js/app.js?v=1776825795"></script>
-<script src="js/auth.js?v=1776825795"></script>
+<script src="js/config.js?v=1777130760"></script>
+<script src="js/cidades_br.js?v=1777130760"></script>
+<script src="js/utils.js?v=1777130760"></script>
+<script src="js/storage.js?v=1777130760"></script>
+<script src="js/components.js?v=1777130760"></script>
+<script src="js/dashboard.js?v=1777130760"></script>
+<script src="js/lancamento.js?v=1777130760"></script>
+<script src="js/analise.js?v=1777130760"></script>
+<script src="js/vendas.js?v=1777130760"></script>
+<script src="js/gestao.js?v=1777130760"></script>
+<script src="js/mercados.js?v=1777130760"></script>
+<script src="js/programacao.js?v=1777130760"></script>
+<script src="js/financeiro.js?v=1777130760"></script>
+<script src="js/router.js?v=1777130760"></script>
+<script src="js/app.js?v=1777130760"></script>
+<script src="js/auth.js?v=1777130760"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
@@ -1670,6 +1672,108 @@
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary acao-edicao" style="flex:1;padding:12px" onclick="salvarEditVenda()">Salvar Alterações</button>
       <button class="btn" style="padding:12px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:8px" onclick="closeEditVendaPanel()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PÁGINA FINANCEIRO -->
+<div id="page-financeiro" class="page">
+  <div class="dash-header">
+    <div class="hoje-badge" style="background:rgba(217,119,6,.12);color:#d97706">CONTROLE FINANCEIRO</div>
+    <h1>Financeiro Neofrut</h1>
+    <p>Cobranças, recebíveis e análise de R$/coco efetivo</p>
+  </div>
+
+  <!-- Sub-abas do Financeiro -->
+  <div class="fin-tabs">
+    <button class="fin-tab ativo" data-fintab="cobranca" onclick="setFinTab('cobranca')">📊 Painel Cobrança</button>
+    <button class="fin-tab" data-fintab="analise" onclick="setFinTab('analise')">📈 Painel Análise</button>
+    <button class="fin-tab" data-fintab="recebimentos" onclick="setFinTab('recebimentos')">💸 Recebimentos</button>
+    <button class="fin-tab" data-fintab="ajustes" onclick="setFinTab('ajustes')">🔧 Ajustes</button>
+  </div>
+
+  <!-- ==== SUB-ABA COBRANÇA ==== -->
+  <div id="fin-painel-cobranca" class="fin-painel ativo">
+
+    <!-- KPIs do topo -->
+    <div class="fin-kpis" id="fin-kpis">
+      <div class="vkpi" style="border-color:#fbbf24"><div class="vkpi-label">⚠ A receber HOJE</div><div class="vkpi-val" style="color:#9a6700">—</div><div class="vkpi-sub" id="kpi-hoje-sub">—</div></div>
+      <div class="vkpi" style="border-color:var(--vermelho-border)"><div class="vkpi-label">🔴 Em atraso</div><div class="vkpi-val" style="color:var(--vermelho)">—</div><div class="vkpi-sub" id="kpi-atraso-sub">—</div></div>
+      <div class="vkpi destaque"><div class="vkpi-label">💵 Recebido (mês)</div><div class="vkpi-val" id="kpi-receb-mes">—</div><div class="vkpi-sub" id="kpi-receb-mes-sub">—</div></div>
+      <div class="vkpi"><div class="vkpi-label">📊 Total a receber</div><div class="vkpi-val" id="kpi-total-receber">—</div><div class="vkpi-sub" id="kpi-total-sub">—</div></div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="fin-filtros">
+      <div class="fin-filtro-grupo">
+        <label class="fin-filtro-label">Status:</label>
+        <button class="fin-filtro-btn ativo" data-status="atrasada" onclick="setFinFiltroStatus('atrasada')">🔴 Atrasadas</button>
+        <button class="fin-filtro-btn" data-status="aberto" onclick="setFinFiltroStatus('aberto')">⏳ Em aberto</button>
+        <button class="fin-filtro-btn" data-status="pago_parcial" onclick="setFinFiltroStatus('pago_parcial')">½ Parciais</button>
+        <button class="fin-filtro-btn" data-status="pago" onclick="setFinFiltroStatus('pago')">✓ Pagas</button>
+        <button class="fin-filtro-btn" data-status="todas" onclick="setFinFiltroStatus('todas')">Todas</button>
+      </div>
+      <div class="fin-filtro-grupo">
+        <input type="text" class="fin-busca" id="fin-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaCobrancas()">
+      </div>
+    </div>
+
+    <!-- Lista de cobranças -->
+    <div class="fin-lista" id="fin-lista-cobrancas">
+      <div style="padding:20px;color:var(--muted);font-size:13px;text-align:center">⏳ Carregando cobranças...</div>
+    </div>
+
+  </div>
+
+  <!-- ==== OUTRAS SUB-ABAS (placeholder) ==== -->
+  <div id="fin-painel-analise" class="fin-painel">
+    <div style="padding:40px;text-align:center;color:var(--muted)">📈 Painel Análise — em desenvolvimento (Sprint 3)</div>
+  </div>
+  <div id="fin-painel-recebimentos" class="fin-painel">
+    <div style="padding:40px;text-align:center;color:var(--muted)">💸 Histórico de Recebimentos — em desenvolvimento</div>
+  </div>
+  <div id="fin-painel-ajustes" class="fin-painel">
+    <div style="padding:40px;text-align:center;color:var(--muted)">🔧 Ajustes (descontos/devoluções) — em desenvolvimento (Sprint 4)</div>
+  </div>
+
+</div>
+
+<!-- ==== MODAL: BAIXA DE PAGAMENTO ==== -->
+<div class="modal-overlay" id="modal-baixa-overlay">
+  <div class="modal" style="max-width:440px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:800">💸 Baixar Pagamento</div>
+      <button onclick="closeModal('modal-baixa-overlay')" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto">
+      <div id="baixa-info" style="background:var(--surface2);border-radius:8px;padding:12px"></div>
+      <div class="form-group">
+        <label class="form-label">Valor recebido (R$) *</label>
+        <input type="text" class="form-input" id="baixa-valor" inputmode="decimal" placeholder="0,00" oninput="onBaixaValorInput(this)">
+        <div id="baixa-valor-hint" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data do recebimento *</label>
+        <input type="date" class="form-input" id="baixa-data">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Forma de pagamento *</label>
+        <select class="form-select" id="baixa-forma">
+          <option value="pix">PIX</option>
+          <option value="transferencia">Transferência</option>
+          <option value="boleto">Boleto</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Taxa do banco (R$) — opcional</label>
+        <input type="number" class="form-input" id="baixa-taxa" min="0" step="0.01" placeholder="0,00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações (opcional)</label>
+        <textarea class="form-input" id="baixa-obs" rows="2" placeholder="Ex: pagamento parcial, etc."></textarea>
+      </div>
+      <div id="baixa-erro" style="display:none;color:var(--vermelho);font-size:12px;font-weight:600"></div>
+      <button class="btn btn-primary" onclick="confirmarBaixa()" style="width:100%;padding:13px;font-size:14px;font-weight:800">✓ Confirmar Pagamento</button>
     </div>
   </div>
 </div>

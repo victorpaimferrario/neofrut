@@ -55,7 +55,12 @@
       "Bash(ls \"G:\\\\Meu Drive\\\\1 - SISTEMA NEOFRUT\"/*.png \"G:\\\\Meu Drive\\\\1 - SISTEMA NEOFRUT\"/*.jpg)",
       "Bash(ls \"G:\\\\Meu Drive\\\\1 - SISTEMA NEOFRUT\\\\neofrut\"/*.png \"G:\\\\Meu Drive\\\\1 - SISTEMA NEOFRUT\\\\neofrut\"/*.jpg)",
       "Bash(ls -lt /c/Users/victo/Downloads/*.png)",
-      "Bash(powershell.exe -Command \"Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
+      "Bash(powershell.exe -Command \"Get-Command gh -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "mcp__1481fc4d-b97a-4048-96c0-295f82dc1f53__execute_sql",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__javascript_tool"
     ]
   }
 }

@@ -1096,3 +1096,59 @@
 
 /* Não duplicar badge em sub-elementos */
 .somente-leitura .somente-leitura::before { display: none; }
+
+/* ════════════════════════════════════════════
+   MÓDULO FINANCEIRO
+   ════════════════════════════════════════════ */
+.fin-tabs { display:flex; gap:6px; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:0; flex-wrap:wrap; overflow-x:auto; }
+.fin-tab { padding:10px 16px; border:none; background:none; font-size:13px; font-weight:700; color:var(--muted); cursor:pointer; border-bottom:3px solid transparent; transition:all .15s; white-space:nowrap; font-family:var(--font-main); }
+.fin-tab:hover { color:var(--forest); }
+.fin-tab.ativo { color:#d97706; border-bottom-color:#d97706; }
+.fin-painel { display:none; }
+.fin-painel.ativo { display:block; }
+
+.fin-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px; }
+
+.fin-filtros { display:flex; gap:12px; align-items:center; margin-bottom:14px; flex-wrap:wrap; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border); }
+.fin-filtro-grupo { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.fin-filtro-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.fin-filtro-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
+.fin-filtro-btn:hover { border-color:#d97706; }
+.fin-filtro-btn.ativo { background:#d97706; color:#fff; border-color:#d97706; }
+.fin-busca { padding:8px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; min-width:200px; }
+
+.fin-lista { display:flex; flex-direction:column; gap:8px; }
+.fin-cobranca { display:grid; grid-template-columns:1fr auto auto; gap:10px; padding:12px 14px; background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--border); border-radius:8px; align-items:center; transition:box-shadow .12s; }
+.fin-cobranca:hover { box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.fin-cobranca.atrasada { border-left-color:var(--vermelho); background:rgba(239,68,68,.03); }
+.fin-cobranca.aberto { border-left-color:#fbbf24; }
+.fin-cobranca.pago_parcial { border-left-color:#3b82f6; }
+.fin-cobranca.pago { border-left-color:var(--verde-border); opacity:.85; }
+.fin-cobranca.cancelado { border-left-color:#999; opacity:.55; }
+
+.fin-cob-info { min-width:0; }
+.fin-cob-cliente { font-size:14px; font-weight:800; color:var(--forest); margin-bottom:2px; }
+.fin-cob-meta { font-size:11px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; font-family:var(--font-mono); }
+.fin-cob-status { font-size:9px; font-weight:800; padding:3px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+.fin-cob-status.atrasada { background:var(--vermelho); color:#fff; }
+.fin-cob-status.aberto { background:#fef3c7; color:#92400e; }
+.fin-cob-status.pago_parcial { background:#dbeafe; color:#1e40af; }
+.fin-cob-status.pago { background:var(--verde-bg); color:var(--forest); }
+.fin-cob-status.cancelado { background:#e5e7eb; color:#6b7280; }
+
+.fin-cob-valores { text-align:right; }
+.fin-cob-valor { font-size:15px; font-weight:800; color:var(--forest); font-family:var(--font-mono); }
+.fin-cob-pago { font-size:11px; color:var(--muted); font-family:var(--font-mono); }
+.fin-cob-saldo { font-size:11px; color:var(--vermelho); font-weight:700; font-family:var(--font-mono); }
+
+.fin-cob-acoes { display:flex; gap:4px; flex-wrap:wrap; }
+.fin-acao-btn { width:32px; height:32px; border:1px solid var(--border); background:var(--surface); border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:all .12s; }
+.fin-acao-btn:hover { background:var(--surface2); }
+.fin-acao-btn.principal { background:#d97706; color:#fff; border-color:#d97706; font-weight:800; }
+.fin-acao-btn.principal:hover { background:#b45309; }
+
+@media (max-width: 700px) {
+  .fin-cobranca { grid-template-columns:1fr; }
+  .fin-cob-valores { text-align:left; }
+  .fin-cob-acoes { justify-content:flex-end; }
+}

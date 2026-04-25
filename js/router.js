@@ -98,6 +98,8 @@ function showPage(id) {
     }
   } else if (id === 'gestao') {
     initGestao();
+  } else if (id === 'financeiro') {
+    initFinanceiro();
   }
 }
 
