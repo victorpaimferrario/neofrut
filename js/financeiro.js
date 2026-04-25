@@ -15,6 +15,277 @@ function setFinTab(tab) {
   document.getElementById('fin-painel-' + tab)?.classList.add('ativo');
   localStorage.setItem('fin_tab', tab);
   if (tab === 'cobranca') renderPainelCobranca();
+  if (tab === 'analise') renderPainelAnalise();
+}
+
+// ──────── PAINEL ANÁLISE ────────
+let _finPeriodo = 'mes';
+
+function setFinPeriodo(p) {
+  _finPeriodo = p;
+  document.querySelectorAll('.fin-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === p));
+  renderPainelAnalise();
+}
+
+function _periodoIntervalo() {
+  const hoje = new Date();
+  const fim = new Date(hoje);
+  let inicio;
+  if (_finPeriodo === 'mes') {
+    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  } else if (_finPeriodo === '3m') {
+    inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 3);
+  } else if (_finPeriodo === '6m') {
+    inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 6);
+  } else if (_finPeriodo === 'ano') {
+    inicio = new Date(hoje.getFullYear(), 0, 1);
+  } else {
+    inicio = new Date(2000, 0, 1);
+  }
+  return {
+    inicio: inicio.toISOString().slice(0,10),
+    fim: fim.toISOString().slice(0,10)
+  };
+}
+
+async function renderPainelAnalise() {
+  const intervalo = _periodoIntervalo();
+  try {
+    // Buscar vendas no período (excluindo EXCLUIDO)
+    const { data: vendas, error: ve } = await _SB.from('vendas')
+      .select('*')
+      .gte('data', intervalo.inicio)
+      .lte('data', intervalo.fim)
+      .neq('status', 'EXCLUIDO');
+    if (ve) throw ve;
+
+    const vendasArr = vendas || [];
+    _renderKpisAnalise(vendasArr, intervalo);
+    _renderCanais(vendasArr);
+    _renderRankingClientes(vendasArr);
+    _renderInadimplencia(intervalo);
+  } catch(e) {
+    if (typeof _isAuthError === 'function' && _isAuthError(e)) { _tratarSessaoExpirada(); return; }
+    console.error('renderPainelAnalise:', e);
+  }
+}
+
+function _renderKpisAnalise(vendas, intervalo) {
+  // R$/coco efetivo (média ponderada por receita_liquida / cocos_entregues)
+  let receitaTotal = 0, cocosTotal = 0;
+  vendas.forEach(v => {
+    const cocos = (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
+    if (cocos > 0 && v.rpc_efetivo > 0) {
+      receitaTotal += Number(v.rpc_efetivo) * cocos;
+      cocosTotal += cocos;
+    }
+  });
+  const rpcEfetivo = cocosTotal > 0 ? receitaTotal / cocosTotal : 0;
+
+  // Ticket médio
+  const totalVendas = vendas.reduce((s,v) => s + (Number(v.total) || 0), 0);
+  const ticket = vendas.length > 0 ? totalVendas / vendas.length : 0;
+
+  document.getElementById('kpi-rpc-efetivo').textContent = 'R$ ' + rpcEfetivo.toFixed(2).replace('.', ',');
+  document.getElementById('kpi-rpc-efetivo-sub').textContent = vendas.length + ' venda' + (vendas.length !== 1 ? 's' : '') + ' · ' + Math.round(cocosTotal).toLocaleString('pt-BR') + ' cocos';
+
+  document.getElementById('kpi-ticket').textContent = 'R$ ' + Math.round(ticket).toLocaleString('pt-BR');
+  document.getElementById('kpi-ticket-sub').textContent = vendas.length + ' venda' + (vendas.length !== 1 ? 's' : '');
+
+  // RPC realizado, prazo médio, % no prazo (usando cobranças do período)
+  _calcularKpisDePagamento(intervalo);
+}
+
+async function _calcularKpisDePagamento(intervalo) {
+  try {
+    const { data: cobs } = await _SB.from('cobrancas')
+      .select('*')
+      .gte('data_emissao', intervalo.inicio)
+      .lte('data_emissao', intervalo.fim);
+
+    const arr = cobs || [];
+    const pagas = arr.filter(c => c.status === 'pago' && c.data_pagamento);
+
+    // Prazo médio: dias entre emissão e pagamento
+    let totalDias = 0, n = 0;
+    pagas.forEach(c => {
+      const e = new Date(c.data_emissao + 'T00:00:00');
+      const p = new Date(c.data_pagamento + 'T00:00:00');
+      const dias = Math.floor((p - e) / 86400000);
+      if (dias >= 0 && dias < 1000) { totalDias += dias; n++; }
+    });
+    const prazoMedio = n > 0 ? totalDias / n : 0;
+
+    // % no prazo
+    const noPrazo = pagas.filter(c => c.data_pagamento && c.data_pagamento <= c.data_vencimento).length;
+    const pctPrazo = pagas.length > 0 ? (noPrazo / pagas.length) * 100 : 0;
+
+    document.getElementById('kpi-prazo').textContent = Math.round(prazoMedio) + 'd';
+    document.getElementById('kpi-prazo-sub').textContent = pagas.length + ' cobrança' + (pagas.length !== 1 ? 's' : '') + ' analisada' + (pagas.length !== 1 ? 's' : '');
+    document.getElementById('kpi-no-prazo').textContent = pctPrazo.toFixed(0) + '%';
+    document.getElementById('kpi-no-prazo-sub').textContent = noPrazo + ' de ' + pagas.length + ' no prazo';
+
+    // RPC realizado (recebimentos / cocos_entregues no período)
+    _calcularRpcRealizado(intervalo);
+  } catch(e) { console.warn('_calcularKpisDePagamento:', e); }
+}
+
+async function _calcularRpcRealizado(intervalo) {
+  try {
+    const { data: recs } = await _SB.from('recebimentos')
+      .select('valor, valor_liquido, venda_id')
+      .gte('data_recebimento', intervalo.inicio)
+      .lte('data_recebimento', intervalo.fim);
+
+    if (!recs || recs.length === 0) {
+      document.getElementById('kpi-rpc-realizado').textContent = '—';
+      return;
+    }
+    const totalRecebido = recs.reduce((s,r) => s + (Number(r.valor_liquido) || Number(r.valor) || 0), 0);
+    const vendaIds = [...new Set(recs.map(r => r.venda_id).filter(Boolean))];
+    if (vendaIds.length === 0) {
+      document.getElementById('kpi-rpc-realizado').textContent = '—';
+      return;
+    }
+    const { data: vds } = await _SB.from('vendas')
+      .select('id, qtde, quebra_cocos')
+      .in('id', vendaIds);
+    let cocos = 0;
+    (vds || []).forEach(v => { cocos += (Number(v.qtde)||0) + (Number(v.quebra_cocos)||0); });
+    const rpcReal = cocos > 0 ? totalRecebido / cocos : 0;
+    document.getElementById('kpi-rpc-realizado').textContent = 'R$ ' + rpcReal.toFixed(2).replace('.', ',');
+    document.getElementById('kpi-rpc-realizado-sub').textContent = 'R$ ' + Math.round(totalRecebido).toLocaleString('pt-BR') + ' recebido';
+  } catch(e) { console.warn('_calcularRpcRealizado:', e); }
+}
+
+function _renderCanais(vendas) {
+  let mesa = { receita: 0, cocos: 0, n: 0 };
+  let fabrica = { receita: 0, cocos: 0, n: 0 };
+
+  vendas.forEach(v => {
+    const cocos = (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
+    const receita = Number(v.total) || 0;
+    if (v.tipo_venda === 'litro') {
+      fabrica.receita += receita;
+      fabrica.cocos += cocos;
+      fabrica.n += 1;
+    } else {
+      mesa.receita += receita;
+      mesa.cocos += cocos;
+      mesa.n += 1;
+    }
+  });
+
+  const total = mesa.receita + fabrica.receita;
+  const pctMesa = total > 0 ? (mesa.receita / total) * 100 : 0;
+  const pctFabrica = total > 0 ? (fabrica.receita / total) * 100 : 0;
+
+  const fmt = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+  document.getElementById('canal-mesa-valor').textContent = fmt(mesa.receita);
+  document.getElementById('canal-mesa-meta').textContent = `${pctMesa.toFixed(0)}% · ${mesa.n} venda${mesa.n!==1?'s':''} · R$/coco médio: R$ ${(mesa.cocos>0 ? mesa.receita/mesa.cocos : 0).toFixed(2).replace('.',',')}`;
+  document.getElementById('canal-mesa-bar').style.width = pctMesa + '%';
+
+  document.getElementById('canal-fabrica-valor').textContent = fmt(fabrica.receita);
+  document.getElementById('canal-fabrica-meta').textContent = `${pctFabrica.toFixed(0)}% · ${fabrica.n} venda${fabrica.n!==1?'s':''} · R$/coco médio: R$ ${(fabrica.cocos>0 ? fabrica.receita/fabrica.cocos : 0).toFixed(2).replace('.',',')}`;
+  document.getElementById('canal-fabrica-bar').style.width = pctFabrica + '%';
+}
+
+function _renderRankingClientes(vendas) {
+  // Agrupar por cliente
+  const porCliente = {};
+  vendas.forEach(v => {
+    const nome = (v.cliente || '—').toUpperCase();
+    if (!porCliente[nome]) porCliente[nome] = { nome, receita: 0, cocos: 0, vendas: 0 };
+    porCliente[nome].receita += Number(v.total) || 0;
+    porCliente[nome].cocos += (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
+    porCliente[nome].vendas += 1;
+  });
+
+  // Calcular RPC por cliente, filtrar quem tem >= 2 vendas
+  const clientes = Object.values(porCliente)
+    .filter(c => c.vendas >= 2 && c.cocos > 0)
+    .map(c => ({ ...c, rpc: c.receita / c.cocos }))
+    .sort((a, b) => b.rpc - a.rpc);
+
+  if (clientes.length === 0) {
+    document.getElementById('fin-ranking-clientes').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Sem dados suficientes (mín. 2 vendas)</div>';
+    return;
+  }
+
+  const top = clientes.slice(0, 10);
+  const bottom = clientes.length > 15 ? clientes.slice(-5).reverse() : [];
+
+  const renderRow = (c, idx, tipo) => `
+    <div class="fin-rank-row ${tipo}">
+      <span class="fin-rank-pos">${idx}</span>
+      <span class="fin-rank-cliente">${escapeHtml(c.nome)}</span>
+      <span class="fin-rank-rpc ${tipo === 'top' ? 'alto' : 'baixo'}">R$ ${c.rpc.toFixed(2).replace('.',',')}</span>
+      <span class="fin-rank-receita">R$ ${Math.round(c.receita).toLocaleString('pt-BR')}</span>
+      <span class="fin-rank-vendas">${c.vendas}v</span>
+    </div>
+  `;
+
+  let html = `
+    <div class="fin-rank-row" style="border-bottom:2px solid var(--border);font-weight:700;text-transform:uppercase;font-size:10px;color:var(--muted);letter-spacing:.05em">
+      <span></span>
+      <span>Cliente</span>
+      <span style="text-align:right">R$/coco</span>
+      <span style="text-align:right">Receita</span>
+      <span style="text-align:right">Vendas</span>
+    </div>
+    <div class="fin-rank-divisor">🏆 TOP 10 (melhores margens)</div>
+    ${top.map((c, i) => renderRow(c, i + 1, 'top')).join('')}
+  `;
+  if (bottom.length > 0) {
+    html += `<div class="fin-rank-divisor" style="background:rgba(239,68,68,.06);color:var(--vermelho)">⚠️ BOTTOM 5 (margens baixas)</div>`;
+    html += bottom.map((c, i) => renderRow(c, clientes.length - i, 'bottom')).join('');
+  }
+
+  document.getElementById('fin-ranking-clientes').innerHTML = html;
+}
+
+async function _renderInadimplencia(intervalo) {
+  try {
+    const { data: cobs } = await _SB.from('cobrancas')
+      .select('status, data_vencimento, data_pagamento, valor_atual')
+      .gte('data_emissao', intervalo.inicio)
+      .lte('data_emissao', intervalo.fim);
+
+    const arr = cobs || [];
+    const total = arr.length;
+    const pagas = arr.filter(c => c.status === 'pago');
+    const noPrazo = pagas.filter(c => c.data_pagamento && c.data_pagamento <= c.data_vencimento).length;
+    const atrasoPagaram = pagas.filter(c => c.data_pagamento && c.data_pagamento > c.data_vencimento).length;
+    const aindaAtrasadas = arr.filter(c => {
+      if (c.status === 'pago' || c.status === 'cancelado') return false;
+      return c.data_vencimento < new Date().toISOString().slice(0,10);
+    }).length;
+    const aindaAbertas = total - pagas.length - aindaAtrasadas;
+
+    const html = `
+      <div class="fin-inad-card" style="border-color:var(--verde-border);background:var(--verde-bg)">
+        <div class="fin-inad-label">Pagas no prazo</div>
+        <div class="fin-inad-valor" style="color:var(--forest)">${noPrazo}</div>
+        <div class="fin-inad-sub">${total > 0 ? ((noPrazo/total)*100).toFixed(0) : 0}% do total</div>
+      </div>
+      <div class="fin-inad-card" style="border-color:#fbbf24;background:#fef9e7">
+        <div class="fin-inad-label">Pagas com atraso</div>
+        <div class="fin-inad-valor" style="color:#9a6700">${atrasoPagaram}</div>
+        <div class="fin-inad-sub">${total > 0 ? ((atrasoPagaram/total)*100).toFixed(0) : 0}% do total</div>
+      </div>
+      <div class="fin-inad-card" style="border-color:var(--vermelho-border);background:rgba(239,68,68,.06)">
+        <div class="fin-inad-label">Ainda atrasadas</div>
+        <div class="fin-inad-valor" style="color:var(--vermelho)">${aindaAtrasadas}</div>
+        <div class="fin-inad-sub">${total > 0 ? ((aindaAtrasadas/total)*100).toFixed(0) : 0}% do total</div>
+      </div>
+      <div class="fin-inad-card">
+        <div class="fin-inad-label">Em aberto (no prazo)</div>
+        <div class="fin-inad-valor" style="color:var(--text)">${aindaAbertas}</div>
+        <div class="fin-inad-sub">${total > 0 ? ((aindaAbertas/total)*100).toFixed(0) : 0}% do total</div>
+      </div>
+    `;
+    document.getElementById('fin-inadimplencia').innerHTML = html;
+  } catch(e) { console.warn('_renderInadimplencia:', e); }
 }
 
 async function carregarCobrancas() {

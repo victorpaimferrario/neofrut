@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1777130760">
+<link rel="stylesheet" href="styles.css?v=1777131410">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -1347,22 +1347,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1777130760"></script>
-<script src="js/cidades_br.js?v=1777130760"></script>
-<script src="js/utils.js?v=1777130760"></script>
-<script src="js/storage.js?v=1777130760"></script>
-<script src="js/components.js?v=1777130760"></script>
-<script src="js/dashboard.js?v=1777130760"></script>
-<script src="js/lancamento.js?v=1777130760"></script>
-<script src="js/analise.js?v=1777130760"></script>
-<script src="js/vendas.js?v=1777130760"></script>
-<script src="js/gestao.js?v=1777130760"></script>
-<script src="js/mercados.js?v=1777130760"></script>
-<script src="js/programacao.js?v=1777130760"></script>
-<script src="js/financeiro.js?v=1777130760"></script>
-<script src="js/router.js?v=1777130760"></script>
-<script src="js/app.js?v=1777130760"></script>
-<script src="js/auth.js?v=1777130760"></script>
+<script src="js/config.js?v=1777131410"></script>
+<script src="js/cidades_br.js?v=1777131410"></script>
+<script src="js/utils.js?v=1777131410"></script>
+<script src="js/storage.js?v=1777131410"></script>
+<script src="js/components.js?v=1777131410"></script>
+<script src="js/dashboard.js?v=1777131410"></script>
+<script src="js/lancamento.js?v=1777131410"></script>
+<script src="js/analise.js?v=1777131410"></script>
+<script src="js/vendas.js?v=1777131410"></script>
+<script src="js/gestao.js?v=1777131410"></script>
+<script src="js/mercados.js?v=1777131410"></script>
+<script src="js/programacao.js?v=1777131410"></script>
+<script src="js/financeiro.js?v=1777131410"></script>
+<script src="js/router.js?v=1777131410"></script>
+<script src="js/app.js?v=1777131410"></script>
+<script src="js/auth.js?v=1777131410"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
@@ -1727,7 +1727,64 @@
 
   <!-- ==== OUTRAS SUB-ABAS (placeholder) ==== -->
   <div id="fin-painel-analise" class="fin-painel">
-    <div style="padding:40px;text-align:center;color:var(--muted)">📈 Painel Análise — em desenvolvimento (Sprint 3)</div>
+
+    <!-- Filtro de período -->
+    <div class="fin-filtros">
+      <div class="fin-filtro-grupo">
+        <label class="fin-filtro-label">Período:</label>
+        <button class="fin-periodo-btn ativo" data-periodo="mes" onclick="setFinPeriodo('mes')">Este mês</button>
+        <button class="fin-periodo-btn" data-periodo="3m" onclick="setFinPeriodo('3m')">Últimos 3 meses</button>
+        <button class="fin-periodo-btn" data-periodo="6m" onclick="setFinPeriodo('6m')">6 meses</button>
+        <button class="fin-periodo-btn" data-periodo="ano" onclick="setFinPeriodo('ano')">Este ano</button>
+        <button class="fin-periodo-btn" data-periodo="todos" onclick="setFinPeriodo('todos')">Todo histórico</button>
+      </div>
+    </div>
+
+    <!-- KPIs estratégicos -->
+    <div class="fin-kpis" id="fin-analise-kpis" style="margin-top:14px">
+      <div class="vkpi destaque" style="border-color:var(--forest)"><div class="vkpi-label">💰 R$/coco efetivo</div><div class="vkpi-val" id="kpi-rpc-efetivo">—</div><div class="vkpi-sub" id="kpi-rpc-efetivo-sub">previsto na venda</div></div>
+      <div class="vkpi" style="border-color:#3b82f6"><div class="vkpi-label">💵 R$/coco realizado</div><div class="vkpi-val" id="kpi-rpc-realizado" style="color:#1e40af">—</div><div class="vkpi-sub" id="kpi-rpc-realizado-sub">recebido de fato</div></div>
+      <div class="vkpi"><div class="vkpi-label">📊 Ticket médio</div><div class="vkpi-val" id="kpi-ticket">—</div><div class="vkpi-sub" id="kpi-ticket-sub">por venda</div></div>
+      <div class="vkpi"><div class="vkpi-label">⏱ Prazo médio real</div><div class="vkpi-val" id="kpi-prazo">—</div><div class="vkpi-sub" id="kpi-prazo-sub">dias até pagamento</div></div>
+      <div class="vkpi"><div class="vkpi-label">✅ % no prazo</div><div class="vkpi-val" id="kpi-no-prazo">—</div><div class="vkpi-sub" id="kpi-no-prazo-sub">pagas até o vencto</div></div>
+    </div>
+
+    <!-- Receita por canal -->
+    <div class="fin-bloco" style="margin-top:18px">
+      <div class="fin-bloco-titulo">Receita por canal</div>
+      <div class="fin-canais" id="fin-canais">
+        <div class="fin-canal" id="canal-mesa">
+          <div class="fin-canal-label">🥥 Mesa (coco)</div>
+          <div class="fin-canal-valor" id="canal-mesa-valor">—</div>
+          <div class="fin-canal-meta" id="canal-mesa-meta">—</div>
+          <div class="fin-canal-bar"><div class="fin-canal-fill" id="canal-mesa-bar" style="width:0%;background:var(--forest)"></div></div>
+        </div>
+        <div class="fin-canal" id="canal-fabrica">
+          <div class="fin-canal-label">🏭 Fábrica (litro)</div>
+          <div class="fin-canal-valor" id="canal-fabrica-valor">—</div>
+          <div class="fin-canal-meta" id="canal-fabrica-meta">—</div>
+          <div class="fin-canal-bar"><div class="fin-canal-fill" id="canal-fabrica-bar" style="width:0%;background:#3b82f6"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ranking de clientes -->
+    <div class="fin-bloco" style="margin-top:18px">
+      <div class="fin-bloco-titulo">🏆 Ranking de Clientes por R$/coco efetivo</div>
+      <div class="fin-bloco-sub">Top 10 melhores e Bottom 5 piores margens (mín. 2 vendas no período)</div>
+      <div id="fin-ranking-clientes">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">⏳ Calculando...</div>
+      </div>
+    </div>
+
+    <!-- Análise de inadimplência -->
+    <div class="fin-bloco" style="margin-top:18px">
+      <div class="fin-bloco-titulo">📊 Análise de pagamentos</div>
+      <div class="fin-inad-grid" id="fin-inadimplencia">
+        <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">⏳ Calculando...</div>
+      </div>
+    </div>
+
   </div>
   <div id="fin-painel-recebimentos" class="fin-painel">
     <div style="padding:40px;text-align:center;color:var(--muted)">💸 Histórico de Recebimentos — em desenvolvimento</div>
