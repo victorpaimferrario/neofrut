@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1777139736">
+<link rel="stylesheet" href="styles.css?v=1777140255">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -1348,22 +1348,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1777139736"></script>
-<script src="js/cidades_br.js?v=1777139736"></script>
-<script src="js/utils.js?v=1777139736"></script>
-<script src="js/storage.js?v=1777139736"></script>
-<script src="js/components.js?v=1777139736"></script>
-<script src="js/dashboard.js?v=1777139736"></script>
-<script src="js/lancamento.js?v=1777139736"></script>
-<script src="js/analise.js?v=1777139736"></script>
-<script src="js/vendas.js?v=1777139736"></script>
-<script src="js/gestao.js?v=1777139736"></script>
-<script src="js/mercados.js?v=1777139736"></script>
-<script src="js/programacao.js?v=1777139736"></script>
-<script src="js/financeiro.js?v=1777139736"></script>
-<script src="js/router.js?v=1777139736"></script>
-<script src="js/app.js?v=1777139736"></script>
-<script src="js/auth.js?v=1777139736"></script>
+<script src="js/config.js?v=1777140255"></script>
+<script src="js/cidades_br.js?v=1777140255"></script>
+<script src="js/utils.js?v=1777140255"></script>
+<script src="js/storage.js?v=1777140255"></script>
+<script src="js/components.js?v=1777140255"></script>
+<script src="js/dashboard.js?v=1777140255"></script>
+<script src="js/lancamento.js?v=1777140255"></script>
+<script src="js/analise.js?v=1777140255"></script>
+<script src="js/vendas.js?v=1777140255"></script>
+<script src="js/gestao.js?v=1777140255"></script>
+<script src="js/mercados.js?v=1777140255"></script>
+<script src="js/programacao.js?v=1777140255"></script>
+<script src="js/financeiro.js?v=1777140255"></script>
+<script src="js/router.js?v=1777140255"></script>
+<script src="js/app.js?v=1777140255"></script>
+<script src="js/auth.js?v=1777140255"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
@@ -1781,7 +1781,7 @@
           <label class="fin-filtro-label">Ano:</label>
         </div>
         <div class="fin-filtro-grupo">
-          <input type="text" class="fin-busca" id="fin-an-busca" placeholder="🔍 Buscar cliente..." oninput="renderPainelAnalise()">
+          <input type="text" class="fin-busca" id="fin-an-busca" placeholder="🔍 Buscar cliente (Enter para ver detalhes)..." oninput="renderPainelAnalise()" onkeydown="if(event.key==='Enter' && this.value.trim()){openClienteFinPanel(this.value.trim());}">
         </div>
       </div>
       <div class="fin-filtro-linha">
@@ -2010,6 +2010,19 @@
       <button class="btn btn-primary" onclick="confirmarBaixa()" style="width:100%;padding:13px;font-size:14px;font-weight:800">✓ Confirmar Pagamento</button>
     </div>
   </div>
+</div>
+
+<!-- ==== PAINEL LATERAL: ANÁLISE POR CLIENTE (Painel Análise) ==== -->
+<div class="side-panel-overlay" id="cli-fin-overlay" onclick="closeClienteFinPanel()"></div>
+<div class="side-panel" id="cli-fin-panel">
+  <div class="side-panel-header">
+    <div>
+      <div class="side-panel-title" id="cli-fin-title">Cliente</div>
+      <div class="side-panel-sub" id="cli-fin-sub"></div>
+    </div>
+    <button class="side-panel-close" onclick="closeClienteFinPanel()">✕</button>
+  </div>
+  <div class="side-panel-body" id="cli-fin-body"></div>
 </div>
 
 <!-- ==== PAINEL LATERAL: DETALHES DA COBRANÇA ==== -->

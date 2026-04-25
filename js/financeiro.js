@@ -409,7 +409,7 @@ function _renderRankingClientes(vendas) {
   const bottom = clientes.length > 15 ? clientes.slice(-5).reverse() : [];
 
   const renderRow = (c, idx, tipo) => `
-    <div class="fin-rank-row ${tipo}">
+    <div class="fin-rank-row ${tipo}" onclick="openClienteFinPanel('${escapeHtml(c.nome).replace(/'/g, '&apos;')}')" style="cursor:pointer" title="Clique para ver detalhes do cliente">
       <span class="fin-rank-pos">${idx}</span>
       <span class="fin-rank-cliente">${escapeHtml(c.nome)}</span>
       <span class="fin-rank-rpc ${tipo === 'top' ? 'alto' : 'baixo'}">R$ ${c.rpc.toFixed(2).replace('.',',')}</span>
@@ -1726,4 +1726,128 @@ async function openCobPanel(cobrancaId) {
 function closeCobPanel() {
   document.getElementById('cob-overlay')?.classList.remove('open');
   document.getElementById('cob-panel')?.classList.remove('open');
+}
+
+// ═══════════════════════════════════════
+// PAINEL LATERAL: ANÁLISE POR CLIENTE
+// ═══════════════════════════════════════
+async function openClienteFinPanel(clienteNome) {
+  if (!clienteNome) return;
+  const nome = clienteNome.trim().toUpperCase();
+  document.getElementById('cli-fin-title').textContent = clienteNome;
+  document.getElementById('cli-fin-sub').textContent = 'Carregando dados...';
+  document.getElementById('cli-fin-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando análise do cliente...</div>';
+  document.getElementById('cli-fin-overlay').classList.add('open');
+  document.getElementById('cli-fin-panel').classList.add('open');
+
+  try {
+    const intervalo = _periodoIntervalo();
+    const labelPeriodo = _finAnAno === 'todos' ? 'Todo histórico' : (_finAnMes === 'todos' ? _finAnAno : _finAnAno + '/' + _finAnMes.padStart(2,'0'));
+
+    // 1. Buscar TODAS as vendas do cliente no período
+    const { data: vendas, error: ve } = await _SB.from('vendas')
+      .select('*')
+      .gte('data', intervalo.inicio)
+      .lte('data', intervalo.fim)
+      .neq('status', 'EXCLUIDO')
+      .ilike('cliente', nome);
+    if (ve) throw ve;
+
+    const vendasArr = vendas || [];
+    if (vendasArr.length === 0) {
+      document.getElementById('cli-fin-sub').textContent = labelPeriodo + ' · sem vendas';
+      document.getElementById('cli-fin-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Este cliente não tem vendas no período selecionado.</div>';
+      return;
+    }
+
+    // 2. Buscar cobranças associadas
+    const vendaIds = vendasArr.map(v => v.id);
+    const { data: cobs } = await _SB.from('cobrancas')
+      .select('*')
+      .in('venda_id', vendaIds);
+    const cobMap = {};
+    (cobs || []).forEach(c => { cobMap[c.venda_id] = c; });
+
+    // 3. Calcular agregados
+    let totalCocos = 0, totalReceitaBruta = 0, totalReceitaLiquida = 0;
+    let totalRecebido = 0, totalSaldo = 0;
+    let pagas = 0, parciais = 0, atrasadas = 0, abertas = 0, canceladas = 0;
+    const hojeISO = new Date().toISOString().slice(0,10);
+
+    vendasArr.forEach(v => {
+      totalCocos += _cocosEntreguesVenda(v);
+      totalReceitaBruta += Number(v.total) || 0;
+      totalReceitaLiquida += _receitaLiquidaVenda(v);
+      const c = cobMap[v.id];
+      if (c) {
+        totalRecebido += Number(c.valor_pago) || 0;
+        totalSaldo += (Number(c.valor_atual) || 0) - (Number(c.valor_pago) || 0);
+        if (c.status === 'cancelado') canceladas++;
+        else if (c.status === 'pago') pagas++;
+        else if (c.data_vencimento < hojeISO && c.status !== 'pago') atrasadas++;
+        else if (c.status === 'pago_parcial') parciais++;
+        else abertas++;
+      }
+    });
+
+    const rpcReal = totalCocos > 0 ? totalReceitaLiquida / totalCocos : 0;
+
+    // Atualizar header
+    document.getElementById('cli-fin-sub').textContent = `${labelPeriodo} · ${vendasArr.length} venda${vendasArr.length>1?'s':''}`;
+
+    // Bloco de KPIs
+    let html = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div class="side-kpi"><div class="side-kpi-label">🥥 Cocos entregues</div><div class="side-kpi-value">${totalCocos.toLocaleString('pt-BR')}</div></div>
+      <div class="side-kpi"><div class="side-kpi-label">💰 Faturamento (NF)</div><div class="side-kpi-value" style="color:var(--forest)">R$ ${Math.round(totalReceitaBruta).toLocaleString('pt-BR')}</div></div>
+      <div class="side-kpi" style="border-left-color:#3b82f6"><div class="side-kpi-label">💵 Receita líquida</div><div class="side-kpi-value" style="color:#1e40af">R$ ${Math.round(totalReceitaLiquida).toLocaleString('pt-BR')}</div></div>
+      <div class="side-kpi"><div class="side-kpi-label">⭐ R$/coco real</div><div class="side-kpi-value">R$ ${rpcReal.toFixed(2).replace('.', ',')}</div></div>
+      <div class="side-kpi" style="border-left-color:${totalSaldo > 0 ? 'var(--vermelho)' : 'var(--verde-border)'}"><div class="side-kpi-label">${totalSaldo > 0 ? '⚠ Saldo a receber' : '✓ Tudo pago'}</div><div class="side-kpi-value" style="color:${totalSaldo > 0 ? 'var(--vermelho)' : 'var(--forest)'}">R$ ${Math.round(totalSaldo).toLocaleString('pt-BR')}</div></div>
+      <div class="side-kpi"><div class="side-kpi-label">📊 Status pagamentos</div><div class="side-kpi-value" style="font-size:11px;line-height:1.4">
+        ${pagas > 0 ? `<span style="color:var(--forest)">✓ ${pagas} paga${pagas>1?'s':''}</span>` : ''}
+        ${atrasadas > 0 ? `<span style="color:var(--vermelho);display:block">🔴 ${atrasadas} atrasada${atrasadas>1?'s':''}</span>` : ''}
+        ${parciais > 0 ? `<span style="color:#1e40af;display:block">½ ${parciais} parcial${parciais>1?'s':''}</span>` : ''}
+        ${abertas > 0 ? `<span style="color:#9a6700;display:block">⏳ ${abertas} aberta${abertas>1?'s':''}</span>` : ''}
+        ${canceladas > 0 ? `<span style="color:var(--muted);display:block">✕ ${canceladas} cancel.</span>` : ''}
+      </div></div>
+    </div>`;
+
+    // Lista de cargas
+    html += '<div class="cob-section-titulo">Cargas do período</div>';
+    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">';
+    html += '<th style="text-align:left;padding:6px">Data</th><th style="text-align:right;padding:6px">Cocos</th><th style="text-align:right;padding:6px">R$/coco</th><th style="text-align:right;padding:6px">Total</th><th style="text-align:right;padding:6px">Status</th></tr></thead><tbody>';
+    vendasArr.sort((a,b) => b.data.localeCompare(a.data));
+    vendasArr.forEach(v => {
+      const c = cobMap[v.id];
+      const cocos = _cocosEntreguesVenda(v);
+      const liquido = _receitaLiquidaVenda(v);
+      const rpcVenda = cocos > 0 ? liquido / cocos : 0;
+      const dt = new Date(v.data + 'T00:00:00');
+      const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0');
+      let statusBadge = '<span style="color:var(--muted);font-size:10px">—</span>';
+      if (c) {
+        const isAtrasada = c.data_vencimento < hojeISO && c.status !== 'pago' && c.status !== 'cancelado';
+        const stKey = isAtrasada ? (c.status === 'pago_parcial' ? 'parcial_atrasada' : 'atrasada') : c.status;
+        statusBadge = `<span class="fin-cob-status ${stKey}" style="font-size:9px;cursor:pointer" onclick="event.stopPropagation();closeClienteFinPanel();openCobPanel(${c.id})" title="Ver cobrança">${_statusLabel(stKey)}</span>`;
+      }
+      html += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px;font-family:var(--font-mono)">${dtFmt}</td>
+        <td style="padding:6px;text-align:right;font-family:var(--font-mono)">${cocos.toLocaleString('pt-BR')}</td>
+        <td style="padding:6px;text-align:right;font-family:var(--font-mono);color:#1e40af;font-weight:700">R$ ${rpcVenda.toFixed(2).replace('.', ',')}</td>
+        <td style="padding:6px;text-align:right;font-family:var(--font-mono);font-weight:700">R$ ${Math.round(Number(v.total) || 0).toLocaleString('pt-BR')}</td>
+        <td style="padding:6px;text-align:right">${statusBadge}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+
+    document.getElementById('cli-fin-body').innerHTML = html;
+  } catch(e) {
+    if (typeof _isAuthError === 'function' && _isAuthError(e)) { _tratarSessaoExpirada(); return; }
+    console.error('openClienteFinPanel:', e);
+    document.getElementById('cli-fin-body').innerHTML = '<div style="padding:30px;text-align:center;color:var(--vermelho);font-size:13px">Erro ao carregar dados: ' + (e.message || e) + '</div>';
+  }
+}
+
+function closeClienteFinPanel() {
+  document.getElementById('cli-fin-overlay')?.classList.remove('open');
+  document.getElementById('cli-fin-panel')?.classList.remove('open');
 }
