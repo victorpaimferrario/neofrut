@@ -118,6 +118,8 @@ function showAjudaSec(sec, evt) {
 // Close modals on overlay click (delegation — works for static and dynamic modals)
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay') && e.target.classList.contains('open')) {
+    // Bloquear fechamento de modal de baixa durante operação async
+    if (e.target.id === 'modal-baixa-overlay' && typeof _baixandoPagamento !== 'undefined' && _baixandoPagamento) return;
     if (e.target.id) {
       e.target.classList.remove('open');
     } else {
@@ -138,7 +140,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeAreaDrawer();
     closeSidePanel();
-    // Also close any open modal overlays
-    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    // Also close any open modal overlays — exceto se houver operação async em curso
+    document.querySelectorAll('.modal-overlay.open').forEach(m => {
+      if (m.id === 'modal-baixa-overlay' && typeof _baixandoPagamento !== 'undefined' && _baixandoPagamento) return;
+      m.classList.remove('open');
+    });
   }
 });

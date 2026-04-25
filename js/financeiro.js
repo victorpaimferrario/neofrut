@@ -1,5 +1,19 @@
 // ─────────── FINANCEIRO ───────────
 
+// C8: Fallback local de escapeHtml caso utils.js não esteja carregado
+// Garante que XSS via cliente_nome seja bloqueado mesmo em falha de carregamento
+if (typeof escapeHtml !== 'function') {
+  window.escapeHtml = function(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+}
+
 let _finCobrancas = [];
 let _finFiltroStatus = 'atrasada';
 let _finCobrancaSel = null; // cobrança aberta no modal de baixa
@@ -494,8 +508,13 @@ function _parseBaixaValor() {
   return parseFloat(raw) || 0;
 }
 
+let _baixandoPagamento = false;
+
 async function confirmarBaixa() {
+  // C1: bloqueia duplo-clique
+  if (_baixandoPagamento) return;
   if (!_finCobrancaSel) return;
+
   const c = _finCobrancaSel;
   const valor = _parseBaixaValor();
   const data = document.getElementById('baixa-data').value;
@@ -503,6 +522,7 @@ async function confirmarBaixa() {
   const taxa = parseFloat(document.getElementById('baixa-taxa').value) || 0;
   const obs = document.getElementById('baixa-obs').value.trim();
   const erro = document.getElementById('baixa-erro');
+  const btn = document.querySelector('#modal-baixa-overlay button.btn-primary');
 
   // Validações
   if (!valor || valor <= 0) { erro.textContent = 'Informe um valor válido.'; erro.style.display = 'block'; return; }
@@ -516,6 +536,16 @@ async function confirmarBaixa() {
 
   // Pegar email do usuário logado
   const userEmail = (_userPermissoes && _userPermissoes.email) || 'desconhecido';
+
+  // C1: lock + disable visual do botão
+  _baixandoPagamento = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.origText = btn.textContent;
+    btn.textContent = '⏳ Salvando...';
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'wait';
+  }
 
   try {
     const payload = {
@@ -537,30 +567,72 @@ async function confirmarBaixa() {
       return;
     }
     closeModal('modal-baixa-overlay');
-    showToast('✓ Pagamento registrado');
+    if (typeof showToast === 'function') showToast('✓ Pagamento registrado');
+    _finCobrancaSel = null; // C7: limpa seleção
     await carregarCobrancas();
     renderPainelCobranca();
   } catch(e) {
     erro.textContent = 'Erro: ' + (e.message || e);
     erro.style.display = 'block';
+  } finally {
+    // C1: libera lock e restaura botão
+    _baixandoPagamento = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.origText || '✓ Confirmar Pagamento';
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+    }
   }
 }
 
 // ── ACÕES SECUNDÁRIAS (placeholders por enquanto) ──
-function abrirWhatsCobranca(cobrancaId) {
+// Limpa telefone para formato wa.me (apenas dígitos, com 55 BR se não tiver)
+function _limparTelefoneBR(tel) {
+  if (!tel) return '';
+  let t = String(tel).replace(/\D/g, '');
+  if (!t) return '';
+  // Adiciona 55 (Brasil) se não começar com ele e tiver 10-11 dígitos
+  if (t.length === 10 || t.length === 11) t = '55' + t;
+  return t;
+}
+
+async function abrirWhatsCobranca(cobrancaId) {
   const c = _finCobrancas.find(x => x.id === cobrancaId);
   if (!c) return;
   const saldo = Number(c.valor_atual) - Number(c.valor_pago);
   const venc = new Date(c.data_vencimento + 'T00:00:00');
   const vencFmt = String(venc.getDate()).padStart(2,'0') + '/' + String(venc.getMonth()+1).padStart(2,'0');
   const dias = _diasParaVencer(c.data_vencimento);
+
+  // Buscar telefone do cliente cadastrado
+  let telefone = '';
+  try {
+    if (c.cliente_id) {
+      const { data } = await _SB.from('clientes')
+        .select('telefone')
+        .eq('id', c.cliente_id)
+        .single();
+      telefone = _limparTelefoneBR(data?.telefone);
+    }
+  } catch(e) { /* fallback sem telefone */ }
+
   let msg = `Olá! Cobrança Neofrut:\n\n`;
   msg += `Cliente: ${c.cliente_nome}\n`;
   msg += `Valor: R$ ${Math.round(saldo).toLocaleString('pt-BR')}\n`;
   msg += `Vencimento: ${vencFmt}\n`;
   if (dias < 0) msg += `\n⚠️ Em atraso há ${Math.abs(dias)} dia${Math.abs(dias)>1?'s':''}\n`;
   msg += `\nPedimos a gentileza do pagamento. Obrigado!`;
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+
+  // Se tem telefone, abre direto na conversa do cliente
+  const url = telefone
+    ? `https://wa.me/${telefone}?text=${encodeURIComponent(msg)}`
+    : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+  if (!telefone && typeof showToast === 'function') {
+    showToast('⚠ Telefone não cadastrado — selecione o contato manualmente');
+  }
+  window.open(url, '_blank');
 }
 
 function abrirAjusteCobranca(cobrancaId) {
