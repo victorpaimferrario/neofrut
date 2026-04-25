@@ -15,12 +15,46 @@ if (typeof escapeHtml !== 'function') {
 }
 
 let _finCobrancas = [];
-let _finFiltroStatus = 'atrasada';
+let _finFiltroStatus = localStorage.getItem('fin_filtro_status') || 'atrasada';
 let _finCobrancaSel = null; // cobrança aberta no modal de baixa
+let _finPeriodoSalvo = localStorage.getItem('fin_periodo') || 'mes';
+let _finFormaPgtoCliente = {}; // cache: cliente_id -> última forma de pagamento usada
+let _finAtualizandoLista = false; // evita re-renders sobrepostos
 
 async function initFinanceiro() {
+  // Aplicar filtro persistido visualmente
+  setTimeout(() => {
+    document.querySelectorAll('.fin-filtro-btn').forEach(b => b.classList.toggle('ativo', b.dataset.status === _finFiltroStatus));
+  }, 0);
   await carregarCobrancas();
   setFinTab(localStorage.getItem('fin_tab') || 'cobranca');
+  // Carregar cache de formas de pagamento por cliente (A10)
+  _carregarFormasPgtoPadrao();
+}
+
+// A10: descobrir forma de pagamento mais usada por cliente (pra pré-selecionar no modal)
+async function _carregarFormasPgtoPadrao() {
+  try {
+    const { data } = await _SB.from('recebimentos')
+      .select('cliente_id, forma_pagamento')
+      .neq('forma_pagamento', 'estorno')
+      .order('data_recebimento', { ascending: false })
+      .limit(500);
+    if (!data) return;
+    // Conta ocorrências por cliente
+    const contagem = {};
+    data.forEach(r => {
+      if (!r.cliente_id) return;
+      const k = r.cliente_id;
+      if (!contagem[k]) contagem[k] = {};
+      contagem[k][r.forma_pagamento] = (contagem[k][r.forma_pagamento] || 0) + 1;
+    });
+    // Pega a mais usada por cliente
+    Object.keys(contagem).forEach(k => {
+      const formas = contagem[k];
+      _finFormaPgtoCliente[k] = Object.entries(formas).sort((a,b) => b[1]-a[1])[0][0];
+    });
+  } catch(e) { /* silencioso */ }
 }
 
 function setFinTab(tab) {
@@ -33,10 +67,11 @@ function setFinTab(tab) {
 }
 
 // ──────── PAINEL ANÁLISE ────────
-let _finPeriodo = 'mes';
+let _finPeriodo = _finPeriodoSalvo || 'mes';
 
 function setFinPeriodo(p) {
   _finPeriodo = p;
+  localStorage.setItem('fin_periodo', p); // A5: persistir
   document.querySelectorAll('.fin-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === p));
   renderPainelAnalise();
 }
@@ -63,6 +98,12 @@ function _periodoIntervalo() {
 }
 
 async function renderPainelAnalise() {
+  // A5: aplicar filtro persistido visualmente
+  document.querySelectorAll('.fin-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === _finPeriodo));
+  // A2: loading visual nos KPIs
+  ['kpi-rpc-efetivo','kpi-rpc-realizado','kpi-ticket','kpi-prazo','kpi-no-prazo'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '⏳';
+  });
   const intervalo = _periodoIntervalo();
   try {
     // Buscar vendas no período (excluindo EXCLUIDO)
@@ -87,14 +128,33 @@ async function renderPainelAnalise() {
 function _renderKpisAnalise(vendas, intervalo) {
   // R$/coco efetivo (média ponderada por receita_liquida / cocos_entregues)
   let receitaTotal = 0, cocosTotal = 0;
+  let semImpostos = 0; // A1: contagem de vendas com frete > 0 mas impostos = 0
   vendas.forEach(v => {
     const cocos = (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
     if (cocos > 0 && v.rpc_efetivo > 0) {
       receitaTotal += Number(v.rpc_efetivo) * cocos;
       cocosTotal += cocos;
     }
+    if (Number(v.frete) > 0 && (!Number(v.impostos) || Number(v.impostos) === 0)) {
+      semImpostos++;
+    }
   });
   const rpcEfetivo = cocosTotal > 0 ? receitaTotal / cocosTotal : 0;
+
+  // A1: aviso sobre dados incompletos
+  let avisoEl = document.getElementById('fin-aviso-impostos');
+  if (semImpostos > 0) {
+    if (!avisoEl) {
+      avisoEl = document.createElement('div');
+      avisoEl.id = 'fin-aviso-impostos';
+      avisoEl.style.cssText = 'background:#fef9e7;border:1px solid #d4a017;border-radius:8px;padding:10px 14px;margin:8px 0;font-size:12px;color:#9a6700;display:flex;gap:10px;align-items:center';
+      const kpis = document.getElementById('fin-analise-kpis');
+      if (kpis) kpis.parentNode.insertBefore(avisoEl, kpis);
+    }
+    avisoEl.innerHTML = `⚠️ <strong>${semImpostos}</strong> venda${semImpostos>1?'s':''} no período sem impostos preenchidos — o R$/coco efetivo pode estar superestimado nessas vendas. Ideal preencher <code>vendas.impostos</code> no banco.`;
+  } else if (avisoEl) {
+    avisoEl.remove();
+  }
 
   // Ticket médio
   const totalVendas = vendas.reduce((s,v) => s + (Number(v.total) || 0), 0);
@@ -120,18 +180,37 @@ async function _calcularKpisDePagamento(intervalo) {
     const arr = cobs || [];
     const pagas = arr.filter(c => c.status === 'pago' && c.data_pagamento);
 
-    // Prazo médio: dias entre emissão e pagamento
+    // A11: para % no prazo precisamos do PRIMEIRO recebimento de cada cobrança paga
+    // (cobranças parciais que se tornaram pagas têm a data do último pagamento, não do primeiro)
+    let primeirosPagamentos = {};
+    if (pagas.length > 0) {
+      const cobIds = pagas.map(c => c.id);
+      const { data: recs } = await _SB.from('recebimentos')
+        .select('cobranca_id, data_recebimento')
+        .in('cobranca_id', cobIds)
+        .gt('valor', 0)
+        .order('data_recebimento', { ascending: true });
+      (recs || []).forEach(r => {
+        if (!primeirosPagamentos[r.cobranca_id]) primeirosPagamentos[r.cobranca_id] = r.data_recebimento;
+      });
+    }
+
+    // Prazo médio: dias entre emissão e PRIMEIRO pagamento
     let totalDias = 0, n = 0;
     pagas.forEach(c => {
+      const dataPrimeira = primeirosPagamentos[c.id] || c.data_pagamento;
       const e = new Date(c.data_emissao + 'T00:00:00');
-      const p = new Date(c.data_pagamento + 'T00:00:00');
+      const p = new Date(dataPrimeira + 'T00:00:00');
       const dias = Math.floor((p - e) / 86400000);
       if (dias >= 0 && dias < 1000) { totalDias += dias; n++; }
     });
     const prazoMedio = n > 0 ? totalDias / n : 0;
 
-    // % no prazo
-    const noPrazo = pagas.filter(c => c.data_pagamento && c.data_pagamento <= c.data_vencimento).length;
+    // A11: % no prazo usa PRIMEIRO pagamento vs vencimento
+    const noPrazo = pagas.filter(c => {
+      const dataPrimeira = primeirosPagamentos[c.id] || c.data_pagamento;
+      return dataPrimeira <= c.data_vencimento;
+    }).length;
     const pctPrazo = pagas.length > 0 ? (noPrazo / pagas.length) * 100 : 0;
 
     document.getElementById('kpi-prazo').textContent = Math.round(prazoMedio) + 'd';
@@ -303,6 +382,11 @@ async function _renderInadimplencia(intervalo) {
 }
 
 async function carregarCobrancas() {
+  // A2: indicador visual de loading
+  const lista = document.getElementById('fin-lista-cobrancas');
+  if (lista && _finCobrancas.length === 0) {
+    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando cobranças...</div>';
+  }
   try {
     const { data, error } = await _SB.from('cobrancas')
       .select('*')
@@ -332,12 +416,16 @@ function _isAtrasada(c) {
 }
 
 function _statusVisual(c) {
-  // Status calculado: cobranças "aberto" ou "pago_parcial" com vencimento passado viram "atrasada"
-  if (_isAtrasada(c)) return 'atrasada';
+  // Status calculado: cobranças com vencimento passado viram 'atrasada' (ou 'parcial_atrasada' se tiver pagamento parcial)
+  if (_isAtrasada(c)) {
+    // A6: separar parcial atrasada
+    return c.status === 'pago_parcial' ? 'parcial_atrasada' : 'atrasada';
+  }
   return c.status;
 }
 
 function renderPainelCobranca() {
+  _atualizarContagensFiltros();
   renderKPIsCobranca();
   renderListaCobrancas();
 }
@@ -389,9 +477,39 @@ async function carregarRecebidoMes(inicioMes) {
 
 function setFinFiltroStatus(s) {
   _finFiltroStatus = s;
+  localStorage.setItem('fin_filtro_status', s); // A5: persistir
   document.querySelectorAll('.fin-filtro-btn').forEach(b => b.classList.toggle('ativo', b.dataset.status === s));
   renderListaCobrancas();
 }
+
+// M10: contagem de cobranças por filtro
+function _contarPorStatus() {
+  const cont = { atrasada: 0, aberto: 0, pago_parcial: 0, pago: 0, todas: 0 };
+  _finCobrancas.forEach(c => {
+    cont.todas += 1;
+    if (_isAtrasada(c)) cont.atrasada += 1;
+    else if (c.status === 'aberto') cont.aberto += 1;
+    else if (c.status === 'pago_parcial') cont.pago_parcial += 1;
+    else if (c.status === 'pago') cont.pago += 1;
+  });
+  return cont;
+}
+
+function _atualizarContagensFiltros() {
+  const c = _contarPorStatus();
+  document.querySelectorAll('.fin-filtro-btn').forEach(b => {
+    const s = b.dataset.status;
+    if (s in c) {
+      const baseLabel = b.dataset.baseLabel || b.textContent.replace(/\s*\(\d+\)\s*$/, '');
+      b.dataset.baseLabel = baseLabel;
+      b.textContent = `${baseLabel} (${c[s]})`;
+    }
+  });
+}
+
+// A3: paginação
+let _finPagina = 1;
+const _FIN_POR_PAGINA = 50;
 
 function renderListaCobrancas() {
   const lista = document.getElementById('fin-lista-cobrancas');
@@ -401,8 +519,9 @@ function renderListaCobrancas() {
   let filt = _finCobrancas.filter(c => {
     if (busca && !(c.cliente_nome || '').toLowerCase().includes(busca)) return false;
     if (_finFiltroStatus === 'todas') return true;
-    if (_finFiltroStatus === 'atrasada') return _isAtrasada(c);
+    if (_finFiltroStatus === 'atrasada') return _isAtrasada(c); // inclui parcial atrasada
     if (_finFiltroStatus === 'aberto') return c.status === 'aberto' && !_isAtrasada(c);
+    if (_finFiltroStatus === 'pago_parcial') return c.status === 'pago_parcial' && !_isAtrasada(c);
     return c.status === _finFiltroStatus;
   });
 
@@ -414,7 +533,14 @@ function renderListaCobrancas() {
     return;
   }
 
-  lista.innerHTML = filt.map(c => {
+  // A3: paginação
+  const totalPaginas = Math.ceil(filt.length / _FIN_POR_PAGINA);
+  if (_finPagina > totalPaginas) _finPagina = 1;
+  const inicio = (_finPagina - 1) * _FIN_POR_PAGINA;
+  const fim = inicio + _FIN_POR_PAGINA;
+  const pagina = filt.slice(inicio, fim);
+
+  let html = pagina.map(c => {
     const status = _statusVisual(c);
     const dias = _diasParaVencer(c.data_vencimento);
     const saldo = Number(c.valor_atual) - Number(c.valor_pago);
@@ -460,10 +586,26 @@ function renderListaCobrancas() {
         <div class="fin-cob-acoes">${acoes}</div>
       </div>`;
   }).join('');
+
+  // A3: paginação visual
+  if (totalPaginas > 1) {
+    html += `<div class="fin-paginacao">
+      <button onclick="finPaginaPrev()" ${_finPagina === 1 ? 'disabled' : ''}>◂ Anterior</button>
+      <span>Página ${_finPagina} de ${totalPaginas} · ${filt.length} cobranças</span>
+      <button onclick="finPaginaNext()" ${_finPagina >= totalPaginas ? 'disabled' : ''}>Próxima ▸</button>
+    </div>`;
+  } else if (filt.length > 0) {
+    html += `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} cobrança${filt.length>1?'s':''}</div>`;
+  }
+
+  lista.innerHTML = html;
 }
 
+function finPaginaNext() { _finPagina++; renderListaCobrancas(); window.scrollTo({top: 0, behavior: 'smooth'}); }
+function finPaginaPrev() { if (_finPagina > 1) { _finPagina--; renderListaCobrancas(); window.scrollTo({top: 0, behavior: 'smooth'}); } }
+
 function _statusLabel(s) {
-  const map = { atrasada:'ATRASADA', aberto:'EM ABERTO', pago_parcial:'PARCIAL', pago:'PAGO', cancelado:'CANCELADO' };
+  const map = { atrasada:'ATRASADA', parcial_atrasada:'PARCIAL ATRASADA', aberto:'EM ABERTO', pago_parcial:'PARCIAL', pago:'PAGO', cancelado:'CANCELADO' };
   return map[s] || s.toUpperCase();
 }
 
@@ -486,7 +628,9 @@ function abrirModalBaixa(cobrancaId) {
   // Pré-preencher valor com o saldo total
   document.getElementById('baixa-valor').value = saldo.toFixed(2).replace('.',',');
   document.getElementById('baixa-data').value = new Date().toISOString().slice(0,10);
-  document.getElementById('baixa-forma').value = 'pix';
+  // A10: pré-seleciona a forma de pagamento mais usada por este cliente
+  const formaPadrao = (c.cliente_id && _finFormaPgtoCliente[c.cliente_id]) || 'pix';
+  document.getElementById('baixa-forma').value = formaPadrao;
   document.getElementById('baixa-taxa').value = '';
   document.getElementById('baixa-obs').value = '';
   document.getElementById('baixa-erro').style.display = 'none';

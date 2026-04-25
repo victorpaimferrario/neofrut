@@ -99,6 +99,7 @@ function showPage(id) {
   } else if (id === 'gestao') {
     initGestao();
   } else if (id === 'financeiro') {
+    // Sempre recarrega ao entrar (C6/A8: pega mudanças feitas em outras abas/usuários)
     initFinanceiro();
   }
 }
