@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1777132793">
+<link rel="stylesheet" href="styles.css?v=1777133707">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -1347,22 +1347,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1777132793"></script>
-<script src="js/cidades_br.js?v=1777132793"></script>
-<script src="js/utils.js?v=1777132793"></script>
-<script src="js/storage.js?v=1777132793"></script>
-<script src="js/components.js?v=1777132793"></script>
-<script src="js/dashboard.js?v=1777132793"></script>
-<script src="js/lancamento.js?v=1777132793"></script>
-<script src="js/analise.js?v=1777132793"></script>
-<script src="js/vendas.js?v=1777132793"></script>
-<script src="js/gestao.js?v=1777132793"></script>
-<script src="js/mercados.js?v=1777132793"></script>
-<script src="js/programacao.js?v=1777132793"></script>
-<script src="js/financeiro.js?v=1777132793"></script>
-<script src="js/router.js?v=1777132793"></script>
-<script src="js/app.js?v=1777132793"></script>
-<script src="js/auth.js?v=1777132793"></script>
+<script src="js/config.js?v=1777133707"></script>
+<script src="js/cidades_br.js?v=1777133707"></script>
+<script src="js/utils.js?v=1777133707"></script>
+<script src="js/storage.js?v=1777133707"></script>
+<script src="js/components.js?v=1777133707"></script>
+<script src="js/dashboard.js?v=1777133707"></script>
+<script src="js/lancamento.js?v=1777133707"></script>
+<script src="js/analise.js?v=1777133707"></script>
+<script src="js/vendas.js?v=1777133707"></script>
+<script src="js/gestao.js?v=1777133707"></script>
+<script src="js/mercados.js?v=1777133707"></script>
+<script src="js/programacao.js?v=1777133707"></script>
+<script src="js/financeiro.js?v=1777133707"></script>
+<script src="js/router.js?v=1777133707"></script>
+<script src="js/app.js?v=1777133707"></script>
+<script src="js/auth.js?v=1777133707"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
@@ -1790,7 +1790,34 @@
     <div style="padding:40px;text-align:center;color:var(--muted)">💸 Histórico de Recebimentos — em desenvolvimento</div>
   </div>
   <div id="fin-painel-ajustes" class="fin-painel">
-    <div style="padding:40px;text-align:center;color:var(--muted)">🔧 Ajustes (descontos/devoluções) — em desenvolvimento (Sprint 4)</div>
+    <!-- Filtros + ação -->
+    <div class="fin-filtros">
+      <div class="fin-filtro-grupo">
+        <label class="fin-filtro-label">Tipo:</label>
+        <button class="fin-aj-tipo-btn ativo" data-tipo="todos" onclick="setFinAjTipo('todos')">Todos</button>
+        <button class="fin-aj-tipo-btn" data-tipo="desconto" onclick="setFinAjTipo('desconto')">🔻 Desconto</button>
+        <button class="fin-aj-tipo-btn" data-tipo="devolucao_parcial" onclick="setFinAjTipo('devolucao_parcial')">🔄 Devolução parcial</button>
+        <button class="fin-aj-tipo-btn" data-tipo="devolucao_total" onclick="setFinAjTipo('devolucao_total')">❌ Devolução total</button>
+        <button class="fin-aj-tipo-btn" data-tipo="credito_futuro" onclick="setFinAjTipo('credito_futuro')">💳 Crédito futuro</button>
+        <button class="fin-aj-tipo-btn" data-tipo="reentrega" onclick="setFinAjTipo('reentrega')">🚚 Reentrega</button>
+      </div>
+      <div class="fin-filtro-grupo">
+        <button class="btn btn-primary" onclick="abrirModalAjuste()" style="background:#d97706;border-color:#d97706">+ Novo Ajuste</button>
+      </div>
+    </div>
+
+    <!-- KPIs de ajustes -->
+    <div class="fin-kpis" id="fin-aj-kpis">
+      <div class="vkpi" style="border-color:var(--vermelho-border)"><div class="vkpi-label">🔻 Total descontos (mês)</div><div class="vkpi-val" id="kpi-aj-descontos" style="color:var(--vermelho)">—</div><div class="vkpi-sub" id="kpi-aj-descontos-sub">—</div></div>
+      <div class="vkpi" style="border-color:#3b82f6"><div class="vkpi-label">💳 Créditos futuros</div><div class="vkpi-val" id="kpi-aj-creditos" style="color:#1e40af">—</div><div class="vkpi-sub">a usar em vendas</div></div>
+      <div class="vkpi"><div class="vkpi-label">🚚 Reentregas (mês)</div><div class="vkpi-val" id="kpi-aj-reentregas">—</div><div class="vkpi-sub" id="kpi-aj-reentregas-sub">cocos extras</div></div>
+      <div class="vkpi"><div class="vkpi-label">📋 Total no mês</div><div class="vkpi-val" id="kpi-aj-total">—</div><div class="vkpi-sub" id="kpi-aj-total-sub">ajustes</div></div>
+    </div>
+
+    <!-- Lista -->
+    <div class="fin-lista" id="fin-lista-ajustes" style="margin-top:14px">
+      <div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando ajustes...</div>
+    </div>
   </div>
 
 </div>
@@ -1831,6 +1858,106 @@
       </div>
       <div id="baixa-erro" style="display:none;color:var(--vermelho);font-size:12px;font-weight:600"></div>
       <button class="btn btn-primary" onclick="confirmarBaixa()" style="width:100%;padding:13px;font-size:14px;font-weight:800">✓ Confirmar Pagamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==== MODAL: NOVO AJUSTE ==== -->
+<div class="modal-overlay" id="modal-ajuste-overlay">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:800" id="modal-ajuste-titulo">🔧 Novo Ajuste</div>
+      <button onclick="closeModal('modal-ajuste-overlay')" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:75vh;overflow-y:auto">
+
+      <!-- Cliente / Cobrança alvo -->
+      <div class="form-group">
+        <label class="form-label">Cobrança *</label>
+        <div id="ajuste-cobranca-info" style="background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:12px;display:none"></div>
+        <select class="form-select" id="ajuste-cobranca" onchange="onAjusteCobrancaChange()">
+          <option value="">Selecione uma cobrança...</option>
+        </select>
+      </div>
+
+      <!-- Tipo de ajuste -->
+      <div class="form-group">
+        <label class="form-label">Tipo de ajuste *</label>
+        <div class="aj-tipo-grid">
+          <label class="aj-tipo-card" data-tipo="desconto">
+            <input type="radio" name="aj-tipo" value="desconto" onchange="onAjusteTipoChange()">
+            <span class="aj-tipo-emoji">🔻</span>
+            <span class="aj-tipo-nome">Desconto</span>
+            <span class="aj-tipo-desc">Reduz valor da cobrança</span>
+          </label>
+          <label class="aj-tipo-card" data-tipo="devolucao_parcial">
+            <input type="radio" name="aj-tipo" value="devolucao_parcial" onchange="onAjusteTipoChange()">
+            <span class="aj-tipo-emoji">🔄</span>
+            <span class="aj-tipo-nome">Devolução parcial</span>
+            <span class="aj-tipo-desc">Cliente devolveu parte</span>
+          </label>
+          <label class="aj-tipo-card" data-tipo="devolucao_total">
+            <input type="radio" name="aj-tipo" value="devolucao_total" onchange="onAjusteTipoChange()">
+            <span class="aj-tipo-emoji">❌</span>
+            <span class="aj-tipo-nome">Devolução total</span>
+            <span class="aj-tipo-desc">Cancela cobrança</span>
+          </label>
+          <label class="aj-tipo-card" data-tipo="credito_futuro">
+            <input type="radio" name="aj-tipo" value="credito_futuro" onchange="onAjusteTipoChange()">
+            <span class="aj-tipo-emoji">💳</span>
+            <span class="aj-tipo-nome">Crédito futuro</span>
+            <span class="aj-tipo-desc">Saldo p/ próxima venda</span>
+          </label>
+          <label class="aj-tipo-card" data-tipo="reentrega">
+            <input type="radio" name="aj-tipo" value="reentrega" onchange="onAjusteTipoChange()">
+            <span class="aj-tipo-emoji">🚚</span>
+            <span class="aj-tipo-nome">Reentrega</span>
+            <span class="aj-tipo-desc">Cocos extras enviados</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Motivo -->
+      <div class="form-group">
+        <label class="form-label">Motivo *</label>
+        <select class="form-select" id="ajuste-motivo">
+          <option value="">Selecione o motivo...</option>
+          <option value="cocos_quebrados">Cocos quebrados</option>
+          <option value="qualidade_ruim">Qualidade ruim</option>
+          <option value="atraso">Atraso na entrega</option>
+          <option value="recusa_cliente">Recusa do cliente</option>
+          <option value="erro_lancamento">Erro de lançamento</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+
+      <!-- Valor (para desconto/devolução/crédito) -->
+      <div class="form-group" id="ajuste-grupo-valor">
+        <label class="form-label" id="ajuste-valor-label">Valor (R$) *</label>
+        <input type="text" class="form-input" id="ajuste-valor" inputmode="decimal" placeholder="0,00" oninput="onAjusteValorInput(this)">
+        <div id="ajuste-valor-hint" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+      </div>
+
+      <!-- Cocos extras (só para reentrega) -->
+      <div class="form-group" id="ajuste-grupo-cocos" style="display:none">
+        <label class="form-label">Quantidade de cocos extras enviados *</label>
+        <input type="number" class="form-input" id="ajuste-cocos" min="1" placeholder="Ex: 200">
+      </div>
+
+      <!-- Data -->
+      <div class="form-group">
+        <label class="form-label">Data do ajuste *</label>
+        <input type="date" class="form-input" id="ajuste-data">
+      </div>
+
+      <!-- Observação -->
+      <div class="form-group">
+        <label class="form-label">Observação</label>
+        <textarea class="form-input" id="ajuste-obs" rows="2" placeholder="Detalhes adicionais sobre o ajuste..."></textarea>
+      </div>
+
+      <div id="ajuste-erro" style="display:none;color:var(--vermelho);font-size:12px;font-weight:600"></div>
+      <button class="btn btn-primary" onclick="confirmarAjuste()" style="width:100%;padding:13px;font-size:14px;font-weight:800;background:#d97706;border-color:#d97706">✓ Registrar Ajuste</button>
     </div>
   </div>
 </div>

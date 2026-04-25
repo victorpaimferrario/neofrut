@@ -1155,6 +1155,40 @@
 .fin-paginacao button:disabled { opacity:.4; cursor:not-allowed; }
 .fin-paginacao span { font-size:12px; color:var(--muted); }
 
+/* === Aba Ajustes === */
+.fin-aj-tipo-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
+.fin-aj-tipo-btn:hover { border-color:#d97706; }
+.fin-aj-tipo-btn.ativo { background:#d97706; color:#fff; border-color:#d97706; }
+
+.aj-tipo-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
+.aj-tipo-card { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border:2px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; text-align:center; gap:4px; }
+.aj-tipo-card:hover { border-color:#d97706; background:rgba(217,119,6,.04); }
+.aj-tipo-card input[type="radio"] { display:none; }
+.aj-tipo-card.selected { border-color:#d97706; background:rgba(217,119,6,.1); box-shadow:0 0 0 2px rgba(217,119,6,.15); }
+.aj-tipo-emoji { font-size:24px; }
+.aj-tipo-nome { font-size:12px; font-weight:800; color:var(--forest); }
+.aj-tipo-desc { font-size:10px; color:var(--muted); }
+
+.fin-aj-row { display:grid; grid-template-columns:auto 1fr auto auto; gap:10px; padding:10px 14px; background:var(--surface); border:1px solid var(--border); border-left:4px solid #d97706; border-radius:8px; align-items:center; }
+.fin-aj-row.credito_futuro { border-left-color:#3b82f6; }
+.fin-aj-row.reentrega { border-left-color:var(--verde-border); }
+.fin-aj-row.devolucao_total { border-left-color:var(--vermelho); }
+.fin-aj-row.devolucao_parcial { border-left-color:#f59e0b; }
+.fin-aj-tipo-icon { font-size:22px; }
+.fin-aj-info { min-width:0; }
+.fin-aj-cliente { font-size:13px; font-weight:800; color:var(--forest); }
+.fin-aj-meta { font-size:11px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; font-family:var(--font-mono); }
+.fin-aj-valor { font-size:14px; font-weight:800; font-family:var(--font-mono); text-align:right; }
+.fin-aj-valor.negativo { color:var(--vermelho); }
+.fin-aj-valor.positivo { color:#1e40af; }
+.fin-aj-data { font-size:11px; color:var(--muted); font-family:var(--font-mono); white-space:nowrap; }
+
+@media (max-width: 700px) {
+  .aj-tipo-grid { grid-template-columns:repeat(2, 1fr); }
+  .fin-aj-row { grid-template-columns:auto 1fr auto; }
+  .fin-aj-data { display:none; }
+}
+
 @media (max-width: 700px) {
   .fin-cobranca { grid-template-columns:1fr; }
   .fin-cob-valores { text-align:left; }

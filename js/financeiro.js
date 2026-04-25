@@ -64,6 +64,7 @@ function setFinTab(tab) {
   localStorage.setItem('fin_tab', tab);
   if (tab === 'cobranca') renderPainelCobranca();
   if (tab === 'analise') renderPainelAnalise();
+  if (tab === 'ajustes') renderPainelAjustes();
 }
 
 // ──────── PAINEL ANÁLISE ────────
@@ -790,3 +791,338 @@ function abrirVendaDoFinanceiro(vendaId) {
     if (typeof editarVenda === 'function') editarVenda(vendaId);
   }, 300);
 }
+
+// ═══════════════════════════════════════
+// PAINEL AJUSTES (Sprint 4)
+// ═══════════════════════════════════════
+let _finAjustes = [];
+let _finAjFiltroTipo = 'todos';
+let _finAjustandoSel = null; // cobrança alvo do modal
+let _registrandoAjuste = false;
+
+async function renderPainelAjustes() {
+  const lista = document.getElementById('fin-lista-ajustes');
+  if (lista) lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando ajustes...</div>';
+  try {
+    // Buscar todos ajustes (limita 1000 mais recentes)
+    const { data, error } = await _SB.from('ajustes')
+      .select('*')
+      .order('data_ajuste', { ascending: false })
+      .limit(1000);
+    if (error) {
+      if (typeof _isAuthError === 'function' && _isAuthError(error)) { _tratarSessaoExpirada(); return; }
+      console.error('Erro ao carregar ajustes:', error);
+      _finAjustes = [];
+      return;
+    }
+    _finAjustes = data || [];
+    _renderAjKPIs();
+    _renderAjLista();
+  } catch(e) {
+    console.error('Falha em renderPainelAjustes:', e);
+  }
+}
+
+function setFinAjTipo(tipo) {
+  _finAjFiltroTipo = tipo;
+  document.querySelectorAll('.fin-aj-tipo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === tipo));
+  _renderAjLista();
+}
+
+function _renderAjKPIs() {
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+
+  const mes = _finAjustes.filter(a => a.data_ajuste >= inicioMes);
+
+  const descontos = mes.filter(a => a.tipo === 'desconto' || a.tipo === 'devolucao_parcial' || a.tipo === 'devolucao_total');
+  const totalDescontos = descontos.reduce((s,a) => s + Math.abs(Number(a.valor) || 0), 0);
+
+  const creditos = _finAjustes.filter(a => a.tipo === 'credito_futuro');
+  const totalCreditos = creditos.reduce((s,a) => s + (Number(a.valor) || 0), 0);
+
+  const reentregas = mes.filter(a => a.tipo === 'reentrega');
+  const totalCocosExtras = reentregas.reduce((s,a) => s + (Number(a.cocos_extras) || 0), 0);
+
+  document.getElementById('kpi-aj-descontos').textContent = 'R$ ' + Math.round(totalDescontos).toLocaleString('pt-BR');
+  document.getElementById('kpi-aj-descontos-sub').textContent = descontos.length + ' ajuste' + (descontos.length !== 1 ? 's' : '');
+
+  document.getElementById('kpi-aj-creditos').textContent = 'R$ ' + Math.round(totalCreditos).toLocaleString('pt-BR');
+
+  document.getElementById('kpi-aj-reentregas').textContent = totalCocosExtras.toLocaleString('pt-BR');
+  document.getElementById('kpi-aj-reentregas-sub').textContent = reentregas.length + ' reentrega' + (reentregas.length !== 1 ? 's' : '');
+
+  document.getElementById('kpi-aj-total').textContent = mes.length;
+  document.getElementById('kpi-aj-total-sub').textContent = 'no mês';
+}
+
+const _AJ_LABELS = {
+  desconto: { emoji: '🔻', nome: 'Desconto' },
+  devolucao_parcial: { emoji: '🔄', nome: 'Devolução parcial' },
+  devolucao_total: { emoji: '❌', nome: 'Devolução total' },
+  credito_futuro: { emoji: '💳', nome: 'Crédito futuro' },
+  reentrega: { emoji: '🚚', nome: 'Reentrega' }
+};
+const _MOTIVOS_LABELS = {
+  cocos_quebrados: 'Cocos quebrados',
+  qualidade_ruim: 'Qualidade ruim',
+  atraso: 'Atraso',
+  recusa_cliente: 'Recusa do cliente',
+  erro_lancamento: 'Erro de lançamento',
+  outro: 'Outro'
+};
+
+function _renderAjLista() {
+  const lista = document.getElementById('fin-lista-ajustes');
+  if (!lista) return;
+
+  let filt = _finAjustes;
+  if (_finAjFiltroTipo !== 'todos') {
+    filt = filt.filter(a => a.tipo === _finAjFiltroTipo);
+  }
+
+  if (filt.length === 0) {
+    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum ajuste registrado</div>';
+    return;
+  }
+
+  // Mapa cobrança_id → cliente para mostrar nome
+  const cobrMap = {};
+  _finCobrancas.forEach(c => { cobrMap[c.id] = c; });
+
+  lista.innerHTML = filt.map(a => {
+    const lbl = _AJ_LABELS[a.tipo] || { emoji: '🔧', nome: a.tipo };
+    const motivo = _MOTIVOS_LABELS[a.motivo] || a.motivo;
+    const cobr = cobrMap[a.cobranca_id];
+    const cliente = cobr ? cobr.cliente_nome : (a.venda_id ? `Venda #${a.venda_id}` : '—');
+
+    let valorHtml = '';
+    if (a.tipo === 'reentrega') {
+      valorHtml = `<div class="fin-aj-valor positivo">+ ${a.cocos_extras} cocos</div>`;
+    } else if (a.valor != null) {
+      const cls = Number(a.valor) < 0 ? 'negativo' : 'positivo';
+      const sinal = Number(a.valor) < 0 ? '-' : '+';
+      valorHtml = `<div class="fin-aj-valor ${cls}">${sinal} R$ ${Math.abs(Number(a.valor)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>`;
+    }
+
+    const dt = new Date(a.data_ajuste + 'T00:00:00');
+    const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
+
+    return `
+      <div class="fin-aj-row ${a.tipo}">
+        <span class="fin-aj-tipo-icon" title="${lbl.nome}">${lbl.emoji}</span>
+        <div class="fin-aj-info">
+          <div class="fin-aj-cliente">${escapeHtml(cliente)}</div>
+          <div class="fin-aj-meta">
+            <span><strong>${lbl.nome}</strong></span>
+            <span>${motivo}</span>
+            ${a.obs ? `<span style="color:var(--muted)">• ${escapeHtml(a.obs)}</span>` : ''}
+          </div>
+        </div>
+        ${valorHtml}
+        <span class="fin-aj-data">${dtFmt}</span>
+      </div>`;
+  }).join('');
+}
+
+// ─── MODAL: NOVO AJUSTE ───
+function abrirModalAjuste(cobrancaId) {
+  // Reset
+  _finAjustandoSel = null;
+  document.getElementById('ajuste-cobranca-info').style.display = 'none';
+  document.querySelectorAll('input[name="aj-tipo"]').forEach(r => r.checked = false);
+  document.querySelectorAll('.aj-tipo-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('ajuste-motivo').value = '';
+  document.getElementById('ajuste-valor').value = '';
+  document.getElementById('ajuste-cocos').value = '';
+  document.getElementById('ajuste-data').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ajuste-obs').value = '';
+  document.getElementById('ajuste-erro').style.display = 'none';
+  document.getElementById('ajuste-grupo-valor').style.display = 'block';
+  document.getElementById('ajuste-grupo-cocos').style.display = 'none';
+  document.getElementById('ajuste-valor-hint').textContent = '';
+
+  // Popular select de cobranças (apenas não canceladas)
+  const sel = document.getElementById('ajuste-cobranca');
+  const opts = ['<option value="">Selecione uma cobrança...</option>'];
+  _finCobrancas
+    .filter(c => c.status !== 'cancelado')
+    .sort((a,b) => b.data_emissao.localeCompare(a.data_emissao))
+    .slice(0, 200) // limita 200 mais recentes
+    .forEach(c => {
+      const dt = new Date(c.data_emissao + 'T00:00:00');
+      const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0');
+      opts.push(`<option value="${c.id}">${escapeHtml(c.cliente_nome)} · ${dtFmt} · R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')} · #${c.id}</option>`);
+    });
+  sel.innerHTML = opts.join('');
+
+  // Se chamado do botão de uma cobrança específica, pré-seleciona
+  if (cobrancaId) {
+    sel.value = cobrancaId;
+    onAjusteCobrancaChange();
+  }
+
+  openModal('modal-ajuste-overlay');
+}
+
+function onAjusteCobrancaChange() {
+  const id = parseInt(document.getElementById('ajuste-cobranca').value);
+  const c = _finCobrancas.find(x => x.id === id);
+  const info = document.getElementById('ajuste-cobranca-info');
+  if (!c) { info.style.display = 'none'; _finAjustandoSel = null; return; }
+  _finAjustandoSel = c;
+  const saldo = Number(c.valor_atual) - Number(c.valor_pago);
+  info.style.display = 'block';
+  info.innerHTML = `
+    <div style="font-weight:800;color:var(--forest)">${escapeHtml(c.cliente_nome)}</div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px">
+      Total: R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')} · Pago: R$ ${Math.round(c.valor_pago).toLocaleString('pt-BR')} · Saldo: R$ ${Math.round(saldo).toLocaleString('pt-BR')}
+    </div>`;
+}
+
+function onAjusteTipoChange() {
+  const tipo = document.querySelector('input[name="aj-tipo"]:checked')?.value;
+  document.querySelectorAll('.aj-tipo-card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.tipo === tipo);
+  });
+
+  const grpValor = document.getElementById('ajuste-grupo-valor');
+  const grpCocos = document.getElementById('ajuste-grupo-cocos');
+  const lblValor = document.getElementById('ajuste-valor-label');
+  const hint = document.getElementById('ajuste-valor-hint');
+
+  if (tipo === 'reentrega') {
+    grpValor.style.display = 'none';
+    grpCocos.style.display = 'block';
+    hint.textContent = '';
+  } else if (tipo === 'devolucao_total') {
+    grpValor.style.display = 'block';
+    grpCocos.style.display = 'none';
+    lblValor.textContent = 'Valor a estornar (R$) *';
+    if (_finAjustandoSel) {
+      const v = (Number(_finAjustandoSel.valor_atual) - Number(_finAjustandoSel.valor_pago)).toFixed(2).replace('.',',');
+      document.getElementById('ajuste-valor').value = v;
+      hint.textContent = 'Pré-preenchido com saldo restante. A cobrança será cancelada.';
+    }
+  } else if (tipo === 'credito_futuro') {
+    grpValor.style.display = 'block';
+    grpCocos.style.display = 'none';
+    lblValor.textContent = 'Valor do crédito (R$) *';
+    hint.textContent = 'Este valor vira saldo a favor do cliente para próximas vendas. Não reduz a cobrança atual.';
+  } else if (tipo === 'desconto' || tipo === 'devolucao_parcial') {
+    grpValor.style.display = 'block';
+    grpCocos.style.display = 'none';
+    lblValor.textContent = 'Valor (R$) *';
+    hint.textContent = tipo === 'desconto' ? 'Reduz o valor da cobrança e o R$/coco efetivo.' : 'Reduz cobrança proporcional aos cocos devolvidos.';
+  }
+}
+
+function onAjusteValorInput(el) {
+  let raw = el.value.replace(/[^\d,\.]/g, '').replace(/\./g, ',');
+  const parts = raw.split(',');
+  if (parts.length > 1) raw = parts[0] + ',' + parts.slice(1).join('').slice(0,2);
+  if (el.value !== raw) el.value = raw;
+}
+
+function _parseAjusteValor() {
+  const raw = (document.getElementById('ajuste-valor').value || '').replace(/\./g,'').replace(',','.');
+  return parseFloat(raw) || 0;
+}
+
+async function confirmarAjuste() {
+  if (_registrandoAjuste) return;
+  const erro = document.getElementById('ajuste-erro');
+  const tipo = document.querySelector('input[name="aj-tipo"]:checked')?.value;
+  const motivo = document.getElementById('ajuste-motivo').value;
+  const data = document.getElementById('ajuste-data').value;
+  const obs = document.getElementById('ajuste-obs').value.trim();
+
+  if (!_finAjustandoSel) { erro.textContent = 'Selecione uma cobrança.'; erro.style.display = 'block'; return; }
+  if (!tipo) { erro.textContent = 'Selecione o tipo de ajuste.'; erro.style.display = 'block'; return; }
+  if (!motivo) { erro.textContent = 'Informe o motivo.'; erro.style.display = 'block'; return; }
+  if (!data) { erro.textContent = 'Informe a data do ajuste.'; erro.style.display = 'block'; return; }
+
+  // Validar valor/cocos conforme tipo
+  let valor = null, cocos = null;
+  if (tipo === 'reentrega') {
+    cocos = parseInt(document.getElementById('ajuste-cocos').value) || 0;
+    if (cocos <= 0) { erro.textContent = 'Informe a quantidade de cocos extras.'; erro.style.display = 'block'; return; }
+  } else {
+    const v = _parseAjusteValor();
+    if (v <= 0) { erro.textContent = 'Informe um valor válido.'; erro.style.display = 'block'; return; }
+    // Sinal correto: desconto/devolução = negativo; crédito = positivo
+    if (tipo === 'credito_futuro') valor = v;
+    else valor = -v;
+
+    // Validar não exceder saldo (para devoluções/desconto)
+    if (tipo !== 'credito_futuro' && tipo !== 'devolucao_total') {
+      const saldo = Number(_finAjustandoSel.valor_atual) - Number(_finAjustandoSel.valor_pago);
+      if (Math.abs(valor) > saldo + 0.01) {
+        if (!confirm(`Valor (R$ ${Math.abs(valor).toFixed(2)}) é MAIOR que o saldo restante (R$ ${saldo.toFixed(2)}). Continuar mesmo assim?`)) return;
+      }
+    }
+  }
+
+  const userEmail = (_userPermissoes && _userPermissoes.email) || 'desconhecido';
+  const btn = document.querySelector('#modal-ajuste-overlay button.btn-primary');
+
+  _registrandoAjuste = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.origText = btn.textContent;
+    btn.textContent = '⏳ Salvando...';
+    btn.style.opacity = '0.6';
+  }
+
+  try {
+    const payload = {
+      venda_id: _finAjustandoSel.venda_id,
+      cobranca_id: _finAjustandoSel.id,
+      tipo: tipo,
+      motivo: motivo,
+      valor: valor,
+      cocos_extras: cocos,
+      data_ajuste: data,
+      obs: obs || null,
+      criado_por: userEmail
+    };
+    const { error } = await _SB.from('ajustes').insert(payload);
+    if (error) {
+      if (typeof _isAuthError === 'function' && _isAuthError(error)) { _tratarSessaoExpirada(); return; }
+      erro.textContent = 'Erro: ' + (error.message || 'verifique conexão');
+      erro.style.display = 'block';
+      return;
+    }
+
+    // Para desconto/devolução, atualiza valor_atual da cobrança (trigger não faz isso ainda)
+    if ((tipo === 'desconto' || tipo === 'devolucao_parcial') && valor && _finAjustandoSel.id) {
+      const novoValor = Math.max(0, Number(_finAjustandoSel.valor_atual) + valor); // valor é negativo
+      await _SB.from('cobrancas').update({ valor_atual: novoValor, updated_at: new Date().toISOString() }).eq('id', _finAjustandoSel.id);
+    }
+
+    closeModal('modal-ajuste-overlay');
+    if (typeof showToast === 'function') showToast('✓ Ajuste registrado');
+    _finAjustandoSel = null;
+    await carregarCobrancas();
+    if (document.getElementById('fin-painel-ajustes').classList.contains('ativo')) {
+      await renderPainelAjustes();
+    } else {
+      renderPainelCobranca();
+    }
+  } catch(e) {
+    erro.textContent = 'Erro: ' + (e.message || e);
+    erro.style.display = 'block';
+  } finally {
+    _registrandoAjuste = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.origText || '✓ Registrar Ajuste';
+      btn.style.opacity = '';
+    }
+  }
+}
+
+// Substitui placeholder do botão Ajuste no Painel Cobrança
+window.abrirAjusteCobranca = function(cobrancaId) {
+  abrirModalAjuste(cobrancaId);
+};
