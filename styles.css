@@ -1155,6 +1155,44 @@
 .fin-paginacao button:disabled { opacity:.4; cursor:not-allowed; }
 .fin-paginacao span { font-size:12px; color:var(--muted); }
 
+/* Tabela densa de cobranças (igual estilo Vendas) */
+.fin-cob-table { width:100%; border-collapse:collapse; font-size:12px; }
+.fin-cob-table th { padding:8px 10px; font-size:10px; font-family:var(--font-mono); color:var(--muted); text-align:left; border-bottom:1px solid var(--border); text-transform:uppercase; letter-spacing:.05em; font-weight:700; background:var(--surface2); position:sticky; top:0; z-index:1; }
+.fin-cob-table td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.fin-cob-table tbody tr { cursor:pointer; transition:background .12s; }
+.fin-cob-table tbody tr:hover { background:var(--surface2); }
+.fin-cob-table tbody tr.atrasada { border-left:3px solid var(--vermelho); }
+.fin-cob-table tbody tr.parcial_atrasada { border-left:3px solid var(--vermelho); border-left-style:dashed; }
+.fin-cob-table tbody tr.pago_parcial { border-left:3px solid #3b82f6; }
+.fin-cob-table tbody tr.aberto { border-left:3px solid #fbbf24; }
+.fin-cob-table tbody tr.pago { border-left:3px solid var(--verde-border); opacity:.85; }
+.fin-cob-table tbody tr.cancelado { border-left:3px solid #999; opacity:.5; text-decoration:line-through; }
+.fin-cob-table .col-cliente { font-weight:700; color:var(--forest); }
+.fin-cob-table .col-valor { font-family:var(--font-mono); font-weight:700; }
+.fin-cob-table .col-data { font-family:var(--font-mono); white-space:nowrap; color:var(--muted); }
+.fin-cob-table .col-acoes { white-space:nowrap; }
+.fin-cob-table .col-acoes button { background:none; border:none; cursor:pointer; color:var(--muted); font-size:13px; padding:2px 4px; margin:0 1px; }
+.fin-cob-table .col-acoes button:hover { color:var(--forest); }
+
+/* Filtros ano/mes (estilo botões pill) */
+#fin-anos-btns .area-btn, #fin-meses-btns .area-btn { padding:4px 12px; font-size:11px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:4px; cursor:pointer; font-weight:600; transition:all .15s; font-family:var(--font-main); }
+#fin-anos-btns .area-btn:hover, #fin-meses-btns .area-btn:hover { border-color:#d97706; }
+#fin-anos-btns .area-btn.ativo, #fin-meses-btns .area-btn.ativo { background:#d97706; color:#fff; border-color:#d97706; }
+#fin-anos-btns .area-btn.todas, #fin-meses-btns .area-btn.todas { font-style:italic; }
+
+/* Painel lateral de cobrança (reusa estilos do side-panel existente) */
+#cob-panel .side-kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+#cob-panel .side-kpi { padding:10px 12px; background:var(--surface2); border-radius:8px; border-left:3px solid var(--forest); }
+#cob-panel .side-kpi-label { font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+#cob-panel .side-kpi-value { font-size:16px; font-weight:800; font-family:var(--font-mono); color:var(--forest); margin-top:2px; }
+#cob-panel .cob-section-titulo { font-size:11px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:14px 0 6px; }
+#cob-panel .cob-receb-row { display:grid; grid-template-columns:auto 1fr auto; gap:10px; padding:8px 10px; border-bottom:1px solid var(--border); align-items:center; font-size:12px; }
+#cob-panel .cob-acoes-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+#cob-panel .cob-acoes-grid button { padding:10px; font-size:12px; font-weight:700; border-radius:8px; cursor:pointer; border:1px solid var(--border); background:var(--surface); transition:all .12s; }
+#cob-panel .cob-acoes-grid button:hover { border-color:#d97706; }
+#cob-panel .cob-acoes-grid button.principal { background:#d97706; color:#fff; border-color:#d97706; grid-column:span 2; }
+#cob-panel .cob-acoes-grid button.danger { color:var(--vermelho); }
+
 /* === Aba Ajustes === */
 .fin-aj-tipo-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
 .fin-aj-tipo-btn:hover { border-color:#d97706; }

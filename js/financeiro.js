@@ -16,6 +16,8 @@ if (typeof escapeHtml !== 'function') {
 
 let _finCobrancas = [];
 let _finFiltroStatus = localStorage.getItem('fin_filtro_status') || 'atrasada';
+let _finFiltroAno = localStorage.getItem('fin_filtro_ano') || 'todos';
+let _finFiltroMes = localStorage.getItem('fin_filtro_mes') || 'todos';
 let _finCobrancaSel = null; // cobrança aberta no modal de baixa
 let _finPeriodoSalvo = localStorage.getItem('fin_periodo') || 'mes';
 let _finFormaPgtoCliente = {}; // cache: cliente_id -> última forma de pagamento usada
@@ -427,6 +429,8 @@ function _statusVisual(c) {
 }
 
 function renderPainelCobranca() {
+  _renderAnosBtns();
+  _renderMesesBtns();
   _atualizarContagensFiltros();
   renderKPIsCobranca();
   renderListaCobrancas();
@@ -511,98 +515,139 @@ function _atualizarContagensFiltros() {
 
 // A3: paginação
 let _finPagina = 1;
-const _FIN_POR_PAGINA = 50;
+const _FIN_POR_PAGINA = 100;
 
-function renderListaCobrancas() {
-  const lista = document.getElementById('fin-lista-cobrancas');
-  if (!lista) return;
+// Renderiza botões de Ano (todos + anos com cobranças)
+function _renderAnosBtns() {
+  const wrap = document.getElementById('fin-anos-btns');
+  if (!wrap) return;
+  const anos = [...new Set(_finCobrancas.map(c => c.data_emissao?.slice(0,4)).filter(Boolean))]
+    .map(Number).filter(a => a > 2000).sort((a,b) => b - a);
+  let html = '<label class="fin-filtro-label">Ano:</label>';
+  html += `<button class="area-btn todas ${_finFiltroAno === 'todos' ? 'ativo' : ''}" onclick="setFinFiltroAno('todos')">Todos</button>`;
+  anos.forEach(a => {
+    html += `<button class="area-btn ${_finFiltroAno === String(a) ? 'ativo' : ''}" onclick="setFinFiltroAno('${a}')">${a}</button>`;
+  });
+  wrap.innerHTML = html;
+}
+
+function _renderMesesBtns() {
+  const wrap = document.getElementById('fin-meses-btns');
+  if (!wrap) return;
+  const MESES = [['todos','Todos'],['1','Jan'],['2','Fev'],['3','Mar'],['4','Abr'],['5','Mai'],['6','Jun'],['7','Jul'],['8','Ago'],['9','Set'],['10','Out'],['11','Nov'],['12','Dez']];
+  let html = '<label class="fin-filtro-label">Mês:</label>';
+  html += MESES.map(([v,l]) =>
+    `<button class="area-btn${v==='todos'?' todas':''}${_finFiltroMes === v ? ' ativo' : ''}" onclick="setFinFiltroMes('${v}')">${l}</button>`
+  ).join('');
+  wrap.innerHTML = html;
+}
+
+function setFinFiltroAno(a) {
+  _finFiltroAno = a;
+  localStorage.setItem('fin_filtro_ano', a);
+  _finPagina = 1;
+  _renderAnosBtns();
+  renderListaCobrancas();
+  _atualizarContagensFiltros();
+}
+
+function setFinFiltroMes(m) {
+  _finFiltroMes = m;
+  localStorage.setItem('fin_filtro_mes', m);
+  _finPagina = 1;
+  _renderMesesBtns();
+  renderListaCobrancas();
+  _atualizarContagensFiltros();
+}
+
+// Aplica filtros (busca + ano + mês) e retorna array
+function _filtrarCobrancas(filtraStatus = true) {
   const busca = (document.getElementById('fin-busca')?.value || '').trim().toLowerCase();
-
-  let filt = _finCobrancas.filter(c => {
+  return _finCobrancas.filter(c => {
     if (busca && !(c.cliente_nome || '').toLowerCase().includes(busca)) return false;
+    // Filtro por ano (data_emissao)
+    if (_finFiltroAno !== 'todos' && c.data_emissao?.slice(0,4) !== _finFiltroAno) return false;
+    // Filtro por mês
+    if (_finFiltroMes !== 'todos') {
+      const mesCob = parseInt(c.data_emissao?.slice(5,7));
+      if (mesCob !== parseInt(_finFiltroMes)) return false;
+    }
+    if (!filtraStatus) return true;
     if (_finFiltroStatus === 'todas') return true;
-    if (_finFiltroStatus === 'atrasada') return _isAtrasada(c); // inclui parcial atrasada
+    if (_finFiltroStatus === 'atrasada') return _isAtrasada(c);
     if (_finFiltroStatus === 'aberto') return c.status === 'aberto' && !_isAtrasada(c);
     if (_finFiltroStatus === 'pago_parcial') return c.status === 'pago_parcial' && !_isAtrasada(c);
     return c.status === _finFiltroStatus;
   });
+}
 
+function renderListaCobrancas() {
+  const tbody = document.getElementById('fin-cob-tbody');
+  if (!tbody) return;
+
+  let filt = _filtrarCobrancas(true);
   // Atrasadas: mais antigas primeiro. Resto: vencimento mais próximo primeiro.
   filt.sort((a,b) => a.data_vencimento.localeCompare(b.data_vencimento));
 
   if (filt.length === 0) {
-    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhuma cobrança encontrada</div>';
+    tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhuma cobrança encontrada</td></tr>';
+    document.getElementById('fin-cob-paginacao').innerHTML = '';
     return;
   }
 
-  // A3: paginação
+  // Paginação
   const totalPaginas = Math.ceil(filt.length / _FIN_POR_PAGINA);
   if (_finPagina > totalPaginas) _finPagina = 1;
   const inicio = (_finPagina - 1) * _FIN_POR_PAGINA;
-  const fim = inicio + _FIN_POR_PAGINA;
-  const pagina = filt.slice(inicio, fim);
+  const pagina = filt.slice(inicio, inicio + _FIN_POR_PAGINA);
 
-  let html = pagina.map(c => {
+  tbody.innerHTML = pagina.map(c => {
     const status = _statusVisual(c);
     const dias = _diasParaVencer(c.data_vencimento);
     const saldo = Number(c.valor_atual) - Number(c.valor_pago);
     const venc = new Date(c.data_vencimento + 'T00:00:00');
     const vencFmt = String(venc.getDate()).padStart(2,'0') + '/' + String(venc.getMonth()+1).padStart(2,'0') + '/' + venc.getFullYear();
 
-    let metaDias = '';
-    if (status === 'atrasada') metaDias = `<span style="color:var(--vermelho);font-weight:800">${Math.abs(dias)} dias atrasada</span>`;
-    else if (status === 'pago' || status === 'cancelado') metaDias = '';
-    else if (dias === 0) metaDias = '<span style="color:#9a6700;font-weight:700">Vence hoje</span>';
-    else if (dias > 0) metaDias = `<span>Vence em ${dias} dia${dias>1?'s':''}</span>`;
+    let diasInfo = '';
+    if (status === 'atrasada' || status === 'parcial_atrasada') {
+      diasInfo = `<div style="font-size:10px;color:var(--vermelho);font-weight:700">${Math.abs(dias)}d atrasada</div>`;
+    } else if (dias === 0) {
+      diasInfo = '<div style="font-size:10px;color:#9a6700;font-weight:700">Vence hoje</div>';
+    } else if (dias > 0 && dias <= 7) {
+      diasInfo = `<div style="font-size:10px;color:#9a6700">em ${dias}d</div>`;
+    }
 
-    const podeBaixar = status !== 'pago' && status !== 'cancelado';
+    const podeBaixar = c.status !== 'pago' && c.status !== 'cancelado';
     const podeCancelar = c.status !== 'cancelado';
     const acoes = `
-      ${podeBaixar ? `<button class="fin-acao-btn principal acao-edicao" onclick="abrirModalBaixa(${c.id})" title="Baixar pagamento">💸</button>` : ''}
-      <button class="fin-acao-btn" onclick="abrirWhatsCobranca(${c.id})" title="WhatsApp">📱</button>
-      ${podeBaixar ? `<button class="fin-acao-btn acao-edicao" onclick="abrirAjusteCobranca(${c.id})" title="Ajuste">🔧</button>` : ''}
-      <button class="fin-acao-btn" onclick="abrirVendaDoFinanceiro(${c.venda_id})" title="Editar venda">✏️</button>
-      ${podeCancelar ? `<button class="fin-acao-btn acao-edicao" onclick="cancelarCobranca(${c.id})" title="Cancelar cobrança" style="color:var(--vermelho)">✕</button>` : ''}
+      ${podeBaixar ? `<button class="acao-edicao" onclick="event.stopPropagation();abrirModalBaixa(${c.id})" title="Baixar pagamento" style="color:#d97706;font-size:14px">💸</button>` : ''}
+      <button onclick="event.stopPropagation();abrirWhatsCobranca(${c.id})" title="WhatsApp">📱</button>
+      ${podeBaixar ? `<button class="acao-edicao" onclick="event.stopPropagation();abrirAjusteCobranca(${c.id})" title="Ajuste">🔧</button>` : ''}
+      ${podeCancelar ? `<button class="acao-edicao" onclick="event.stopPropagation();cancelarCobranca(${c.id})" title="Cancelar cobrança" style="color:var(--vermelho)">✕</button>` : ''}
     `;
 
-    const valorPagoStr = Number(c.valor_pago) > 0
-      ? `<div class="fin-cob-pago">pago: R$ ${Math.round(c.valor_pago).toLocaleString('pt-BR')}</div>`
-      : '';
-    const saldoStr = saldo > 0 && status !== 'cancelado'
-      ? `<div class="fin-cob-saldo">saldo: R$ ${Math.round(saldo).toLocaleString('pt-BR')}</div>`
-      : '';
-
-    return `
-      <div class="fin-cobranca ${status}">
-        <div class="fin-cob-info">
-          <div class="fin-cob-cliente">${escapeHtml(c.cliente_nome || '—')}</div>
-          <div class="fin-cob-meta">
-            <span>📅 vence ${vencFmt}</span>
-            ${metaDias}
-            <span class="fin-cob-status ${status}">${_statusLabel(status)}</span>
-          </div>
-        </div>
-        <div class="fin-cob-valores">
-          <div class="fin-cob-valor">R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')}</div>
-          ${valorPagoStr}
-          ${saldoStr}
-        </div>
-        <div class="fin-cob-acoes">${acoes}</div>
-      </div>`;
+    return `<tr class="${status}" data-cob-id="${c.id}" onclick="openCobPanel(${c.id})">
+      <td class="col-data">${vencFmt}${diasInfo}</td>
+      <td class="col-cliente">${escapeHtml(c.cliente_nome || '—')}</td>
+      <td class="col-valor">R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')}</td>
+      <td class="col-valor" style="color:var(--muted)">${Number(c.valor_pago) > 0 ? 'R$ ' + Math.round(c.valor_pago).toLocaleString('pt-BR') : '—'}</td>
+      <td class="col-valor" style="color:${saldo > 0 ? 'var(--vermelho)' : 'var(--muted)'}">${saldo > 0 && status !== 'cancelado' ? 'R$ ' + Math.round(saldo).toLocaleString('pt-BR') : '—'}</td>
+      <td><span class="fin-cob-status ${status}" style="font-size:8px">${_statusLabel(status)}</span></td>
+      <td class="col-acoes">${acoes}</td>
+    </tr>`;
   }).join('');
 
-  // A3: paginação visual
+  // Paginação visual
+  const pag = document.getElementById('fin-cob-paginacao');
   if (totalPaginas > 1) {
-    html += `<div class="fin-paginacao">
+    pag.innerHTML = `<div class="fin-paginacao">
       <button onclick="finPaginaPrev()" ${_finPagina === 1 ? 'disabled' : ''}>◂ Anterior</button>
       <span>Página ${_finPagina} de ${totalPaginas} · ${filt.length} cobranças</span>
       <button onclick="finPaginaNext()" ${_finPagina >= totalPaginas ? 'disabled' : ''}>Próxima ▸</button>
     </div>`;
-  } else if (filt.length > 0) {
-    html += `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} cobrança${filt.length>1?'s':''}</div>`;
+  } else {
+    pag.innerHTML = `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} cobrança${filt.length>1?'s':''}</div>`;
   }
-
-  lista.innerHTML = html;
 }
 
 function finPaginaNext() { _finPagina++; renderListaCobrancas(); window.scrollTo({top: 0, behavior: 'smooth'}); }
@@ -1287,4 +1332,121 @@ function renderListaRecebimentos() {
         <span class="fin-aj-data">${dtFmt}</span>
       </div>`;
   }).join('') + `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} recebimento${filt.length !== 1 ? 's' : ''}</div>`;
+}
+
+// ═══════════════════════════════════════
+// PAINEL LATERAL DE COBRANÇA (drill-down)
+// ═══════════════════════════════════════
+async function openCobPanel(cobrancaId) {
+  const c = _finCobrancas.find(x => x.id === cobrancaId);
+  if (!c) return;
+
+  const status = _statusVisual(c);
+  const saldo = Number(c.valor_atual) - Number(c.valor_pago);
+  const venc = new Date(c.data_vencimento + 'T00:00:00');
+  const vencFmt = String(venc.getDate()).padStart(2,'0') + '/' + String(venc.getMonth()+1).padStart(2,'0') + '/' + venc.getFullYear();
+  const emi = new Date(c.data_emissao + 'T00:00:00');
+  const emiFmt = String(emi.getDate()).padStart(2,'0') + '/' + String(emi.getMonth()+1).padStart(2,'0') + '/' + emi.getFullYear();
+  const dias = _diasParaVencer(c.data_vencimento);
+
+  document.getElementById('cob-title').textContent = c.cliente_nome || '—';
+  document.getElementById('cob-sub').textContent = `Cobrança #${c.id} · emitida ${emiFmt}`;
+
+  // KPIs
+  let kpiHtml = `<div class="side-kpi-grid">
+    <div class="side-kpi"><div class="side-kpi-label">Valor total</div><div class="side-kpi-value">R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')}</div></div>
+    <div class="side-kpi" style="border-left-color:#3b82f6"><div class="side-kpi-label">Pago</div><div class="side-kpi-value" style="color:#1e40af">R$ ${Math.round(c.valor_pago).toLocaleString('pt-BR')}</div></div>
+    <div class="side-kpi" style="border-left-color:${saldo > 0 ? 'var(--vermelho)' : 'var(--verde-border)'}"><div class="side-kpi-label">Saldo</div><div class="side-kpi-value" style="color:${saldo > 0 ? 'var(--vermelho)' : 'var(--forest)'}">R$ ${Math.round(saldo).toLocaleString('pt-BR')}</div></div>
+    <div class="side-kpi"><div class="side-kpi-label">Vencimento</div><div class="side-kpi-value" style="font-size:14px">${vencFmt}</div></div>
+  </div>`;
+
+  // Status
+  kpiHtml += `<div style="text-align:center;margin-bottom:14px"><span class="fin-cob-status ${status}" style="font-size:11px;padding:4px 10px">${_statusLabel(status)}</span>`;
+  if (status === 'atrasada' || status === 'parcial_atrasada') {
+    kpiHtml += `<span style="color:var(--vermelho);font-weight:700;margin-left:8px;font-size:12px">${Math.abs(dias)} dias atrasada</span>`;
+  } else if (dias === 0) {
+    kpiHtml += `<span style="color:#9a6700;font-weight:700;margin-left:8px;font-size:12px">Vence hoje</span>`;
+  }
+  kpiHtml += `</div>`;
+
+  // Buscar recebimentos
+  let recebHtml = '';
+  try {
+    const { data: recs } = await _SB.from('recebimentos')
+      .select('*')
+      .eq('cobranca_id', cobrancaId)
+      .order('data_recebimento', { ascending: false });
+    if (recs && recs.length > 0) {
+      const formaLbl = { pix: '⚡ PIX', transferencia: '🏦 Transf.', boleto: '📄 Boleto', estorno: '↩️ Estorno' };
+      recebHtml = `<div class="cob-section-titulo">Recebimentos (${recs.length})</div>`;
+      recs.forEach(r => {
+        const dt = new Date(r.data_recebimento + 'T00:00:00');
+        const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
+        const isNeg = Number(r.valor) < 0;
+        recebHtml += `<div class="cob-receb-row">
+          <span style="font-size:14px">${(formaLbl[r.forma_pagamento] || r.forma_pagamento).split(' ')[0]}</span>
+          <div>
+            <div style="font-weight:600">${formaLbl[r.forma_pagamento] || r.forma_pagamento}</div>
+            <div style="font-size:10px;color:var(--muted)">${dtFmt} · por ${escapeHtml(r.baixado_por || '—')}</div>
+            ${r.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;font-style:italic">${escapeHtml(r.obs)}</div>` : ''}
+          </div>
+          <span style="font-weight:700;font-family:var(--font-mono);color:${isNeg ? 'var(--vermelho)' : 'var(--forest)'}">${isNeg ? '-' : '+'} R$ ${Math.abs(Number(r.valor)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+        </div>`;
+      });
+    } else {
+      recebHtml = '<div class="cob-section-titulo">Recebimentos</div><div style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Nenhum recebimento ainda</div>';
+    }
+  } catch(e) { console.warn('openCobPanel recs:', e); }
+
+  // Buscar ajustes
+  let ajustesHtml = '';
+  try {
+    const { data: ajs } = await _SB.from('ajustes')
+      .select('*')
+      .eq('cobranca_id', cobrancaId)
+      .order('data_ajuste', { ascending: false });
+    if (ajs && ajs.length > 0) {
+      ajustesHtml = `<div class="cob-section-titulo">Ajustes (${ajs.length})</div>`;
+      ajs.forEach(a => {
+        const lbl = _AJ_LABELS[a.tipo] || { emoji: '🔧', nome: a.tipo };
+        const motivo = _MOTIVOS_LABELS[a.motivo] || a.motivo;
+        const dt = new Date(a.data_ajuste + 'T00:00:00');
+        const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0');
+        let valorStr = '';
+        if (a.tipo === 'reentrega') valorStr = `+ ${a.cocos_extras} cocos`;
+        else if (a.valor != null) valorStr = `${Number(a.valor) < 0 ? '-' : '+'} R$ ${Math.abs(Number(a.valor)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        ajustesHtml += `<div class="cob-receb-row">
+          <span style="font-size:14px">${lbl.emoji}</span>
+          <div>
+            <div style="font-weight:600">${lbl.nome} · ${motivo}</div>
+            <div style="font-size:10px;color:var(--muted)">${dtFmt} · por ${escapeHtml(a.criado_por || '—')}</div>
+            ${a.obs ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;font-style:italic">${escapeHtml(a.obs)}</div>` : ''}
+          </div>
+          <span style="font-weight:700;font-family:var(--font-mono);color:${Number(a.valor) < 0 ? 'var(--vermelho)' : 'var(--forest)'}">${valorStr}</span>
+        </div>`;
+      });
+    }
+  } catch(e) {}
+
+  // Ações
+  const podeBaixar = c.status !== 'pago' && c.status !== 'cancelado';
+  const podeCancelar = c.status !== 'cancelado';
+  let acoesHtml = `<div class="cob-acoes-grid">`;
+  if (podeBaixar) acoesHtml += `<button class="principal acao-edicao" onclick="closeCobPanel();abrirModalBaixa(${c.id})">💸 Baixar pagamento</button>`;
+  acoesHtml += `<button onclick="abrirWhatsCobranca(${c.id})">📱 WhatsApp</button>`;
+  if (podeBaixar) acoesHtml += `<button class="acao-edicao" onclick="closeCobPanel();abrirAjusteCobranca(${c.id})">🔧 Ajuste</button>`;
+  if (c.venda_id) acoesHtml += `<button onclick="closeCobPanel();abrirVendaDoFinanceiro(${c.venda_id})">✏️ Editar venda</button>`;
+  if (podeCancelar) acoesHtml += `<button class="danger acao-edicao" onclick="closeCobPanel();cancelarCobranca(${c.id})">✕ Cancelar cobrança</button>`;
+  acoesHtml += `</div>`;
+
+  document.getElementById('cob-body').innerHTML = kpiHtml + recebHtml + ajustesHtml + acoesHtml;
+
+  // Abrir
+  document.getElementById('cob-overlay').classList.add('open');
+  document.getElementById('cob-panel').classList.add('open');
+}
+
+function closeCobPanel() {
+  document.getElementById('cob-overlay')?.classList.remove('open');
+  document.getElementById('cob-panel')?.classList.remove('open');
 }
