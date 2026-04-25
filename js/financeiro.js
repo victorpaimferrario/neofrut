@@ -687,6 +687,7 @@ function _filtrarCobrancas(filtraStatus = true) {
 
 function renderListaCobrancas() {
   const tbody = document.getElementById('fin-cob-tbody');
+  const tfoot = document.getElementById('fin-cob-tfoot');
   if (!tbody) return;
 
   let filt = _filtrarCobrancas(true);
@@ -695,6 +696,7 @@ function renderListaCobrancas() {
 
   if (filt.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhuma cobrança encontrada</td></tr>';
+    if (tfoot) tfoot.innerHTML = '';
     document.getElementById('fin-cob-paginacao').innerHTML = '';
     return;
   }
@@ -740,6 +742,34 @@ function renderListaCobrancas() {
       <td class="col-acoes">${acoes}</td>
     </tr>`;
   }).join('');
+
+  // ── TOTAIS NO TFOOT ── (igual padrão da aba Vendas)
+  // Calcula totais sobre TODAS as cobranças filtradas (não apenas a página)
+  let tValor = 0, tPago = 0, tSaldo = 0, tCocos = 0;
+  // Mapa rápido vendas → qtde
+  const vendaCocosMap = {};
+  if (typeof _vendasCache !== 'undefined' && _vendasCache) {
+    _vendasCache.forEach(v => { vendaCocosMap[v.id] = (Number(v.qtde) || 0) + (Number(v.quebra) || 0); });
+  }
+  filt.forEach(c => {
+    if (c.status === 'cancelado') return; // ignora canceladas no total
+    tValor += Number(c.valor_atual) || 0;
+    tPago += Number(c.valor_pago) || 0;
+    tSaldo += (Number(c.valor_atual) || 0) - (Number(c.valor_pago) || 0);
+    if (c.venda_id && vendaCocosMap[c.venda_id]) tCocos += vendaCocosMap[c.venda_id];
+  });
+
+  if (tfoot) {
+    tfoot.innerHTML = `<tr style="font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--forest);background:var(--surface2);border-top:2px solid var(--border)">
+      <td style="padding:10px;text-align:right;text-transform:uppercase;letter-spacing:.05em;font-size:11px;color:var(--muted)">TOTAL${tCocos > 0 ? ` · ${tCocos.toLocaleString('pt-BR')} cocos` : ''}:</td>
+      <td style="padding:10px;color:var(--muted);font-size:11px">${filt.filter(c => c.status !== 'cancelado').length} cobr.</td>
+      <td class="col-valor" style="padding:10px">R$ ${Math.round(tValor).toLocaleString('pt-BR')}</td>
+      <td class="col-valor" style="padding:10px;color:#1e40af">R$ ${Math.round(tPago).toLocaleString('pt-BR')}</td>
+      <td class="col-valor" style="padding:10px;color:${tSaldo > 0 ? 'var(--vermelho)' : 'var(--forest)'}">R$ ${Math.round(tSaldo).toLocaleString('pt-BR')}</td>
+      <td></td>
+      <td></td>
+    </tr>`;
+  }
 
   // Paginação visual
   const pag = document.getElementById('fin-cob-paginacao');
