@@ -193,8 +193,9 @@ function _cocosEntreguesVenda(v) {
   return qtde + quebra;
 }
 
-// Helper: receita LÍQUIDA por venda (descontando frete, ICMS, seguro, impostos)
+// Helper: receita LÍQUIDA por venda (descontando frete, ICMS frete e seguro)
 // Esse é o valor REAL que a fazenda recebe — não o valor da NF
+// Obs: campo 'impostos' não é usado no Neofrut (apenas ICMS do frete via icms_valor)
 function _receitaLiquidaVenda(v) {
   // Para fábrica, usar litragem × R$/litro como receita base
   let receitaBase;
@@ -206,14 +207,12 @@ function _receitaLiquidaVenda(v) {
   const frete = Number(v.frete) || 0;
   const icms = Number(v.icms_valor) || 0;
   const seguro = Number(v.seguro_valor) || 0;
-  const impostos = Number(v.impostos) || 0;
-  return Math.max(0, receitaBase - frete - icms - seguro - impostos);
+  return Math.max(0, receitaBase - frete - icms - seguro);
 }
 
 function _renderKpisAnalise(vendas, intervalo) {
-  // R$/coco efetivo: usa rpc_efetivo do banco (já calculado corretamente)
+  // R$/coco efetivo: receita líquida (sem frete/ICMS/seguro) ÷ cocos entregues
   let receitaLiquidaTotal = 0, cocosTotal = 0;
-  let semImpostos = 0; // A1: contagem de vendas com frete > 0 mas impostos = 0
   vendas.forEach(v => {
     const cocos = _cocosEntreguesVenda(v);
     const rec = _receitaLiquidaVenda(v);
@@ -221,26 +220,12 @@ function _renderKpisAnalise(vendas, intervalo) {
       receitaLiquidaTotal += rec;
       cocosTotal += cocos;
     }
-    if (Number(v.frete) > 0 && (!Number(v.impostos) || Number(v.impostos) === 0)) {
-      semImpostos++;
-    }
   });
   const rpcEfetivo = cocosTotal > 0 ? receitaLiquidaTotal / cocosTotal : 0;
 
-  // A1: aviso sobre dados incompletos
-  let avisoEl = document.getElementById('fin-aviso-impostos');
-  if (semImpostos > 0) {
-    if (!avisoEl) {
-      avisoEl = document.createElement('div');
-      avisoEl.id = 'fin-aviso-impostos';
-      avisoEl.style.cssText = 'background:#fef9e7;border:1px solid #d4a017;border-radius:8px;padding:10px 14px;margin:8px 0;font-size:12px;color:#9a6700;display:flex;gap:10px;align-items:center';
-      const kpis = document.getElementById('fin-analise-kpis');
-      if (kpis) kpis.parentNode.insertBefore(avisoEl, kpis);
-    }
-    avisoEl.innerHTML = `⚠️ <strong>${semImpostos}</strong> venda${semImpostos>1?'s':''} no período sem impostos preenchidos — o R$/coco efetivo pode estar superestimado nessas vendas. Ideal preencher <code>vendas.impostos</code> no banco.`;
-  } else if (avisoEl) {
-    avisoEl.remove();
-  }
+  // Remover qualquer aviso amarelo de impostos remanescente
+  const avisoEl = document.getElementById('fin-aviso-impostos');
+  if (avisoEl) avisoEl.remove();
 
   // Ticket médio
   const totalVendas = vendas.reduce((s,v) => s + (Number(v.total) || 0), 0);
