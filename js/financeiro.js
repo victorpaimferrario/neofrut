@@ -71,54 +71,111 @@ function setFinTab(tab) {
 }
 
 // ──────── PAINEL ANÁLISE ────────
-let _finPeriodo = _finPeriodoSalvo || 'mes';
+let _finAnAno = localStorage.getItem('fin_an_ano') || String(new Date().getFullYear());
+let _finAnMes = localStorage.getItem('fin_an_mes') || 'todos';
 
-function setFinPeriodo(p) {
-  _finPeriodo = p;
-  localStorage.setItem('fin_periodo', p); // A5: persistir
-  document.querySelectorAll('.fin-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === p));
+function setFinAnAno(a) {
+  _finAnAno = a;
+  localStorage.setItem('fin_an_ano', a);
+  _renderAnAnosBtns();
   renderPainelAnalise();
 }
 
+function setFinAnMes(m) {
+  _finAnMes = m;
+  localStorage.setItem('fin_an_mes', m);
+  _renderAnMesesBtns();
+  renderPainelAnalise();
+}
+
+function _renderAnAnosBtns() {
+  const wrap = document.getElementById('fin-an-anos-btns');
+  if (!wrap) return;
+  // Anos baseados em vendas existentes
+  const anosSet = new Set();
+  _finCobrancas.forEach(c => { if (c.data_emissao) anosSet.add(c.data_emissao.slice(0,4)); });
+  // Garantir ano atual
+  anosSet.add(String(new Date().getFullYear()));
+  const anos = [...anosSet].map(Number).filter(a => a > 2000).sort((a,b) => b - a);
+  let html = '<label class="fin-filtro-label">Ano:</label>';
+  html += `<button class="area-btn todas ${_finAnAno === 'todos' ? 'ativo' : ''}" onclick="setFinAnAno('todos')">Todos</button>`;
+  anos.forEach(a => {
+    html += `<button class="area-btn ${_finAnAno === String(a) ? 'ativo' : ''}" onclick="setFinAnAno('${a}')">${a}</button>`;
+  });
+  wrap.innerHTML = html;
+}
+
+function _renderAnMesesBtns() {
+  const wrap = document.getElementById('fin-an-meses-btns');
+  if (!wrap) return;
+  const MESES = [['todos','Todos'],['1','Jan'],['2','Fev'],['3','Mar'],['4','Abr'],['5','Mai'],['6','Jun'],['7','Jul'],['8','Ago'],['9','Set'],['10','Out'],['11','Nov'],['12','Dez']];
+  let html = '<label class="fin-filtro-label">Mês:</label>';
+  html += MESES.map(([v,l]) =>
+    `<button class="area-btn${v==='todos'?' todas':''}${_finAnMes === v ? ' ativo' : ''}" onclick="setFinAnMes('${v}')">${l}</button>`
+  ).join('');
+  wrap.innerHTML = html;
+}
+
+// Calcula intervalo de datas a partir de Ano + Mês
 function _periodoIntervalo() {
-  const hoje = new Date();
-  const fim = new Date(hoje);
-  let inicio;
-  if (_finPeriodo === 'mes') {
-    inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  } else if (_finPeriodo === '3m') {
-    inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 3);
-  } else if (_finPeriodo === '6m') {
-    inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 6);
-  } else if (_finPeriodo === 'ano') {
-    inicio = new Date(hoje.getFullYear(), 0, 1);
-  } else {
-    inicio = new Date(2000, 0, 1);
+  if (_finAnAno === 'todos') {
+    return { inicio: '2000-01-01', fim: '2999-12-31' };
   }
+  const ano = parseInt(_finAnAno);
+  if (_finAnMes === 'todos') {
+    return { inicio: `${ano}-01-01`, fim: `${ano}-12-31` };
+  }
+  const mes = parseInt(_finAnMes);
+  const ultDia = new Date(ano, mes, 0).getDate();
   return {
-    inicio: inicio.toISOString().slice(0,10),
-    fim: fim.toISOString().slice(0,10)
+    inicio: `${ano}-${String(mes).padStart(2,'0')}-01`,
+    fim: `${ano}-${String(mes).padStart(2,'0')}-${String(ultDia).padStart(2,'0')}`
   };
 }
 
+// KPIs do Análise: aplicam filtros que levam o usuário a ver os dados
+function aplicarFiltroAnaliseKPI(tipo) {
+  if (tipo === 'realizado') {
+    setFinTab('recebimentos');
+  } else if (tipo === 'atraso' || tipo === 'prazo') {
+    setFinTab('cobranca');
+    setFinFiltroStatus(tipo === 'atraso' ? 'atrasada' : 'pago');
+    if (_finAnAno !== 'todos') setFinFiltroAno(_finAnAno);
+    if (_finAnMes !== 'todos') setFinFiltroMes(_finAnMes);
+  } else if (tipo === 'efetivo' || tipo === 'ticket') {
+    // Ir para aba Vendas (ou cobrança aberta no período)
+    setFinTab('cobranca');
+    setFinFiltroStatus('todas');
+    if (_finAnAno !== 'todos') setFinFiltroAno(_finAnAno);
+    if (_finAnMes !== 'todos') setFinFiltroMes(_finAnMes);
+  }
+}
+
 async function renderPainelAnalise() {
-  // A5: aplicar filtro persistido visualmente
-  document.querySelectorAll('.fin-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === _finPeriodo));
+  // Renderizar filtros (Ano + Mês)
+  _renderAnAnosBtns();
+  _renderAnMesesBtns();
+
   // A2: loading visual nos KPIs
   ['kpi-rpc-efetivo','kpi-rpc-realizado','kpi-ticket','kpi-prazo','kpi-no-prazo'].forEach(id => {
     const el = document.getElementById(id); if (el) el.textContent = '⏳';
   });
   const intervalo = _periodoIntervalo();
+  const busca = (document.getElementById('fin-an-busca')?.value || '').trim().toLowerCase();
+
   try {
     // Buscar vendas no período (excluindo EXCLUIDO)
-    const { data: vendas, error: ve } = await _SB.from('vendas')
-      .select('*')
+    let q = _SB.from('vendas').select('*')
       .gte('data', intervalo.inicio)
       .lte('data', intervalo.fim)
       .neq('status', 'EXCLUIDO');
+    const { data: vendas, error: ve } = await q;
     if (ve) throw ve;
 
-    const vendasArr = vendas || [];
+    let vendasArr = vendas || [];
+    // Filtro de cliente em memória
+    if (busca) vendasArr = vendasArr.filter(v => (v.cliente || '').toLowerCase().includes(busca));
+
     _renderKpisAnalise(vendasArr, intervalo);
     _renderCanais(vendasArr);
     _renderRankingClientes(vendasArr);
@@ -488,6 +545,39 @@ function setFinFiltroStatus(s) {
   renderListaCobrancas();
 }
 
+// Aplica filtro a partir do clique nos KPIs
+function aplicarFiltroKPI(tipo) {
+  if (tipo === 'hoje') {
+    // Filtra cobranças vencendo hoje (não pagas/canceladas)
+    setFinFiltroStatus('todas');
+    setFinFiltroAno('todos');
+    setFinFiltroMes('todos');
+    document.getElementById('fin-busca').value = '__VENCENDO_HOJE__';
+    renderListaCobrancas();
+    showToast('Mostrando cobranças vencendo HOJE');
+  } else if (tipo === 'atraso') {
+    setFinFiltroStatus('atrasada');
+    setFinFiltroAno('todos');
+    setFinFiltroMes('todos');
+    document.getElementById('fin-busca').value = '';
+    renderListaCobrancas();
+  } else if (tipo === 'recebido') {
+    setFinTab('recebimentos');
+  } else if (tipo === 'total') {
+    setFinFiltroStatus('todas');
+    setFinFiltroAno('todos');
+    setFinFiltroMes('todos');
+    document.getElementById('fin-busca').value = '__COM_SALDO__';
+    renderListaCobrancas();
+    showToast('Mostrando todas com saldo');
+  }
+  // Scroll para a tabela
+  setTimeout(() => {
+    const tabela = document.getElementById('fin-cob-table');
+    if (tabela) tabela.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
 // M10: contagem de cobranças por filtro
 function _contarPorStatus() {
   const cont = { atrasada: 0, aberto: 0, pago_parcial: 0, pago: 0, todas: 0 };
@@ -562,9 +652,22 @@ function setFinFiltroMes(m) {
 
 // Aplica filtros (busca + ano + mês) e retorna array
 function _filtrarCobrancas(filtraStatus = true) {
-  const busca = (document.getElementById('fin-busca')?.value || '').trim().toLowerCase();
+  const buscaRaw = (document.getElementById('fin-busca')?.value || '').trim();
+  const buscaEspecial = buscaRaw.startsWith('__') && buscaRaw.endsWith('__');
+  const busca = buscaEspecial ? '' : buscaRaw.toLowerCase();
+  const hojeISO = new Date().toISOString().slice(0,10);
+
   return _finCobrancas.filter(c => {
     if (busca && !(c.cliente_nome || '').toLowerCase().includes(busca)) return false;
+    // Filtros especiais (via aplicarFiltroKPI)
+    if (buscaRaw === '__VENCENDO_HOJE__') {
+      if (c.status === 'pago' || c.status === 'cancelado') return false;
+      if (c.data_vencimento !== hojeISO) return false;
+    }
+    if (buscaRaw === '__COM_SALDO__') {
+      if (c.status === 'cancelado') return false;
+      if (Number(c.valor_atual) - Number(c.valor_pago) <= 0) return false;
+    }
     // Filtro por ano (data_emissao)
     if (_finFiltroAno !== 'todos' && c.data_emissao?.slice(0,4) !== _finFiltroAno) return false;
     // Filtro por mês
@@ -573,6 +676,7 @@ function _filtrarCobrancas(filtraStatus = true) {
       if (mesCob !== parseInt(_finFiltroMes)) return false;
     }
     if (!filtraStatus) return true;
+    if (buscaEspecial) return true; // filtros especiais ignoram status
     if (_finFiltroStatus === 'todas') return true;
     if (_finFiltroStatus === 'atrasada') return _isAtrasada(c);
     if (_finFiltroStatus === 'aberto') return c.status === 'aberto' && !_isAtrasada(c);
@@ -884,9 +988,36 @@ async function cancelarCobranca(cobrancaId) {
 // PAINEL AJUSTES (Sprint 4)
 // ═══════════════════════════════════════
 let _finAjustes = [];
-let _finAjFiltroTipo = 'todos';
+let _finAjFiltroTipo = localStorage.getItem('fin_aj_tipo') || 'todos';
+let _finAjAno = localStorage.getItem('fin_aj_ano') || String(new Date().getFullYear());
+let _finAjMes = localStorage.getItem('fin_aj_mes') || 'todos';
 let _finAjustandoSel = null; // cobrança alvo do modal
 let _registrandoAjuste = false;
+
+function setFinAjAno(a) { _finAjAno = a; localStorage.setItem('fin_aj_ano', a); _renderAjAnosBtns(); _renderAjLista(); _renderAjKPIs(); }
+function setFinAjMes(m) { _finAjMes = m; localStorage.setItem('fin_aj_mes', m); _renderAjMesesBtns(); _renderAjLista(); _renderAjKPIs(); }
+
+function _renderAjAnosBtns() {
+  const wrap = document.getElementById('fin-aj-anos-btns');
+  if (!wrap) return;
+  const anosSet = new Set();
+  _finAjustes.forEach(a => { if (a.data_ajuste) anosSet.add(a.data_ajuste.slice(0,4)); });
+  anosSet.add(String(new Date().getFullYear()));
+  const anos = [...anosSet].map(Number).filter(a => a > 2000).sort((a,b) => b - a);
+  let html = '<label class="fin-filtro-label">Ano:</label>';
+  html += `<button class="area-btn todas ${_finAjAno === 'todos' ? 'ativo' : ''}" onclick="setFinAjAno('todos')">Todos</button>`;
+  anos.forEach(a => html += `<button class="area-btn ${_finAjAno === String(a) ? 'ativo' : ''}" onclick="setFinAjAno('${a}')">${a}</button>`);
+  wrap.innerHTML = html;
+}
+
+function _renderAjMesesBtns() {
+  const wrap = document.getElementById('fin-aj-meses-btns');
+  if (!wrap) return;
+  const MESES = [['todos','Todos'],['1','Jan'],['2','Fev'],['3','Mar'],['4','Abr'],['5','Mai'],['6','Jun'],['7','Jul'],['8','Ago'],['9','Set'],['10','Out'],['11','Nov'],['12','Dez']];
+  let html = '<label class="fin-filtro-label">Mês:</label>';
+  html += MESES.map(([v,l]) => `<button class="area-btn${v==='todos'?' todas':''}${_finAjMes === v ? ' ativo' : ''}" onclick="setFinAjMes('${v}')">${l}</button>`).join('');
+  wrap.innerHTML = html;
+}
 
 async function renderPainelAjustes() {
   const lista = document.getElementById('fin-lista-ajustes');
@@ -904,6 +1035,10 @@ async function renderPainelAjustes() {
       return;
     }
     _finAjustes = data || [];
+    // Render filtros
+    _renderAjAnosBtns();
+    _renderAjMesesBtns();
+    document.querySelectorAll('.fin-aj-tipo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === _finAjFiltroTipo));
     _renderAjKPIs();
     _renderAjLista();
   } catch(e) {
@@ -913,24 +1048,50 @@ async function renderPainelAjustes() {
 
 function setFinAjTipo(tipo) {
   _finAjFiltroTipo = tipo;
+  localStorage.setItem('fin_aj_tipo', tipo);
   document.querySelectorAll('.fin-aj-tipo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.tipo === tipo));
   _renderAjLista();
 }
 
+// Aplica filtros de Ano+Mês+Tipo+Busca (helper compartilhado)
+function _filtrarAjustes() {
+  const busca = (document.getElementById('fin-aj-busca')?.value || '').trim().toLowerCase();
+  const cobrMap = {};
+  _finCobrancas.forEach(c => { cobrMap[c.id] = c; });
+
+  return _finAjustes.filter(a => {
+    if (_finAjFiltroTipo !== 'todos' && a.tipo !== _finAjFiltroTipo) return false;
+    if (_finAjAno !== 'todos' && a.data_ajuste?.slice(0,4) !== _finAjAno) return false;
+    if (_finAjMes !== 'todos') {
+      const mes = parseInt(a.data_ajuste?.slice(5,7));
+      if (mes !== parseInt(_finAjMes)) return false;
+    }
+    if (busca) {
+      const cliNome = (cobrMap[a.cobranca_id]?.cliente_nome || '').toLowerCase();
+      if (!cliNome.includes(busca)) return false;
+    }
+    return true;
+  });
+}
+
 function _renderAjKPIs() {
-  const hoje = new Date();
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0,10);
+  // KPIs respeitam filtros de Ano + Mês (mas IGNORAM filtro de tipo, pra mostrar visão geral)
+  const tipoBackup = _finAjFiltroTipo;
+  _finAjFiltroTipo = 'todos';
+  const filt = _filtrarAjustes();
+  _finAjFiltroTipo = tipoBackup;
 
-  const mes = _finAjustes.filter(a => a.data_ajuste >= inicioMes);
-
-  const descontos = mes.filter(a => a.tipo === 'desconto' || a.tipo === 'devolucao_parcial' || a.tipo === 'devolucao_total');
+  const descontos = filt.filter(a => a.tipo === 'desconto' || a.tipo === 'devolucao_parcial' || a.tipo === 'devolucao_total');
   const totalDescontos = descontos.reduce((s,a) => s + Math.abs(Number(a.valor) || 0), 0);
 
+  // Créditos: TODOS os créditos no período (não filtra por mês para mostrar saldo total)
   const creditos = _finAjustes.filter(a => a.tipo === 'credito_futuro');
   const totalCreditos = creditos.reduce((s,a) => s + (Number(a.valor) || 0), 0);
 
-  const reentregas = mes.filter(a => a.tipo === 'reentrega');
+  const reentregas = filt.filter(a => a.tipo === 'reentrega');
   const totalCocosExtras = reentregas.reduce((s,a) => s + (Number(a.cocos_extras) || 0), 0);
+
+  const labelPeriodo = _finAjAno === 'todos' ? 'todo histórico' : (_finAjMes === 'todos' ? _finAjAno : _finAjAno + '/' + _finAjMes.padStart(2,'0'));
 
   document.getElementById('kpi-aj-descontos').textContent = 'R$ ' + Math.round(totalDescontos).toLocaleString('pt-BR');
   document.getElementById('kpi-aj-descontos-sub').textContent = descontos.length + ' ajuste' + (descontos.length !== 1 ? 's' : '');
@@ -940,8 +1101,8 @@ function _renderAjKPIs() {
   document.getElementById('kpi-aj-reentregas').textContent = totalCocosExtras.toLocaleString('pt-BR');
   document.getElementById('kpi-aj-reentregas-sub').textContent = reentregas.length + ' reentrega' + (reentregas.length !== 1 ? 's' : '');
 
-  document.getElementById('kpi-aj-total').textContent = mes.length;
-  document.getElementById('kpi-aj-total-sub').textContent = 'no mês';
+  document.getElementById('kpi-aj-total').textContent = filt.length;
+  document.getElementById('kpi-aj-total-sub').textContent = labelPeriodo;
 }
 
 const _AJ_LABELS = {
@@ -964,13 +1125,10 @@ function _renderAjLista() {
   const lista = document.getElementById('fin-lista-ajustes');
   if (!lista) return;
 
-  let filt = _finAjustes;
-  if (_finAjFiltroTipo !== 'todos') {
-    filt = filt.filter(a => a.tipo === _finAjFiltroTipo);
-  }
+  const filt = _filtrarAjustes();
 
   if (filt.length === 0) {
-    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum ajuste registrado</div>';
+    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum ajuste encontrado</div>';
     return;
   }
 
@@ -996,8 +1154,10 @@ function _renderAjLista() {
     const dt = new Date(a.data_ajuste + 'T00:00:00');
     const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
 
+    // Cards clicáveis: vão para a cobrança vinculada
+    const onclickAttr = a.cobranca_id ? `onclick="openCobPanel(${a.cobranca_id})" style="cursor:pointer"` : '';
     return `
-      <div class="fin-aj-row ${a.tipo}">
+      <div class="fin-aj-row clicavel ${a.tipo}" ${onclickAttr} title="${a.cobranca_id ? 'Clique para ver a cobrança' : ''}">
         <span class="fin-aj-tipo-icon" title="${lbl.nome}">${lbl.emoji}</span>
         <div class="fin-aj-info">
           <div class="fin-aj-cliente">${escapeHtml(cliente)}</div>
@@ -1010,7 +1170,7 @@ function _renderAjLista() {
         ${valorHtml}
         <span class="fin-aj-data">${dtFmt}</span>
       </div>`;
-  }).join('');
+  }).join('') + `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} ajuste${filt.length !== 1 ? 's' : ''}</div>`;
 }
 
 // ─── MODAL: NOVO AJUSTE ───
@@ -1219,30 +1379,68 @@ window.abrirAjusteCobranca = function(cobrancaId) {
 // PAINEL RECEBIMENTOS (histórico)
 // ═══════════════════════════════════════
 let _finRecebimentos = [];
-let _finRecPeriodo = localStorage.getItem('fin_rec_periodo') || 'mes';
+let _finRecAno = localStorage.getItem('fin_rec_ano') || String(new Date().getFullYear());
+let _finRecMes = localStorage.getItem('fin_rec_mes') || 'todos';
+let _finRecForma = localStorage.getItem('fin_rec_forma') || 'todas';
 
-function setFinRecPeriodo(p) {
-  _finRecPeriodo = p;
-  localStorage.setItem('fin_rec_periodo', p);
-  document.querySelectorAll('.fin-rec-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === p));
-  renderPainelRecebimentos();
+function setFinRecAno(a) { _finRecAno = a; localStorage.setItem('fin_rec_ano', a); _renderRecAnosBtns(); renderPainelRecebimentos(); }
+function setFinRecMes(m) { _finRecMes = m; localStorage.setItem('fin_rec_mes', m); _renderRecMesesBtns(); renderPainelRecebimentos(); }
+function setFinRecForma(f) {
+  _finRecForma = f;
+  localStorage.setItem('fin_rec_forma', f);
+  document.querySelectorAll('.fin-rec-forma-btn').forEach(b => b.classList.toggle('ativo', b.dataset.forma === f));
+  renderListaRecebimentos();
+}
+
+function filtrarPorFormaTop() {
+  // Pega forma mais usada e aplica filtro
+  const positivos = _finRecebimentos.filter(r => Number(r.valor) > 0);
+  const formas = {};
+  positivos.forEach(r => { formas[r.forma_pagamento] = (formas[r.forma_pagamento] || 0) + 1; });
+  const top = Object.entries(formas).sort((a,b) => b[1]-a[1])[0];
+  if (top) setFinRecForma(top[0]);
+}
+
+function _renderRecAnosBtns() {
+  const wrap = document.getElementById('fin-rec-anos-btns');
+  if (!wrap) return;
+  // Anos baseados em recebimentos (cache geral) — fallback: ano atual
+  const anosSet = new Set();
+  _finRecebimentos.forEach(r => { if (r.data_recebimento) anosSet.add(r.data_recebimento.slice(0,4)); });
+  anosSet.add(String(new Date().getFullYear()));
+  const anos = [...anosSet].map(Number).filter(a => a > 2000).sort((a,b) => b - a);
+  let html = '<label class="fin-filtro-label">Ano:</label>';
+  html += `<button class="area-btn todas ${_finRecAno === 'todos' ? 'ativo' : ''}" onclick="setFinRecAno('todos')">Todos</button>`;
+  anos.forEach(a => html += `<button class="area-btn ${_finRecAno === String(a) ? 'ativo' : ''}" onclick="setFinRecAno('${a}')">${a}</button>`);
+  wrap.innerHTML = html;
+}
+
+function _renderRecMesesBtns() {
+  const wrap = document.getElementById('fin-rec-meses-btns');
+  if (!wrap) return;
+  const MESES = [['todos','Todos'],['1','Jan'],['2','Fev'],['3','Mar'],['4','Abr'],['5','Mai'],['6','Jun'],['7','Jul'],['8','Ago'],['9','Set'],['10','Out'],['11','Nov'],['12','Dez']];
+  let html = '<label class="fin-filtro-label">Mês:</label>';
+  html += MESES.map(([v,l]) => `<button class="area-btn${v==='todos'?' todas':''}${_finRecMes === v ? ' ativo' : ''}" onclick="setFinRecMes('${v}')">${l}</button>`).join('');
+  wrap.innerHTML = html;
 }
 
 function _periodoIntervaloRec() {
-  const hoje = new Date();
-  const fim = new Date(hoje);
-  let inicio;
-  if (_finRecPeriodo === 'mes') inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  else if (_finRecPeriodo === '3m') { inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 3); }
-  else if (_finRecPeriodo === '6m') { inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 6); }
-  else if (_finRecPeriodo === 'ano') inicio = new Date(hoje.getFullYear(), 0, 1);
-  else inicio = new Date(2000, 0, 1);
-  return { inicio: inicio.toISOString().slice(0,10), fim: fim.toISOString().slice(0,10) };
+  if (_finRecAno === 'todos') return { inicio: '2000-01-01', fim: '2999-12-31' };
+  const ano = parseInt(_finRecAno);
+  if (_finRecMes === 'todos') return { inicio: `${ano}-01-01`, fim: `${ano}-12-31` };
+  const mes = parseInt(_finRecMes);
+  const ultDia = new Date(ano, mes, 0).getDate();
+  return {
+    inicio: `${ano}-${String(mes).padStart(2,'0')}-01`,
+    fim: `${ano}-${String(mes).padStart(2,'0')}-${String(ultDia).padStart(2,'0')}`
+  };
 }
 
 async function renderPainelRecebimentos() {
-  // Aplicar filtro persistido visualmente
-  document.querySelectorAll('.fin-rec-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === _finRecPeriodo));
+  // Renderizar filtros
+  _renderRecAnosBtns();
+  _renderRecMesesBtns();
+  document.querySelectorAll('.fin-rec-forma-btn').forEach(b => b.classList.toggle('ativo', b.dataset.forma === _finRecForma));
 
   const lista = document.getElementById('fin-lista-recebimentos');
   if (lista) lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando recebimentos...</div>';
@@ -1296,9 +1494,17 @@ function renderListaRecebimentos() {
 
   let filt = _finRecebimentos;
   if (busca) filt = filt.filter(r => (r.cliente_nome || '').toLowerCase().includes(busca));
+  // Filtro de forma de pagamento
+  if (_finRecForma !== 'todas') {
+    if (_finRecForma === 'estorno') {
+      filt = filt.filter(r => r.forma_pagamento === 'estorno' || Number(r.valor) < 0);
+    } else {
+      filt = filt.filter(r => r.forma_pagamento === _finRecForma);
+    }
+  }
 
   if (filt.length === 0) {
-    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum recebimento no período</div>';
+    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum recebimento encontrado</div>';
     return;
   }
 
@@ -1313,8 +1519,10 @@ function renderListaRecebimentos() {
     const liquido = Math.abs(Number(r.valor_liquido) || valor);
     const taxa = Math.abs(Number(r.taxa) || 0);
     const valorClass = isNeg ? 'negativo' : 'positivo';
+    // Cards clicáveis: vão para a cobrança vinculada
+    const cobOnclick = r.cobranca_id ? `onclick="openCobPanel(${r.cobranca_id})" style="cursor:pointer"` : '';
     return `
-      <div class="fin-aj-row" style="border-left-color:${formaCor[r.forma_pagamento] || '#94a3b8'}">
+      <div class="fin-aj-row clicavel" ${cobOnclick} style="border-left-color:${formaCor[r.forma_pagamento] || '#94a3b8'}${r.cobranca_id ? ';cursor:pointer' : ''}" title="${r.cobranca_id ? 'Clique para ver a cobrança' : ''}">
         <span class="fin-aj-tipo-icon">${(formaLbl[r.forma_pagamento] || r.forma_pagamento).split(' ')[0]}</span>
         <div class="fin-aj-info">
           <div class="fin-aj-cliente">${escapeHtml(r.cliente_nome || '—')}</div>

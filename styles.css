@@ -1110,6 +1110,12 @@
 .fin-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px; }
 
 .fin-filtros { display:flex; gap:12px; align-items:center; margin-bottom:14px; flex-wrap:wrap; padding:10px 12px; background:var(--surface); border-radius:8px; border:1px solid var(--border); }
+.fin-filtros-compactos { flex-direction:column; align-items:stretch; gap:8px; }
+.fin-filtro-linha { display:flex; gap:14px; align-items:center; flex-wrap:wrap; justify-content:space-between; }
+.fin-filtro-linha .fin-filtro-grupo:first-child { flex:1; }
+.vkpi.clicavel { cursor:pointer; transition:transform .12s, box-shadow .12s; }
+.vkpi.clicavel:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,.08); }
+@media (max-width: 800px) { .fin-filtro-linha { justify-content:flex-start; } .fin-filtro-linha .fin-filtro-grupo { width:100%; } .fin-busca { width:100%; } }
 .fin-filtro-grupo { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .fin-filtro-label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
 .fin-filtro-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
@@ -1198,9 +1204,10 @@
 .fin-aj-tipo-btn:hover { border-color:#d97706; }
 .fin-aj-tipo-btn.ativo { background:#d97706; color:#fff; border-color:#d97706; }
 
-.fin-rec-periodo-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
-.fin-rec-periodo-btn:hover { border-color:var(--forest); }
-.fin-rec-periodo-btn.ativo { background:var(--forest); color:#fff; border-color:var(--forest); }
+.fin-rec-periodo-btn, .fin-rec-forma-btn { padding:6px 12px; border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; font-family:var(--font-main); }
+.fin-rec-periodo-btn:hover, .fin-rec-forma-btn:hover { border-color:var(--forest); }
+.fin-rec-periodo-btn.ativo, .fin-rec-forma-btn.ativo { background:var(--forest); color:#fff; border-color:var(--forest); }
+.fin-aj-row.clicavel:hover { background:var(--surface2); transform:translateX(2px); transition:all .12s; }
 
 .aj-tipo-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; }
 .aj-tipo-card { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border:2px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; text-align:center; gap:4px; }
