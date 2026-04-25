@@ -65,6 +65,7 @@ function setFinTab(tab) {
   if (tab === 'cobranca') renderPainelCobranca();
   if (tab === 'analise') renderPainelAnalise();
   if (tab === 'ajustes') renderPainelAjustes();
+  if (tab === 'recebimentos') renderPainelRecebimentos();
 }
 
 // ──────── PAINEL ANÁLISE ────────
@@ -555,11 +556,13 @@ function renderListaCobrancas() {
     else if (dias > 0) metaDias = `<span>Vence em ${dias} dia${dias>1?'s':''}</span>`;
 
     const podeBaixar = status !== 'pago' && status !== 'cancelado';
+    const podeCancelar = c.status !== 'cancelado';
     const acoes = `
       ${podeBaixar ? `<button class="fin-acao-btn principal acao-edicao" onclick="abrirModalBaixa(${c.id})" title="Baixar pagamento">💸</button>` : ''}
       <button class="fin-acao-btn" onclick="abrirWhatsCobranca(${c.id})" title="WhatsApp">📱</button>
       ${podeBaixar ? `<button class="fin-acao-btn acao-edicao" onclick="abrirAjusteCobranca(${c.id})" title="Ajuste">🔧</button>` : ''}
       <button class="fin-acao-btn" onclick="abrirVendaDoFinanceiro(${c.venda_id})" title="Editar venda">✏️</button>
+      ${podeCancelar ? `<button class="fin-acao-btn acao-edicao" onclick="cancelarCobranca(${c.id})" title="Cancelar cobrança" style="color:var(--vermelho)">✕</button>` : ''}
     `;
 
     const valorPagoStr = Number(c.valor_pago) > 0
@@ -790,6 +793,46 @@ function abrirVendaDoFinanceiro(vendaId) {
   setTimeout(() => {
     if (typeof editarVenda === 'function') editarVenda(vendaId);
   }, 300);
+}
+
+// Cancelar cobrança (com motivo)
+async function cancelarCobranca(cobrancaId) {
+  const c = _finCobrancas.find(x => x.id === cobrancaId);
+  if (!c) return;
+
+  let aviso = `Cancelar cobrança de ${c.cliente_nome}\nValor: R$ ${Math.round(c.valor_atual).toLocaleString('pt-BR')}`;
+  if (Number(c.valor_pago) > 0) {
+    aviso += `\n\n⚠️ ATENÇÃO: esta cobrança já tem R$ ${Math.round(c.valor_pago).toLocaleString('pt-BR')} pago.`;
+    aviso += `\nUm ESTORNO automático será criado.`;
+  }
+  aviso += `\n\nInforme o motivo do cancelamento:`;
+
+  const motivo = prompt(aviso, '');
+  if (motivo === null) return; // usuário cancelou
+  if (!motivo.trim()) { alert('Motivo é obrigatório.'); return; }
+
+  const userEmail = (_userPermissoes && _userPermissoes.email) || 'desconhecido';
+
+  try {
+    const { error } = await _SB.from('cobrancas')
+      .update({
+        status: 'cancelado',
+        cancelado_motivo: motivo.trim(),
+        baixado_por: userEmail,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', cobrancaId);
+    if (error) {
+      if (typeof _isAuthError === 'function' && _isAuthError(error)) { _tratarSessaoExpirada(); return; }
+      alert('Erro ao cancelar: ' + (error.message || 'verifique conexão'));
+      return;
+    }
+    showToast('✓ Cobrança cancelada' + (Number(c.valor_pago) > 0 ? ' + estorno automático' : ''));
+    await carregarCobrancas();
+    renderPainelCobranca();
+  } catch(e) {
+    alert('Erro: ' + (e.message || e));
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1126,3 +1169,122 @@ async function confirmarAjuste() {
 window.abrirAjusteCobranca = function(cobrancaId) {
   abrirModalAjuste(cobrancaId);
 };
+
+// ═══════════════════════════════════════
+// PAINEL RECEBIMENTOS (histórico)
+// ═══════════════════════════════════════
+let _finRecebimentos = [];
+let _finRecPeriodo = localStorage.getItem('fin_rec_periodo') || 'mes';
+
+function setFinRecPeriodo(p) {
+  _finRecPeriodo = p;
+  localStorage.setItem('fin_rec_periodo', p);
+  document.querySelectorAll('.fin-rec-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === p));
+  renderPainelRecebimentos();
+}
+
+function _periodoIntervaloRec() {
+  const hoje = new Date();
+  const fim = new Date(hoje);
+  let inicio;
+  if (_finRecPeriodo === 'mes') inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  else if (_finRecPeriodo === '3m') { inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 3); }
+  else if (_finRecPeriodo === '6m') { inicio = new Date(hoje); inicio.setMonth(inicio.getMonth() - 6); }
+  else if (_finRecPeriodo === 'ano') inicio = new Date(hoje.getFullYear(), 0, 1);
+  else inicio = new Date(2000, 0, 1);
+  return { inicio: inicio.toISOString().slice(0,10), fim: fim.toISOString().slice(0,10) };
+}
+
+async function renderPainelRecebimentos() {
+  // Aplicar filtro persistido visualmente
+  document.querySelectorAll('.fin-rec-periodo-btn').forEach(b => b.classList.toggle('ativo', b.dataset.periodo === _finRecPeriodo));
+
+  const lista = document.getElementById('fin-lista-recebimentos');
+  if (lista) lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando recebimentos...</div>';
+
+  const intervalo = _periodoIntervaloRec();
+  try {
+    const { data, error } = await _SB.from('recebimentos')
+      .select('*, cobrancas(cliente_nome, valor_atual)')
+      .gte('data_recebimento', intervalo.inicio)
+      .lte('data_recebimento', intervalo.fim)
+      .order('data_recebimento', { ascending: false });
+    if (error) {
+      if (typeof _isAuthError === 'function' && _isAuthError(error)) { _tratarSessaoExpirada(); return; }
+      console.error('Erro ao carregar recebimentos:', error);
+      _finRecebimentos = [];
+      return;
+    }
+    _finRecebimentos = (data || []).map(r => ({ ...r, cliente_nome: r.cobrancas?.cliente_nome || '—' }));
+    _renderRecKPIs();
+    renderListaRecebimentos();
+  } catch(e) { console.error('renderPainelRecebimentos:', e); }
+}
+
+function _renderRecKPIs() {
+  const positivos = _finRecebimentos.filter(r => Number(r.valor) > 0);
+  const estornos = _finRecebimentos.filter(r => Number(r.valor) < 0 || r.forma_pagamento === 'estorno');
+
+  const totalRecebido = positivos.reduce((s,r) => s + Number(r.valor_liquido || r.valor || 0), 0);
+  const ticket = positivos.length > 0 ? totalRecebido / positivos.length : 0;
+  const totalEstornos = estornos.reduce((s,r) => s + Math.abs(Number(r.valor) || 0), 0);
+
+  // Forma mais usada
+  const formas = {};
+  positivos.forEach(r => { formas[r.forma_pagamento] = (formas[r.forma_pagamento] || 0) + 1; });
+  const formaTop = Object.entries(formas).sort((a,b) => b[1]-a[1])[0];
+  const formaLbl = { pix: 'PIX', transferencia: 'Transferência', boleto: 'Boleto' };
+
+  document.getElementById('kpi-rec-total').textContent = 'R$ ' + Math.round(totalRecebido).toLocaleString('pt-BR');
+  document.getElementById('kpi-rec-total-sub').textContent = positivos.length + ' recebimento' + (positivos.length !== 1 ? 's' : '');
+  document.getElementById('kpi-rec-ticket').textContent = 'R$ ' + Math.round(ticket).toLocaleString('pt-BR');
+  document.getElementById('kpi-rec-forma').textContent = formaTop ? (formaLbl[formaTop[0]] || formaTop[0]) : '—';
+  document.getElementById('kpi-rec-forma-sub').textContent = formaTop ? formaTop[1] + ' de ' + positivos.length : '—';
+  document.getElementById('kpi-rec-estornos').textContent = estornos.length > 0 ? 'R$ ' + Math.round(totalEstornos).toLocaleString('pt-BR') : 'R$ 0';
+  document.getElementById('kpi-rec-estornos-sub').textContent = estornos.length + ' estorno' + (estornos.length !== 1 ? 's' : '');
+}
+
+function renderListaRecebimentos() {
+  const lista = document.getElementById('fin-lista-recebimentos');
+  if (!lista) return;
+  const busca = (document.getElementById('fin-rec-busca')?.value || '').trim().toLowerCase();
+
+  let filt = _finRecebimentos;
+  if (busca) filt = filt.filter(r => (r.cliente_nome || '').toLowerCase().includes(busca));
+
+  if (filt.length === 0) {
+    lista.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">Nenhum recebimento no período</div>';
+    return;
+  }
+
+  const formaLbl = { pix: '⚡ PIX', transferencia: '🏦 Transf.', boleto: '📄 Boleto', estorno: '↩️ Estorno' };
+  const formaCor = { pix: '#10b981', transferencia: '#3b82f6', boleto: '#f59e0b', estorno: '#ef4444' };
+
+  lista.innerHTML = filt.map(r => {
+    const dt = new Date(r.data_recebimento + 'T00:00:00');
+    const dtFmt = String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + dt.getFullYear();
+    const isNeg = Number(r.valor) < 0;
+    const valor = Math.abs(Number(r.valor) || 0);
+    const liquido = Math.abs(Number(r.valor_liquido) || valor);
+    const taxa = Math.abs(Number(r.taxa) || 0);
+    const valorClass = isNeg ? 'negativo' : 'positivo';
+    return `
+      <div class="fin-aj-row" style="border-left-color:${formaCor[r.forma_pagamento] || '#94a3b8'}">
+        <span class="fin-aj-tipo-icon">${(formaLbl[r.forma_pagamento] || r.forma_pagamento).split(' ')[0]}</span>
+        <div class="fin-aj-info">
+          <div class="fin-aj-cliente">${escapeHtml(r.cliente_nome || '—')}</div>
+          <div class="fin-aj-meta">
+            <span><strong>${formaLbl[r.forma_pagamento] || r.forma_pagamento}</strong></span>
+            <span>baixado por: ${escapeHtml(r.baixado_por || '—')}</span>
+            ${taxa > 0 ? `<span>taxa: R$ ${taxa.toFixed(2).replace('.', ',')}</span>` : ''}
+            ${r.obs ? `<span style="color:var(--muted)">• ${escapeHtml(r.obs)}</span>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="fin-aj-valor ${valorClass}">${isNeg ? '-' : '+'} R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+          ${taxa > 0 ? `<div style="font-size:10px;color:var(--muted)">líq: R$ ${liquido.toFixed(2).replace('.', ',')}</div>` : ''}
+        </div>
+        <span class="fin-aj-data">${dtFmt}</span>
+      </div>`;
+  }).join('') + `<div style="padding:8px;text-align:center;font-size:11px;color:var(--muted)">${filt.length} recebimento${filt.length !== 1 ? 's' : ''}</div>`;
+}

@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=1777133707">
+<link rel="stylesheet" href="styles.css?v=1777134034">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -637,7 +637,8 @@
       <button class="btn btn-outline acao-edicao" onclick="progDuplicarCarga()" type="button" style="flex:1;font-size:11px;padding:8px">📋 Duplicar</button>
       <button class="btn" onclick="progCancelarCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:var(--vermelho);color:#fff">✕ Cancelar</button>
       <button class="btn acao-edicao" onclick="progExcluirCarga()" type="button" style="flex:1;font-size:11px;padding:8px;background:#7f1d1d;color:#fff">🗑 Excluir</button>
-      <button class="btn acao-edicao" id="prog-btn-registrar-venda" onclick="progRegistrarVenda()" type="button" style="display:none;width:100%;font-size:12px;padding:10px;background:var(--forest);color:#fff;font-weight:800;margin-top:4px">📋 Registrar Venda a partir desta carga</button>
+      <button class="btn acao-edicao" id="prog-btn-confirmar-entrega" onclick="abrirModalConfirmarEntrega()" type="button" style="display:none;width:100%;font-size:13px;padding:12px;background:var(--forest);color:#fff;font-weight:800;margin-top:4px">🚚 Confirmar Entrega (cria venda + cobrança)</button>
+      <button class="btn acao-edicao" id="prog-btn-registrar-venda" onclick="progRegistrarVenda()" type="button" style="display:none;width:100%;font-size:11px;padding:8px;background:var(--surface);color:var(--muted);border:1px dashed var(--border);font-weight:600;margin-top:4px">ou abrir formulário completo de venda</button>
     </div>
 
     <button class="btn btn-primary acao-edicao" id="prog-btn-salvar" onclick="salvarProgCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;margin-top:4px">✓ Agendar carga</button>
@@ -1347,22 +1348,22 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="js/config.js?v=1777133707"></script>
-<script src="js/cidades_br.js?v=1777133707"></script>
-<script src="js/utils.js?v=1777133707"></script>
-<script src="js/storage.js?v=1777133707"></script>
-<script src="js/components.js?v=1777133707"></script>
-<script src="js/dashboard.js?v=1777133707"></script>
-<script src="js/lancamento.js?v=1777133707"></script>
-<script src="js/analise.js?v=1777133707"></script>
-<script src="js/vendas.js?v=1777133707"></script>
-<script src="js/gestao.js?v=1777133707"></script>
-<script src="js/mercados.js?v=1777133707"></script>
-<script src="js/programacao.js?v=1777133707"></script>
-<script src="js/financeiro.js?v=1777133707"></script>
-<script src="js/router.js?v=1777133707"></script>
-<script src="js/app.js?v=1777133707"></script>
-<script src="js/auth.js?v=1777133707"></script>
+<script src="js/config.js?v=1777134034"></script>
+<script src="js/cidades_br.js?v=1777134034"></script>
+<script src="js/utils.js?v=1777134034"></script>
+<script src="js/storage.js?v=1777134034"></script>
+<script src="js/components.js?v=1777134034"></script>
+<script src="js/dashboard.js?v=1777134034"></script>
+<script src="js/lancamento.js?v=1777134034"></script>
+<script src="js/analise.js?v=1777134034"></script>
+<script src="js/vendas.js?v=1777134034"></script>
+<script src="js/gestao.js?v=1777134034"></script>
+<script src="js/mercados.js?v=1777134034"></script>
+<script src="js/programacao.js?v=1777134034"></script>
+<script src="js/financeiro.js?v=1777134034"></script>
+<script src="js/router.js?v=1777134034"></script>
+<script src="js/app.js?v=1777134034"></script>
+<script src="js/auth.js?v=1777134034"></script>
 
 <!-- PAINEL LATERAL GRÁFICO -->
 <!-- MODAL TODOS EITOS -->
@@ -1787,7 +1788,32 @@
 
   </div>
   <div id="fin-painel-recebimentos" class="fin-painel">
-    <div style="padding:40px;text-align:center;color:var(--muted)">💸 Histórico de Recebimentos — em desenvolvimento</div>
+    <!-- Filtro de período + busca -->
+    <div class="fin-filtros">
+      <div class="fin-filtro-grupo">
+        <label class="fin-filtro-label">Período:</label>
+        <button class="fin-rec-periodo-btn ativo" data-periodo="mes" onclick="setFinRecPeriodo('mes')">Este mês</button>
+        <button class="fin-rec-periodo-btn" data-periodo="3m" onclick="setFinRecPeriodo('3m')">3 meses</button>
+        <button class="fin-rec-periodo-btn" data-periodo="6m" onclick="setFinRecPeriodo('6m')">6 meses</button>
+        <button class="fin-rec-periodo-btn" data-periodo="ano" onclick="setFinRecPeriodo('ano')">Este ano</button>
+      </div>
+      <div class="fin-filtro-grupo">
+        <input type="text" class="fin-busca" id="fin-rec-busca" placeholder="🔍 Buscar cliente..." oninput="renderListaRecebimentos()">
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="fin-kpis">
+      <div class="vkpi destaque" style="border-color:var(--forest)"><div class="vkpi-label">💵 Total recebido</div><div class="vkpi-val" id="kpi-rec-total">—</div><div class="vkpi-sub" id="kpi-rec-total-sub">—</div></div>
+      <div class="vkpi"><div class="vkpi-label">📊 Ticket médio</div><div class="vkpi-val" id="kpi-rec-ticket">—</div><div class="vkpi-sub">por recebimento</div></div>
+      <div class="vkpi"><div class="vkpi-label">🏦 Mais usada</div><div class="vkpi-val" id="kpi-rec-forma" style="font-size:18px">—</div><div class="vkpi-sub" id="kpi-rec-forma-sub">forma de pagamento</div></div>
+      <div class="vkpi" style="border-color:var(--vermelho-border)"><div class="vkpi-label">↩️ Estornos</div><div class="vkpi-val" id="kpi-rec-estornos" style="color:var(--vermelho)">—</div><div class="vkpi-sub" id="kpi-rec-estornos-sub">no período</div></div>
+    </div>
+
+    <!-- Lista -->
+    <div class="fin-lista" id="fin-lista-recebimentos" style="margin-top:14px">
+      <div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">⏳ Carregando recebimentos...</div>
+    </div>
   </div>
   <div id="fin-painel-ajustes" class="fin-painel">
     <!-- Filtros + ação -->
@@ -1858,6 +1884,48 @@
       </div>
       <div id="baixa-erro" style="display:none;color:var(--vermelho);font-size:12px;font-weight:600"></div>
       <button class="btn btn-primary" onclick="confirmarBaixa()" style="width:100%;padding:13px;font-size:14px;font-weight:800">✓ Confirmar Pagamento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==== MODAL: CONFIRMAR ENTREGA (Programação → Venda em 1 click) ==== -->
+<div class="modal-overlay" id="modal-entrega-overlay">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:800">🚚 Confirmar Entrega</div>
+      <button onclick="closeModal('modal-entrega-overlay')" style="background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:20px 22px;display:flex;flex-direction:column;gap:14px;max-height:70vh;overflow-y:auto">
+      <div id="entrega-info" style="background:var(--surface2);border-radius:8px;padding:12px"></div>
+
+      <div class="form-group">
+        <label class="form-label">Data efetiva da entrega *</label>
+        <input type="date" class="form-input" id="entrega-data">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nota Fiscal (Omie) — opcional</label>
+        <input type="text" class="form-input" id="entrega-nf" placeholder="Ex: 12345" autocomplete="off">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Pode preencher depois ao emitir no Omie</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Quebra (cocos extras enviados) — opcional</label>
+        <input type="number" class="form-input" id="entrega-quebra" min="0" placeholder="0">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Bônus para cobrir quebras de viagem (ex: 200). Não muda valor financeiro, mas afeta R$/coco real.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Frete real (R$) — se diferente do programado</label>
+        <input type="number" class="form-input" id="entrega-frete" step="0.01" placeholder="">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px" id="entrega-frete-orig"></div>
+      </div>
+
+      <!-- Resumo do que vai ser criado -->
+      <div id="entrega-resumo" style="background:#fef9e7;border:1px solid #d4a017;border-radius:8px;padding:10px 12px;font-size:12px"></div>
+
+      <div id="entrega-erro" style="display:none;color:var(--vermelho);font-size:12px;font-weight:600"></div>
+      <button class="btn btn-primary" onclick="confirmarEntregaCarga()" style="width:100%;padding:13px;font-size:14px;font-weight:800;background:var(--forest);border-color:var(--forest)">✓ Confirmar e Criar Venda</button>
     </div>
   </div>
 </div>

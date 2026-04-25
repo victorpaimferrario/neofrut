@@ -857,11 +857,210 @@ function abrirModalProgEditar(id) {
     if (btnReverter) btnReverter.style.display = 'none';
   }
 
-  // Botão Registrar Venda (visível para confirmado/entregue)
+  // Botão "Confirmar Entrega" (Sprint 5: 1-click venda+cobrança)
+  // Aparece para cargas confirmadas que ainda não viraram venda
+  const btnEntrega = document.getElementById('prog-btn-confirmar-entrega');
+  if (btnEntrega) {
+    btnEntrega.style.display = (c.status === 'confirmado' && !c.venda_id) ? 'block' : 'none';
+  }
+  // Botão "Registrar Venda" (formulário completo) — fallback alternativo
   const btnVenda = document.getElementById('prog-btn-registrar-venda');
-  if (btnVenda) btnVenda.style.display = (c.status === 'confirmado' || c.status === 'entregue') ? 'block' : 'none';
+  if (btnVenda) {
+    btnVenda.style.display = ((c.status === 'confirmado' || c.status === 'entregue') && !c.venda_id) ? 'block' : 'none';
+  }
+  // Se já tem venda vinculada, mostra link
+  if (c.venda_id && btnEntrega) {
+    btnEntrega.style.display = 'none';
+    if (btnVenda) {
+      btnVenda.style.display = 'block';
+      btnVenda.textContent = '👁️ Ver venda criada';
+      btnVenda.onclick = () => { closeModal('prog-modal-overlay'); showPage('vendas'); setTimeout(() => { if (typeof editarVenda === 'function') editarVenda(c.venda_id); }, 300); };
+    }
+  }
 
   openModal('prog-modal-overlay');
+}
+
+// ═══════════════════════════════════════
+// SPRINT 5: CONFIRMAR ENTREGA EM 1 CLICK
+// Cria venda + cobrança a partir da programação
+// ═══════════════════════════════════════
+let _confirmandoEntrega = false;
+let _entregaCargaSel = null;
+
+function abrirModalConfirmarEntrega() {
+  if (!_progEditandoId) return;
+  const c = _progSemana.find(x => x.id === _progEditandoId);
+  if (!c) { showToast('Carga não encontrada'); return; }
+  if (c.venda_id) { showToast('Esta carga já tem venda criada'); return; }
+  if (c.status !== 'confirmado') { showToast('A carga precisa estar confirmada'); return; }
+
+  _entregaCargaSel = c;
+  closeModal('prog-modal-overlay');
+
+  // Preenche o modal
+  const totalEstimado = (c.volume_cocos || 0) * (c.valor_por_coco || 0);
+  document.getElementById('entrega-info').innerHTML = `
+    <div style="font-weight:800;color:var(--forest);font-size:14px;margin-bottom:4px">${escapeHtml(c.cliente_nome)}</div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);line-height:1.6">
+      🌴 ${(c.volume_cocos || 0).toLocaleString('pt-BR')} cocos · R$ ${Number(c.valor_por_coco || 0).toFixed(2).replace('.', ',')}/coco<br>
+      💰 Receita: R$ ${Math.round(totalEstimado).toLocaleString('pt-BR')}
+      ${c.frete_total ? '<br>🚛 Frete programado: R$ ' + Math.round(c.frete_total).toLocaleString('pt-BR') : ''}
+      ${c.area ? '<br>📍 Área: ' + c.area : ''}
+    </div>`;
+
+  document.getElementById('entrega-data').value = c.dia_entrega || new Date().toISOString().slice(0,10);
+  document.getElementById('entrega-nf').value = '';
+  document.getElementById('entrega-quebra').value = '';
+  document.getElementById('entrega-frete').value = '';
+  document.getElementById('entrega-frete-orig').textContent = c.frete_total ? `Programado: R$ ${Math.round(c.frete_total).toLocaleString('pt-BR')}. Deixe vazio se não mudou.` : '';
+  document.getElementById('entrega-erro').style.display = 'none';
+
+  _atualizarResumoEntrega();
+  // Listeners para atualizar resumo dinamicamente
+  ['entrega-quebra', 'entrega-frete'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._bound) { el.addEventListener('input', _atualizarResumoEntrega); el._bound = true; }
+  });
+
+  openModal('modal-entrega-overlay');
+}
+
+function _atualizarResumoEntrega() {
+  if (!_entregaCargaSel) return;
+  const c = _entregaCargaSel;
+  const quebra = parseInt(document.getElementById('entrega-quebra').value) || 0;
+  const freteCustom = parseFloat(document.getElementById('entrega-frete').value);
+  const frete = isNaN(freteCustom) ? (Number(c.frete_total) || 0) : freteCustom;
+  const total = (Number(c.volume_cocos) || 0) * (Number(c.valor_por_coco) || 0);
+  const cocosEntregues = (Number(c.volume_cocos) || 0) + quebra;
+  const rpcReal = cocosEntregues > 0 ? (total - frete) / cocosEntregues : 0;
+
+  // Buscar prazo do cliente
+  const cli = _progClientes.find(x => x.id === c.cliente_id);
+  const prazoDias = cli?.prazo_pagamento_dias != null ? cli.prazo_pagamento_dias : 0;
+
+  const resumo = document.getElementById('entrega-resumo');
+  resumo.innerHTML = `
+    <div style="font-weight:700;color:#9a6700;margin-bottom:6px">📋 Será criado:</div>
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div>✓ Venda de R$ ${Math.round(total).toLocaleString('pt-BR')} (${cocosEntregues.toLocaleString('pt-BR')} cocos${quebra > 0 ? ' incl. ' + quebra + ' de quebra' : ''})</div>
+      <div>✓ Cobrança ${prazoDias === 0 ? '<strong>À VISTA</strong>' : 'com vencimento em <strong>' + prazoDias + ' dias</strong>'}</div>
+      <div>✓ Programação marcada como <strong>Entregue</strong></div>
+      <div style="margin-top:4px;padding-top:4px;border-top:1px dashed #d4a017">💰 R$/coco real estimado: <strong>R$ ${rpcReal.toFixed(2).replace('.', ',')}</strong></div>
+    </div>`;
+}
+
+async function confirmarEntregaCarga() {
+  if (_confirmandoEntrega) return;
+  if (!_entregaCargaSel) return;
+  const c = _entregaCargaSel;
+  const erro = document.getElementById('entrega-erro');
+  const data = document.getElementById('entrega-data').value;
+  const nf = document.getElementById('entrega-nf').value.trim();
+  const quebra = parseInt(document.getElementById('entrega-quebra').value) || 0;
+  const freteCustom = parseFloat(document.getElementById('entrega-frete').value);
+  const frete = isNaN(freteCustom) ? (Number(c.frete_total) || 0) : freteCustom;
+
+  if (!data) { erro.textContent = 'Informe a data da entrega.'; erro.style.display = 'block'; return; }
+
+  const userEmail = (typeof _userPermissoes !== 'undefined' && _userPermissoes.email) || 'desconhecido';
+  const btn = document.querySelector('#modal-entrega-overlay button.btn-primary');
+
+  _confirmandoEntrega = true;
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.origText = btn.textContent;
+    btn.textContent = '⏳ Processando...';
+    btn.style.opacity = '0.6';
+  }
+
+  try {
+    // Buscar prazo do cliente para vencimento
+    const cli = _progClientes.find(x => x.id === c.cliente_id);
+    const prazoDias = cli?.prazo_pagamento_dias != null ? cli.prazo_pagamento_dias : 0;
+
+    const total = (Number(c.volume_cocos) || 0) * (Number(c.valor_por_coco) || 0);
+    const cocosEntregues = (Number(c.volume_cocos) || 0) + quebra;
+
+    // 1. Criar venda
+    const vendaPayload = {
+      data: data,
+      cliente: c.cliente_nome,
+      qtde: c.volume_cocos,
+      total: total,
+      frete: frete,
+      icms_valor: c.icms_valor || null,
+      seguro_valor: c.seguro_valor || null,
+      tipo_venda: 'coco',
+      status: 'PENDENTE',
+      uf_destino: cli?.uf || null,
+      cidade_destino: cli?.cidade || null,
+      programacao_id: c.id,
+      quebra_cocos: quebra,
+      cocos_entregues: cocosEntregues,
+      nf_omie: nf || null,
+      criado_por: userEmail,
+      areas: c.area ? { [c.area]: c.volume_cocos } : {}
+    };
+    const { data: vendaCriada, error: errVenda } = await _SB
+      .from('vendas')
+      .insert(vendaPayload)
+      .select()
+      .single();
+    if (errVenda) throw errVenda;
+    const vendaId = vendaCriada.id;
+
+    // 2. Criar cobrança vinculada
+    const dataEmissao = data;
+    const dataVenc = new Date(data + 'T12:00:00');
+    dataVenc.setDate(dataVenc.getDate() + prazoDias);
+    const dataVencISO = dataVenc.toISOString().slice(0,10);
+
+    const cobrancaPayload = {
+      venda_id: vendaId,
+      cliente_id: c.cliente_id,
+      cliente_nome: c.cliente_nome,
+      numero_parcela: 1,
+      total_parcelas: 1,
+      valor_original: total,
+      valor_atual: total,
+      valor_pago: 0,
+      data_emissao: dataEmissao,
+      data_vencimento: dataVencISO,
+      status: 'aberto',
+      criado_por: userEmail
+    };
+    const { error: errCobr } = await _SB.from('cobrancas').insert(cobrancaPayload);
+    if (errCobr) throw errCobr;
+
+    // 3. Atualizar programação: status='entregue' + venda_id
+    const { error: errProg } = await _SB
+      .from('programacao')
+      .update({ status: 'entregue', venda_id: vendaId, updated_at: new Date().toISOString() })
+      .eq('id', c.id);
+    if (errProg) console.warn('Erro ao atualizar programação:', errProg);
+
+    closeModal('modal-entrega-overlay');
+    showToast('✓ Entrega confirmada! Venda + cobrança criadas.');
+    _entregaCargaSel = null;
+
+    // Recarregar programação e cobranças
+    if (typeof carregarProgramacao === 'function') await carregarProgramacao(_progSemanaInicio);
+    if (typeof carregarCobrancas === 'function') await carregarCobrancas();
+  } catch(e) {
+    if (typeof _isAuthError === 'function' && _isAuthError(e)) { _tratarSessaoExpirada(); return; }
+    erro.textContent = 'Erro: ' + (e.message || e);
+    erro.style.display = 'block';
+    console.error('confirmarEntregaCarga:', e);
+  } finally {
+    _confirmandoEntrega = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.origText || '✓ Confirmar e Criar Venda';
+      btn.style.opacity = '';
+    }
+  }
 }
 
 // ── REGISTRAR VENDA A PARTIR DA CARGA ──
