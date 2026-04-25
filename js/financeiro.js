@@ -186,21 +186,46 @@ async function renderPainelAnalise() {
   }
 }
 
+// Helper: cocos entregues (compat: vendas antigas usam 'quebra', novas 'quebra_cocos')
+function _cocosEntreguesVenda(v) {
+  const qtde = Number(v.qtde) || 0;
+  const quebra = Number(v.quebra_cocos) || Number(v.quebra) || 0;
+  return qtde + quebra;
+}
+
+// Helper: receita LÍQUIDA por venda (descontando frete, ICMS, seguro, impostos)
+// Esse é o valor REAL que a fazenda recebe — não o valor da NF
+function _receitaLiquidaVenda(v) {
+  // Para fábrica, usar litragem × R$/litro como receita base
+  let receitaBase;
+  if (v.tipo_venda === 'litro' && Number(v.litragem) > 0 && Number(v.v_por_litro) > 0) {
+    receitaBase = Number(v.litragem) * Number(v.v_por_litro);
+  } else {
+    receitaBase = Number(v.total) || 0;
+  }
+  const frete = Number(v.frete) || 0;
+  const icms = Number(v.icms_valor) || 0;
+  const seguro = Number(v.seguro_valor) || 0;
+  const impostos = Number(v.impostos) || 0;
+  return Math.max(0, receitaBase - frete - icms - seguro - impostos);
+}
+
 function _renderKpisAnalise(vendas, intervalo) {
-  // R$/coco efetivo (média ponderada por receita_liquida / cocos_entregues)
-  let receitaTotal = 0, cocosTotal = 0;
+  // R$/coco efetivo: usa rpc_efetivo do banco (já calculado corretamente)
+  let receitaLiquidaTotal = 0, cocosTotal = 0;
   let semImpostos = 0; // A1: contagem de vendas com frete > 0 mas impostos = 0
   vendas.forEach(v => {
-    const cocos = (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
-    if (cocos > 0 && v.rpc_efetivo > 0) {
-      receitaTotal += Number(v.rpc_efetivo) * cocos;
+    const cocos = _cocosEntreguesVenda(v);
+    const rec = _receitaLiquidaVenda(v);
+    if (cocos > 0 && rec > 0) {
+      receitaLiquidaTotal += rec;
       cocosTotal += cocos;
     }
     if (Number(v.frete) > 0 && (!Number(v.impostos) || Number(v.impostos) === 0)) {
       semImpostos++;
     }
   });
-  const rpcEfetivo = cocosTotal > 0 ? receitaTotal / cocosTotal : 0;
+  const rpcEfetivo = cocosTotal > 0 ? receitaLiquidaTotal / cocosTotal : 0;
 
   // A1: aviso sobre dados incompletos
   let avisoEl = document.getElementById('fin-aviso-impostos');
@@ -295,70 +320,99 @@ async function _calcularRpcRealizado(intervalo) {
       document.getElementById('kpi-rpc-realizado').textContent = '—';
       return;
     }
-    const totalRecebido = recs.reduce((s,r) => s + (Number(r.valor_liquido) || Number(r.valor) || 0), 0);
+    // Total recebido (BRUTO, inclui frete que vai pro transportador)
+    const totalRecebidoBruto = recs.reduce((s,r) => s + (Number(r.valor_liquido) || Number(r.valor) || 0), 0);
+
+    // Para R$/coco REAL, precisamos descontar a parte que vai pro transportador (frete) e impostos
+    // Buscar vendas com TODOS os campos necessários
     const vendaIds = [...new Set(recs.map(r => r.venda_id).filter(Boolean))];
     if (vendaIds.length === 0) {
       document.getElementById('kpi-rpc-realizado').textContent = '—';
       return;
     }
     const { data: vds } = await _SB.from('vendas')
-      .select('id, qtde, quebra_cocos')
+      .select('id, qtde, quebra, quebra_cocos, total, frete, icms_valor, seguro_valor, impostos, tipo_venda, litragem, v_por_litro')
       .in('id', vendaIds);
+
+    // Agrupar pagamentos por venda
+    const pagosPorVenda = {};
+    recs.forEach(r => {
+      if (!r.venda_id) return;
+      pagosPorVenda[r.venda_id] = (pagosPorVenda[r.venda_id] || 0) + (Number(r.valor_liquido) || Number(r.valor) || 0);
+    });
+
+    let totalLiquidoRecebido = 0;
     let cocos = 0;
-    (vds || []).forEach(v => { cocos += (Number(v.qtde)||0) + (Number(v.quebra_cocos)||0); });
-    const rpcReal = cocos > 0 ? totalRecebido / cocos : 0;
+    (vds || []).forEach(v => {
+      const cocosV = _cocosEntreguesVenda(v);
+      const liquidoVenda = _receitaLiquidaVenda(v);
+      const totalVenda = Number(v.total) || 0;
+      const pagoVenda = pagosPorVenda[v.id] || 0;
+      // Proporção do líquido proporcional ao que foi efetivamente recebido
+      const fatorRecebido = totalVenda > 0 ? Math.min(1, pagoVenda / totalVenda) : 0;
+      totalLiquidoRecebido += liquidoVenda * fatorRecebido;
+      cocos += cocosV * fatorRecebido;
+    });
+
+    const rpcReal = cocos > 0 ? totalLiquidoRecebido / cocos : 0;
     document.getElementById('kpi-rpc-realizado').textContent = 'R$ ' + rpcReal.toFixed(2).replace('.', ',');
-    document.getElementById('kpi-rpc-realizado-sub').textContent = 'R$ ' + Math.round(totalRecebido).toLocaleString('pt-BR') + ' recebido';
+    document.getElementById('kpi-rpc-realizado-sub').textContent = 'R$ ' + Math.round(totalRecebidoBruto).toLocaleString('pt-BR') + ' recebido (bruto)';
   } catch(e) { console.warn('_calcularRpcRealizado:', e); }
 }
 
 function _renderCanais(vendas) {
-  let mesa = { receita: 0, cocos: 0, n: 0 };
-  let fabrica = { receita: 0, cocos: 0, n: 0 };
+  // receitaBruta: total da NF (para o gráfico de proporção, é OK usar bruto)
+  // receitaLiquida: descontando frete/ICMS/seguro/impostos (para R$/coco real)
+  let mesa = { bruto: 0, liquido: 0, cocos: 0, n: 0 };
+  let fabrica = { bruto: 0, liquido: 0, cocos: 0, n: 0 };
 
   vendas.forEach(v => {
-    const cocos = (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
-    const receita = Number(v.total) || 0;
-    if (v.tipo_venda === 'litro') {
-      fabrica.receita += receita;
-      fabrica.cocos += cocos;
-      fabrica.n += 1;
-    } else {
-      mesa.receita += receita;
-      mesa.cocos += cocos;
-      mesa.n += 1;
-    }
+    const cocos = _cocosEntreguesVenda(v);
+    const liquido = _receitaLiquidaVenda(v);
+    const bruto = Number(v.total) || 0;
+    const target = (v.tipo_venda === 'litro') ? fabrica : mesa;
+    target.bruto += bruto;
+    target.liquido += liquido;
+    target.cocos += cocos;
+    target.n += 1;
   });
 
-  const total = mesa.receita + fabrica.receita;
-  const pctMesa = total > 0 ? (mesa.receita / total) * 100 : 0;
-  const pctFabrica = total > 0 ? (fabrica.receita / total) * 100 : 0;
+  // Proporção do gráfico usa bruto (volume comercial)
+  const total = mesa.bruto + fabrica.bruto;
+  const pctMesa = total > 0 ? (mesa.bruto / total) * 100 : 0;
+  const pctFabrica = total > 0 ? (fabrica.bruto / total) * 100 : 0;
 
   const fmt = v => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
-  document.getElementById('canal-mesa-valor').textContent = fmt(mesa.receita);
-  document.getElementById('canal-mesa-meta').textContent = `${pctMesa.toFixed(0)}% · ${mesa.n} venda${mesa.n!==1?'s':''} · R$/coco médio: R$ ${(mesa.cocos>0 ? mesa.receita/mesa.cocos : 0).toFixed(2).replace('.',',')}`;
+  // R$/coco médio usa LÍQUIDO ÷ cocos entregues (verdade do agronegócio)
+  const rpcMesa = mesa.cocos > 0 ? mesa.liquido / mesa.cocos : 0;
+  const rpcFabrica = fabrica.cocos > 0 ? fabrica.liquido / fabrica.cocos : 0;
+
+  document.getElementById('canal-mesa-valor').textContent = fmt(mesa.bruto);
+  document.getElementById('canal-mesa-meta').textContent = `${pctMesa.toFixed(0)}% · ${mesa.n} venda${mesa.n!==1?'s':''} · R$/coco real: R$ ${rpcMesa.toFixed(2).replace('.',',')}`;
   document.getElementById('canal-mesa-bar').style.width = pctMesa + '%';
 
-  document.getElementById('canal-fabrica-valor').textContent = fmt(fabrica.receita);
-  document.getElementById('canal-fabrica-meta').textContent = `${pctFabrica.toFixed(0)}% · ${fabrica.n} venda${fabrica.n!==1?'s':''} · R$/coco médio: R$ ${(fabrica.cocos>0 ? fabrica.receita/fabrica.cocos : 0).toFixed(2).replace('.',',')}`;
+  document.getElementById('canal-fabrica-valor').textContent = fmt(fabrica.bruto);
+  document.getElementById('canal-fabrica-meta').textContent = `${pctFabrica.toFixed(0)}% · ${fabrica.n} venda${fabrica.n!==1?'s':''} · R$/coco real: R$ ${rpcFabrica.toFixed(2).replace('.',',')}`;
   document.getElementById('canal-fabrica-bar').style.width = pctFabrica + '%';
 }
 
 function _renderRankingClientes(vendas) {
-  // Agrupar por cliente
+  // Agrupar por cliente — usa receita LÍQUIDA (sem frete/ICMS/seguro)
+  // para refletir o R$/coco REAL que a fazenda recebe
   const porCliente = {};
   vendas.forEach(v => {
     const nome = (v.cliente || '—').toUpperCase();
-    if (!porCliente[nome]) porCliente[nome] = { nome, receita: 0, cocos: 0, vendas: 0 };
-    porCliente[nome].receita += Number(v.total) || 0;
-    porCliente[nome].cocos += (Number(v.qtde) || 0) + (Number(v.quebra_cocos) || 0);
+    if (!porCliente[nome]) porCliente[nome] = { nome, receitaLiquida: 0, receitaBruta: 0, cocos: 0, vendas: 0 };
+    porCliente[nome].receitaLiquida += _receitaLiquidaVenda(v);
+    porCliente[nome].receitaBruta += Number(v.total) || 0;
+    porCliente[nome].cocos += _cocosEntreguesVenda(v);
     porCliente[nome].vendas += 1;
   });
 
-  // Calcular RPC por cliente, filtrar quem tem >= 2 vendas
+  // RPC = receita líquida ÷ cocos entregues (verdade do agronegócio)
   const clientes = Object.values(porCliente)
     .filter(c => c.vendas >= 2 && c.cocos > 0)
-    .map(c => ({ ...c, rpc: c.receita / c.cocos }))
+    .map(c => ({ ...c, rpc: c.receitaLiquida / c.cocos, receita: c.receitaBruta }))
     .sort((a, b) => b.rpc - a.rpc);
 
   if (clientes.length === 0) {
@@ -746,10 +800,10 @@ function renderListaCobrancas() {
   // ── TOTAIS NO TFOOT ── (igual padrão da aba Vendas)
   // Calcula totais sobre TODAS as cobranças filtradas (não apenas a página)
   let tValor = 0, tPago = 0, tSaldo = 0, tCocos = 0;
-  // Mapa rápido vendas → qtde
+  // Mapa rápido vendas → qtde (usa _cocosEntreguesVenda para compat)
   const vendaCocosMap = {};
   if (typeof _vendasCache !== 'undefined' && _vendasCache) {
-    _vendasCache.forEach(v => { vendaCocosMap[v.id] = (Number(v.qtde) || 0) + (Number(v.quebra) || 0); });
+    _vendasCache.forEach(v => { vendaCocosMap[v.id] = _cocosEntreguesVenda(v); });
   }
   filt.forEach(c => {
     if (c.status === 'cancelado') return; // ignora canceladas no total
